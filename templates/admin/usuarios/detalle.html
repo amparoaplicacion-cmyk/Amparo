@@ -44,7 +44,7 @@
   {% if usuario['tipo_usuario'] not in ('admin', 'admin_financiero') %}
   <form method="POST"
         action="{{ url_for('admin.usuario_eliminar', uid=usuario['id']) }}"
-        onsubmit="return confirm('⚠️ ¿ELIMINAR PERMANENTEMENTE el usuario {{ usuario[\'email\'] }}? Esta acción no se puede deshacer.')">
+        onsubmit="return confirm('⚠️ ¿ELIMINAR PERMANENTEMENTE el usuario {{ usuario.email }}? Esta acción no se puede deshacer.')">
     <button type="submit" class="btn btn-danger" style="background:#8B0000;">Eliminar usuario</button>
   </form>
   {% endif %}
