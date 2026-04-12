@@ -70,7 +70,7 @@ def _cfg_db(clave, default=''):
         row = get_db().execute(
             'SELECT valor FROM configuracion WHERE clave=?', (clave,)
         ).fetchone()
-        return row['valor'] if row else default
+        return (row['valor'] if row['valor'] else default) if row else default
     except Exception:
         return default
 
