@@ -1,0 +1,18 @@
+{% extends 'solicitante/base.html' %}
+{% block titulo %}Mensaje enviado{% endblock %}
+
+{% block content %}
+{% set active_tab = 'contacto' %}
+
+<div style="text-align:center;padding:2.5rem 1rem;">
+  <div style="font-size:3rem;margin-bottom:.75rem;">🙏</div>
+  <h2 style="font-size:1.25rem;font-weight:700;color:#7D3C98;margin-bottom:.5rem;">¡Gracias por escribirnos!</h2>
+  <p style="font-size:.9rem;color:#555;line-height:1.6;margin-bottom:1.5rem;">
+    Recibimos tu mensaje y te responderemos a la brevedad.
+  </p>
+  <a href="{{ url_for('solicitante.dashboard') }}" class="btn btn-accept" style="display:inline-block;">
+    Volver al inicio
+  </a>
+</div>
+
+{% endblock %}

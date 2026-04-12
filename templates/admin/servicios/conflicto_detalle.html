@@ -1,0 +1,80 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Conflicto — Servicio #{{ s.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">⚠️ Conflicto — Servicio #{{ s.id }}</h1>
+  <a href="{{ url_for('admin.conflictos') }}" class="btn btn-secondary">← Volver</a>
+</div>
+
+<div style="background:#fff3e0;border:2px solid #e67e22;border-radius:12px;padding:1.25rem;margin-bottom:1.5rem;">
+  <strong style="color:#c0392b;">Motivo del conflicto:</strong>
+  <p style="margin-top:.4rem;color:#555;">{{ s.motivo_conflicto or '—' }}</p>
+</div>
+
+<div class="form-card" style="margin-bottom:1.25rem;">
+  <div class="section-title">Datos del servicio</div>
+  <table class="detail-table" style="width:100%;border-collapse:collapse;">
+    <tr><th>Fecha</th><td>{{ s.fecha_servicio }}</td><th>Horario</th><td>{{ s.hora_inicio }}–{{ s.hora_fin }}</td></tr>
+    <tr><th>Categoría</th><td colspan="3">{{ s.categoria_nombre or '—' }}</td></tr>
+    <tr><th>Prestador</th><td>{{ s.prestador_nombre }}<br><small>{{ s.prestador_email }} · {{ s.prestador_telefono or '' }}</small></td>
+        <th>Solicitante</th><td>{{ s.solicitante_nombre }}<br><small>{{ s.solicitante_email }} · {{ s.solicitante_telefono or '' }}</small></td></tr>
+  </table>
+</div>
+
+<div class="form-card" style="margin-bottom:1.25rem;">
+  <div class="section-title">Estado de confirmaciones</div>
+  <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.9rem;">
+    <div>
+      {% if s.prestador_confirmo_llegada %}
+      ✅ Prestador confirmó llegada
+      {% if s.distancia_llegada_metros is not none %}— a {{ s.distancia_llegada_metros|int }} m del domicilio{% endif %}
+      {% if s.fecha_llegada %}<small style="color:#888;"> ({{ s.fecha_llegada[:16] }})</small>{% endif %}
+      {% else %}
+      ⏳ Prestador no confirmó llegada
+      {% endif %}
+    </div>
+    <div>
+      {% if s.prestador_confirmo_fin %}
+      ✅ Prestador confirmó finalización
+      {% if s.fecha_confirmacion_prestador %}<small style="color:#888;"> ({{ s.fecha_confirmacion_prestador[:16] }})</small>{% endif %}
+      {% else %}
+      ⏳ Prestador no confirmó finalización
+      {% endif %}
+    </div>
+    <div>
+      {% if s.solicitante_confirmo_fin %}
+      ✅ Solicitante confirmó finalización
+      {% else %}
+      ⚠️ Solicitante reportó un problema
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="form-card">
+  <div class="section-title">Resolución</div>
+  <form method="POST" action="{{ url_for('admin.conflicto_resolver', sid=s.id) }}">
+    <div class="form-group" style="margin-bottom:1rem;">
+      <label class="form-label">Nota para las partes (opcional)</label>
+      <textarea name="nota" class="form-input" rows="3"
+                placeholder="Mensaje que recibirán el prestador y el solicitante..."></textarea>
+    </div>
+    <div style="display:flex;gap:.75rem;flex-wrap:wrap;">
+      <button type="submit" name="accion" value="finalizar" class="btn btn-primary"
+              onclick="return confirm('¿Confirmar el servicio como FINALIZADO y generar el cobro?')">
+        ✅ Confirmar servicio como FINALIZADO
+      </button>
+      <button type="submit" name="accion" value="cancelar" class="btn btn-danger"
+              onclick="return confirm('¿Marcar el servicio como NO realizado?')">
+        ❌ Marcar como NO realizado
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+.detail-table th, .detail-table td { padding: .5rem .75rem; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
+.detail-table th { color: #888; font-weight: 600; font-size: .83rem; white-space: nowrap; }
+</style>
+{% endblock %}

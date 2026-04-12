@@ -1,0 +1,113 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/reportes/_periodo.html' import selector %}
+{% block titulo %}Reporte de Usuarios{% endblock %}
+
+{% block content %}
+{% set reporte_nombre = 'usuarios' %}
+<div class="page-header no-print">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.reportes') }}">Reportes</a> &rsaquo;
+    <span>Usuarios activos</span>
+  </nav>
+  <h1 class="page-title">👥 Usuarios activos — {{ label_periodo }}</h1>
+</div>
+
+{{ selector(periodo, desde, hasta, 'admin.reporte_usuarios') }}
+
+<!-- INDICADORES -->
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Total usuarios activos</div>
+    <div class="kpi-value">{{ total_activos }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Nuevos en el período</div>
+    <div class="kpi-value">{{ nuevos_periodo }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Crecimiento vs período anterior</div>
+    <div class="kpi-value {% if crecimiento is not none %}{{ 'kpi-up' if crecimiento >= 0 else 'kpi-down' }}{% endif %}">
+      {% if crecimiento is not none %}
+        {{ '↑' if crecimiento >= 0 else '↓' }} {{ crecimiento | abs }}%
+      {% else %}
+        —
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- GRÁFICO -->
+<div class="chart-card">
+  <h2 class="chart-title">Nuevos usuarios por mes</h2>
+  {% if meses %}
+  <canvas id="chartUsuarios" height="90"></canvas>
+  {% else %}
+  <div class="empty-chart">Sin datos en el período seleccionado.</div>
+  {% endif %}
+</div>
+
+<!-- TABLA -->
+{% if tabla %}
+<div class="table-card">
+  <h2 class="chart-title">Detalle por mes</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Mes</th><th>Admin</th><th>Prestadores</th><th>Solicitantes</th>
+        <th>Total nuevos</th><th>Acumulado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in tabla %}
+      <tr>
+        <td>{{ f.mes }}</td>
+        <td class="text-center">{{ f.admin }}</td>
+        <td class="text-center">{{ f.prestador }}</td>
+        <td class="text-center">{{ f.solicitante }}</td>
+        <td class="text-center"><strong>{{ f.total }}</strong></td>
+        <td class="text-center">{{ f.acumulado }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td><strong>TOTAL</strong></td>
+        <td class="text-center"><strong>{{ tabla | sum(attribute='admin') }}</strong></td>
+        <td class="text-center"><strong>{{ tabla | sum(attribute='prestador') }}</strong></td>
+        <td class="text-center"><strong>{{ tabla | sum(attribute='solicitante') }}</strong></td>
+        <td class="text-center"><strong>{{ nuevos_periodo }}</strong></td>
+        <td class="text-center"><strong>{{ total_activos }}</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No hay datos de usuarios para el período seleccionado.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if meses %}
+const ctx = document.getElementById('chartUsuarios').getContext('2d');
+new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: {{ meses | tojson }},
+    datasets: [
+      { label: 'Admin',      data: {{ chart_data.admin | tojson }},     backgroundColor: '#7D3C98' },
+      { label: 'Prestadores',data: {{ chart_data.prestador | tojson }}, backgroundColor: '#1A5276' },
+      { label: 'Solicitantes',   data: {{ chart_data.solicitante | tojson }},   backgroundColor: '#1E8449' },
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { tooltip: { mode: 'index' }, legend: { position: 'top' } },
+    scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { precision: 0 } } }
+  }
+});
+{% endif %}
+</script>
+
+{% include 'admin/reportes/_estilos_comunes.html' %}
+{% endblock %}

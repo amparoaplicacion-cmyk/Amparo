@@ -1,0 +1,56 @@
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+/* KPIs */
+.kpi-row { display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+.kpi-card {
+  background: #fff; border: 1px solid #dde3ea; border-radius: 10px;
+  padding: 1.1rem 1.4rem; flex: 1; min-width: 160px;
+}
+.kpi-label { font-size: .8rem; color: #888; margin-bottom: .3rem; }
+.kpi-value { font-size: 2rem; font-weight: 700; color: #1A5276; }
+.kpi-up   { color: #1E8449; }
+.kpi-down { color: #c0392b; }
+
+/* Gráfico */
+.chart-card {
+  background: #fff; border: 1px solid #dde3ea; border-radius: 10px;
+  padding: 1.5rem; margin-bottom: 1.5rem;
+}
+.chart-title { font-size: 1rem; color: #1A5276; margin: 0 0 1rem; }
+.empty-chart { color: #aaa; padding: 2rem; text-align: center; font-size: .9rem; }
+
+/* Tabla */
+.table-card {
+  background: #fff; border: 1px solid #dde3ea;
+  border-radius: 10px; overflow-x: auto; margin-bottom: 1.5rem;
+  padding: 1.5rem;
+}
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  background: #f0f4f8; color: #1A5276; font-size: .85rem;
+  text-align: left; padding: .65rem 1rem; border-bottom: 1px solid #dde3ea;
+}
+.data-table td { padding: .65rem 1rem; border-bottom: 1px solid #f0f0f0; font-size: .88rem; }
+.data-table tbody tr:nth-child(even) td { background: #fafbfc; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #f0f7fd; }
+.total-row td { background: #f0f4f8 !important; border-top: 2px solid #dde3ea; }
+.text-center { text-align: center; }
+.text-right  { text-align: right; }
+
+.empty-state {
+  background: #fff; border: 1px solid #dde3ea; border-radius: 10px;
+  padding: 3rem; text-align: center; color: #aaa; font-size: .9rem;
+}
+
+@media print {
+  .admin-header, .admin-sidebar, .periodo-bar, .no-print,
+  .btn-export, .export-btns { display: none !important; }
+  .admin-main { margin-left: 0 !important; padding: 0 !important; }
+  .chart-card, .table-card, .kpi-card { break-inside: avoid; }
+}
+</style>

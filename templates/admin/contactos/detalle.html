@@ -1,0 +1,70 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Contacto #{{ c['id'] }}{% endblock %}
+
+{% block content %}
+
+{% set tipo_color = {'problema_tecnico': '#e74c3c', 'reclamo': '#e67e22', 'sugerencia': '#27ae60'} %}
+{% set tipo_label = {'problema_tecnico': 'Problema técnico', 'reclamo': 'Reclamo', 'sugerencia': 'Sugerencia'} %}
+
+<div class="page-header">
+  <h1 class="page-title">💬 Contacto #{{ c['id'] }}</h1>
+  <a href="{{ url_for('admin.contactos') }}" class="btn btn-secondary">← Volver al listado</a>
+</div>
+
+<div class="card">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:16px;">
+    <span style="background:{{ tipo_color.get(c['tipo_contacto'],'#888') }}20;color:{{ tipo_color.get(c['tipo_contacto'],'#888') }};border-radius:10px;padding:4px 14px;font-size:13px;font-weight:700;">
+      {{ tipo_label.get(c['tipo_contacto'], c['tipo_contacto']) }}
+    </span>
+    <span style="font-size:12px;color:#888;">{{ c['fecha_envio'][:16] }}</span>
+    <span style="font-size:12px;color:#888;">·</span>
+    <span style="font-size:12px;color:#555;">{{ 'Prestador' if c['tipo_usuario'] == 'prestador' else 'Solicitante' }}</span>
+  </div>
+
+  <div class="detail-row">
+    <span class="detail-label">Usuario</span>
+    <span class="detail-value"><strong>{{ c['usuario_nombre'] }}</strong> ({{ c['usuario_email'] }})</span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Asunto</span>
+    <span class="detail-value"><strong>{{ c['asunto'] }}</strong></span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Estado</span>
+    <span class="detail-value">{{ c['estado'].replace('_',' ') }}</span>
+  </div>
+
+  <div style="margin-top:16px;">
+    <div style="font-size:12px;font-weight:700;color:#5D6D7E;margin-bottom:6px;">Descripción:</div>
+    <div style="background:#f8f9fa;border-radius:8px;padding:12px;font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap;">{{ c['descripcion'] }}</div>
+  </div>
+
+  {% if c['respuesta'] %}
+  <div style="margin-top:16px;">
+    <div style="font-size:12px;font-weight:700;color:#1E8449;margin-bottom:6px;">Respuesta enviada:</div>
+    <div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:8px;padding:12px;font-size:13px;color:#333;line-height:1.6;white-space:pre-wrap;">{{ c['respuesta'] }}</div>
+    {% if c['fecha_resolucion'] %}
+    <div style="font-size:11px;color:#888;margin-top:4px;">Resuelto el {{ c['fecha_resolucion'][:16] }}</div>
+    {% endif %}
+  </div>
+  {% endif %}
+</div>
+
+{% if c['estado'] != 'RESUELTO' %}
+<div class="card">
+  <div class="section-title">Responder y resolver</div>
+  <form method="POST" action="{{ url_for('admin.contacto_resolver', cid=c['id']) }}"
+        onsubmit="return confirm('¿Marcar este contacto como resuelto?')">
+    <div class="form-group">
+      <label class="form-label">Respuesta <span style="font-weight:400;color:#888;">(opcional)</span></label>
+      <textarea name="respuesta" class="form-input" rows="4"
+                placeholder="Escribí una respuesta para el usuario..."></textarea>
+    </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-success">✓ Marcar como resuelto</button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}

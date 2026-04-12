@@ -1,0 +1,189 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'cuenta' %}
+{% block titulo %}Editar Mis Datos{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <a href="{{ url_for('solicitante.mi_cuenta') }}" class="btn-back">← Volver</a>
+  <h1>Editar mis datos</h1>
+</div>
+
+<form method="post">
+  <div class="solicitud-form">
+
+    <!-- Datos personales -->
+    <div style="font-size:.85rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.75rem;">
+      👤 Mis datos personales
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nombre</label>
+        <input type="text" name="nombre" class="input-text"
+               value="{{ datos.nombre }}" required maxlength="80">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Apellido</label>
+        <input type="text" name="apellido" class="input-text"
+               value="{{ datos.apellido }}" required maxlength="80">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Email</label>
+      <input type="email" class="input-text" value="{{ datos.email }}" disabled
+             style="background:#f7f9fb;color:#888;">
+      <span class="form-hint">El email es gestionado por el administrador y no puede modificarse aquí.</span>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Teléfono</label>
+      <input type="tel" name="telefono" class="input-text"
+             value="{{ datos.telefono or '' }}" maxlength="30">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Dirección</label>
+      <input type="text" name="direccion" class="input-text"
+             value="{{ datos.direccion or '' }}" maxlength="200">
+    </div>
+
+    <!-- GPS WIDGET -->
+    <div class="form-group">
+      <label class="form-label">📍 Ubicación</label>
+      {% if datos.localidad or datos.codigo_postal %}
+      <div style="background:#f3e8fb;border:1px solid #c39bd3;border-radius:8px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.85rem;color:#5b2c6f;">
+        ✓ Actual: <strong>{{ [datos.localidad, datos.codigo_postal, datos.provincia]|select|join(', ') }}</strong>
+      </div>
+      {% endif %}
+
+      <input type="hidden" name="latitud"       id="gps-lat"       value="{{ datos.latitud or '' }}">
+      <input type="hidden" name="longitud"      id="gps-lon"       value="{{ datos.longitud or '' }}">
+      <input type="hidden" name="codigo_postal" id="gps-cp"        value="{{ datos.codigo_postal or '' }}">
+      <input type="hidden" name="localidad"     id="gps-localidad" value="{{ datos.localidad or '' }}">
+      <input type="hidden" name="provincia"     id="gps-provincia" value="{{ datos.provincia or '' }}">
+
+      <div id="gps-display" style="display:none;background:#f3e8fb;border:1px solid #c39bd3;border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem;font-size:.85rem;color:#5b2c6f;">
+        ✓ Nueva ubicación: <span id="gps-text"></span>
+        <button type="button" onclick="limpiarUbicacion()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;">✕</button>
+      </div>
+
+      <button type="button" onclick="detectarUbicacion()" id="btn-gps"
+              style="width:100%;padding:.55rem;border-radius:20px;border:1.5px solid #7D3C98;background:#fff;color:#7D3C98;font-size:.88rem;font-weight:600;cursor:pointer;margin-bottom:.5rem;">
+        📍 Detectar ubicación con GPS
+      </button>
+      <div style="display:flex;gap:.5rem;align-items:center;">
+        <input type="text" id="cp-manual" class="input-text" maxlength="8" inputmode="numeric"
+               placeholder="O ingresá tu código postal (ej: 1414)" style="flex:1;">
+        <button type="button" onclick="buscarPorCP()"
+                style="padding:.55rem .9rem;border-radius:8px;border:1.5px solid #aaa;background:#fff;color:#555;font-size:.85rem;cursor:pointer;white-space:nowrap;">
+          Buscar
+        </button>
+      </div>
+      <small style="font-size:.75rem;color:#888;display:block;margin-top:.3rem;">Si no podés usar GPS, ingresá tu código postal y hacé clic en Buscar.</small>
+    </div>
+
+    <!-- Datos del solicitanter -->
+    <div style="font-size:.85rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin:.75rem 0 .75rem;border-top:1px solid #e5e9ed;padding-top:.75rem;">
+      🔒 Datos del solicitanter a cuidar
+    </div>
+    <div class="confid-warning" style="margin-bottom:.75rem;">
+      🔒 Esta información es confidencial y solo se comparte con el prestador al aceptar el servicio.
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Nombre del solicitanter</label>
+      <input type="text" name="solicitanter_nombre" class="input-text"
+             value="{{ datos.solicitanter_nombre or '' }}" maxlength="120">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Edad</label>
+      <input type="number" name="solicitanter_edad" class="input-text"
+             value="{{ datos.solicitanter_edad or '' }}" min="0" max="120" style="max-width:100px;">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Condición de salud</label>
+      <input type="text" name="solicitanter_condicion" class="input-text"
+             value="{{ datos.solicitanter_condicion or '' }}" maxlength="200"
+             placeholder="Ej: Alzheimer, movilidad reducida...">
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Necesidades especiales</label>
+      <textarea name="solicitanter_necesidades" class="input-textarea" rows="3"
+                placeholder="Describí cuidados especiales, alergias, preferencias...">{{ datos.solicitanter_necesidades or '' }}</textarea>
+    </div>
+
+    <div style="display:flex;gap:.75rem;margin-top:.5rem;">
+      <button type="submit" class="btn btn-primary" style="flex:2;padding:.75rem;">Guardar cambios</button>
+      <a href="{{ url_for('solicitante.mi_cuenta') }}"
+         class="btn btn-secondary" style="flex:1;text-align:center;padding:.75rem;">Cancelar</a>
+    </div>
+
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function detectarUbicacion() {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización.'); return; }
+  const btn = document.getElementById('btn-gps');
+  btn.textContent = '⏳ Detectando...'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      document.getElementById('gps-lat').value = lat;
+      document.getElementById('gps-lon').value = lon;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
+        .then(r => r.json()).then(data => {
+          const a = data.address || {};
+          const cp = a.postcode || '';
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-cp').value = cp;
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        }).catch(() => mostrarUbicacion('', '', ''));
+      btn.textContent = '📍 Detectar ubicación con GPS'; btn.disabled = false;
+    },
+    function() { btn.textContent = '📍 Detectar ubicación con GPS'; btn.disabled = false; alert('No se pudo obtener tu ubicación. Usá el código postal.'); },
+    { timeout: 10000 }
+  );
+}
+function buscarPorCP() {
+  const cp = document.getElementById('cp-manual').value.trim();
+  if (!cp) { alert('Ingresá un código postal.'); return; }
+  fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(cp)}&country=AR&format=json&limit=1&accept-language=es`)
+    .then(r => r.json()).then(data => {
+      if (!data.length) { alert('No se encontró ese código postal en Argentina.'); return; }
+      const r = data[0];
+      document.getElementById('gps-lat').value = r.lat;
+      document.getElementById('gps-lon').value = r.lon;
+      document.getElementById('gps-cp').value = cp;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${r.lat}&lon=${r.lon}&format=json&accept-language=es`)
+        .then(r2 => r2.json()).then(data2 => {
+          const a = data2.address || {};
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        });
+    }).catch(() => alert('Error al buscar el código postal.'));
+}
+function mostrarUbicacion(loc, cp, prov) {
+  const parts = [loc, cp, prov].filter(Boolean);
+  document.getElementById('gps-text').textContent = parts.join(', ') || 'Ubicación guardada';
+  document.getElementById('gps-display').style.display = 'block';
+}
+function limpiarUbicacion() {
+  ['gps-lat','gps-lon','gps-cp','gps-localidad','gps-provincia'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('gps-display').style.display = 'none';
+  document.getElementById('cp-manual').value = '';
+}
+</script>
+{% endblock %}

@@ -1,0 +1,143 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'buscar' %}
+{% block titulo %}{{ p.nombre_completo }}{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <a href="{{ volver_url }}" class="btn-back">{{ volver_label }}</a>
+</div>
+
+<!-- Hero del prestador -->
+<div class="profile-hero">
+  {% if p.foto_url %}
+    <img src="{{ p.foto_url }}" alt="{{ p.nombre_completo }}" class="profile-avatar-lg">
+  {% else %}
+    <div class="profile-avatar-lg--placeholder" style="display:flex;align-items:center;justify-content:center;">👤</div>
+  {% endif %}
+  <div class="profile-name">{{ p.nombre_completo }}</div>
+  <div class="profile-cat">{{ p.categoria_nombre or '—' }}</div>
+  <div class="profile-zona">📍 {{ p.zona_nombre or 'Sin zona asignada' }}</div>
+  <div class="profile-stars">
+    <span style="color:#f0a500;">{{ stars_fn(p.puntaje) }}</span>
+    <strong>{{ '%.1f'|format(p.puntaje) }}</strong>
+    <span style="color:#888;font-size:.85rem;">({{ p.resenas_count }} reseña{{ 's' if p.resenas_count != 1 }})</span>
+  </div>
+  {% if p.dni_verificado == 'VERIFICADO' and p.antecedentes_ok == 'VERIFICADO' and p.certificados_ok == 'VERIFICADO' %}
+  <div style="margin-top:.75rem;background:#D5F5E3;border:1px solid #82E0AA;border-radius:10px;padding:.6rem 1rem;text-align:left;max-width:320px;margin-left:auto;margin-right:auto;">
+    <div style="font-weight:700;color:#1E8449;font-size:.9rem;">✅ AMPARO Verificado</div>
+    <div style="font-size:.78rem;color:#1a7042;margin-top:.2rem;">Identidad, antecedentes y formación confirmados por el equipo de AMPARO</div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Info general -->
+<div class="profile-section">
+  <div class="profile-section__title">Información</div>
+  {% if p.descripcion %}
+    <p class="profile-desc">{{ p.descripcion }}</p>
+  {% endif %}
+  <div class="info-row">
+    <span>Experiencia</span>
+    <strong>{{ p.experiencia_anios or 0 }} año{{ 's' if (p.experiencia_anios or 0) != 1 }}</strong>
+  </div>
+  {% if p.tarifa_minima or p.tarifa_maxima %}
+  <div class="info-row">
+    <span>Tarifa referencial</span>
+    <strong>
+      {% if p.tarifa_minima and p.tarifa_maxima %}
+        ${{ '%.0f'|format(p.tarifa_minima) }} – ${{ '%.0f'|format(p.tarifa_maxima) }}
+      {% elif p.tarifa_minima %}
+        desde ${{ '%.0f'|format(p.tarifa_minima) }}
+      {% else %}
+        hasta ${{ '%.0f'|format(p.tarifa_maxima) }}
+      {% endif %}
+    </strong>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Disponibilidad horaria -->
+<div class="profile-section">
+  <div class="profile-section__title">Disponibilidad</div>
+  <div class="disp-grid-view">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align:left;">Día</th>
+          <th>Mañana</th>
+          <th>Tarde</th>
+          <th>Noche</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% set franja_horas = {'manana': '08:00', 'tarde': '12:00', 'noche': '18:00'} %}
+        {% for dia in dias %}
+        <tr>
+          <td style="font-size:.82rem;text-align:left;">{{ dia[:3] }}</td>
+          {% for fk, fn, h_ini, h_fin in franjas %}
+          <td>
+            {% if (dia, h_ini) in disp_set %}
+              <span class="disp-cell-on">●</span>
+            {% else %}
+              <span class="disp-cell-off">○</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div style="font-size:.72rem;color:#888;margin-top:.4rem;">● disponible &nbsp; ○ no disponible</div>
+  </div>
+</div>
+
+<!-- Reseñas -->
+<div class="profile-section">
+  <div class="profile-section__title">Reseñas de otras solicitantes</div>
+  {% if resenas %}
+    {% for r in resenas %}
+    <div class="review-item">
+      <div class="review-item__header">
+        <span class="review-stars">{{ stars_fn(r.puntaje) }}</span>
+        <span class="review-fecha">{{ r.fecha[:10] if r.fecha else '' }}</span>
+      </div>
+      {% if r.comentario %}
+        <div class="review-comment">{{ r.comentario }}</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  {% else %}
+    <p style="font-size:.85rem;color:#888;">Aún no tiene reseñas.</p>
+  {% endif %}
+</div>
+
+<!-- Botón solicitar -->
+<a href="{{ url_for('solicitante.solicitud_nueva', prestador_id=p.id) }}"
+   class="btn btn-primary btn-full" style="margin-top:.5rem;padding:.85rem;font-size:1rem;">
+  Solicitar servicio
+</a>
+
+{% if pos_actual and total %}
+<!-- Navegación entre resultados -->
+<div style="display:flex;align-items:center;justify-content:space-between;
+            background:#fff;border-top:1px solid #e5e9ed;border-radius:12px;
+            padding:.65rem 1rem;margin-top:1rem;">
+  {% if prev_id %}
+  <a href="{{ url_for('solicitante.prestador_perfil', pid=prev_id) }}"
+     style="color:#7D3C98;font-weight:600;font-size:.9rem;text-decoration:none;">← Anterior</a>
+  {% else %}
+  <span style="color:#ccc;font-size:.9rem;">← Anterior</span>
+  {% endif %}
+
+  <span style="color:#888;font-size:.85rem;">{{ pos_actual }} de {{ total }}</span>
+
+  {% if next_id %}
+  <a href="{{ url_for('solicitante.prestador_perfil', pid=next_id) }}"
+     style="color:#7D3C98;font-weight:600;font-size:.9rem;text-decoration:none;">Siguiente →</a>
+  {% else %}
+  <span style="color:#ccc;font-size:.9rem;">Siguiente →</span>
+  {% endif %}
+</div>
+{% endif %}
+
+{% endblock %}

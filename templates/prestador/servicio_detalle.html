@@ -1,0 +1,345 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Detalle del servicio{% endblock %}
+
+{% block content %}
+{% set active_tab = 'servicios' %}
+
+<div class="page-title-bar">
+  <a href="{{ url_for('prestador.servicios') }}" class="btn-back">← Volver</a>
+  <h1>Detalle del servicio</h1>
+</div>
+
+<!-- ESTADO -->
+<div class="detail-section">
+  <span class="badge badge-lg
+    {{ 'badge-pending' if s.estado == 'PENDIENTE' else
+       ('badge-accepted' if s.estado == 'ACEPTADO' else
+        ('badge-active' if s.estado == 'ACTIVO' else
+         ('badge-done' if s.estado == 'FINALIZADO' else
+          ('badge-cancel' if s.estado == 'CANCELADO' else 'badge-reject')))) }}">
+    {{ s.estado }}
+  </span>
+</div>
+
+<!-- DATOS DEL SERVICIO -->
+<div class="detail-section">
+  <h2 class="detail-section__title">Servicio</h2>
+  <div class="detail-row"><span>Fecha</span><strong>{{ s.fecha_servicio }}</strong></div>
+  <div class="detail-row"><span>Horario</span><strong>{{ s.hora_inicio }} – {{ s.hora_fin }}</strong></div>
+  <div class="detail-row"><span>Tipo</span><strong>{{ s.categoria_nombre or '—' }}</strong></div>
+  {% if s.monto_acordado %}
+  <div class="detail-row"><span>Monto acordado</span><strong>${{ "%.2f"|format(s.monto_acordado) }}</strong></div>
+  {% endif %}
+  {% if s.motivo_cancelacion %}
+  <div class="detail-row detail-row--warn"><span>Motivo cancelación</span><strong>{{ s.motivo_cancelacion }}</strong></div>
+  {% endif %}
+  {% if s.motivo_rechazo %}
+  <div class="detail-row detail-row--warn"><span>Motivo rechazo</span><strong>{{ s.motivo_rechazo }}</strong></div>
+  {% endif %}
+</div>
+
+<!-- SOLICITANTE -->
+<div class="detail-section">
+  <h2 class="detail-section__title">Contacto del solicitante</h2>
+  <div class="detail-row"><span>Nombre</span><strong>{{ s.solicitante_nombre }}</strong></div>
+  {% if s.solicitante_telefono %}
+  <div class="detail-row"><span>Teléfono</span>
+    <a href="tel:{{ s.solicitante_telefono }}" class="link-tel"><strong>{{ s.solicitante_telefono | fmt_tel }}</strong></a>
+  </div>
+  {% endif %}
+  {% if s.solicitante_email %}
+  <div class="detail-row"><span>Email</span><strong>{{ s.solicitante_email }}</strong></div>
+  {% endif %}
+  {% if s.direccion %}
+  <div class="detail-row"><span>Dirección</span><strong>{{ s.direccion }}</strong></div>
+  {% endif %}
+</div>
+
+<!-- SOLICITANTER A CUIDAR — con advertencia de confidencialidad -->
+{% if s.solicitanter_nombre %}
+<div class="detail-section detail-section--confidential">
+  <h2 class="detail-section__title">🔒 Datos del solicitanter a cuidar
+    <span class="confid-badge">Confidencial</span>
+  </h2>
+  <p class="confid-warning">Esta información es privada y solo debe usarse para la prestación del servicio.</p>
+  <div class="detail-row"><span>Nombre</span><strong>{{ s.solicitanter_nombre }}</strong></div>
+  {% if s.solicitanter_edad %}
+  <div class="detail-row"><span>Edad</span><strong>{{ s.solicitanter_edad }} años</strong></div>
+  {% endif %}
+  {% if s.solicitanter_condicion %}
+  <div class="detail-row"><span>Condición</span><strong>{{ s.solicitanter_condicion }}</strong></div>
+  {% endif %}
+  {% if s.solicitanter_necesidades %}
+  <div class="detail-row detail-row--block"><span>Necesidades</span><p>{{ s.solicitanter_necesidades }}</p></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- PAGO -->
+{% if pago %}
+<div class="detail-section">
+  <h2 class="detail-section__title">Estado del pago</h2>
+  <div class="detail-row"><span>Monto bruto</span><strong>${{ "%.2f"|format(pago.monto_bruto) }}</strong></div>
+  <div class="detail-row"><span>Comisión ({{ pago.comision_pct }}%)</span>
+    <strong>-${{ "%.2f"|format(pago.comision_monto) }}</strong></div>
+  <div class="detail-row detail-row--highlight"><span>Monto neto</span>
+    <strong>${{ "%.2f"|format(pago.monto_neto) }}</strong></div>
+  <div class="detail-row"><span>Estado</span>
+    <span class="badge {{ 'badge-done' if pago.estado == 'LIQUIDADO' else ('badge-accepted' if pago.estado == 'PROCESADO' else 'badge-pending') }}">
+      {{ pago.estado }}
+    </span>
+  </div>
+</div>
+{% endif %}
+
+<!-- CALIFICACIÓN -->
+{% if cal %}
+<div class="detail-section">
+  <h2 class="detail-section__title">Calificación recibida</h2>
+  <div class="stars-big">
+    {% for i in range(5) %}{{ '★' if i < cal.puntaje else '☆' }}{% endfor %}
+    <span class="stars-num">{{ cal.puntaje }}/5</span>
+  </div>
+  {% if cal.comentario %}
+  <div class="review-comment">"{{ cal.comentario }}"</div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- ESTADO CONFIRMACIONES -->
+{% if s.estado in ('ACEPTADO', 'ACTIVO') %}
+<div class="detail-section">
+  <h2 class="detail-section__title">Estado del servicio</h2>
+  <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.9rem;">
+    <div>{{ '✅' if s.prestador_confirmo_llegada else '⏳' }}
+      {% if s.prestador_confirmo_llegada %}
+        Llegada confirmada
+        {% if s.distancia_llegada_metros is not none %} (a {{ s.distancia_llegada_metros|int }} m){% endif %}
+      {% else %}
+        Confirmar llegada pendiente
+      {% endif %}
+    </div>
+    {% if s.prestador_confirmo_llegada %}
+    <div>{{ '✅' if s.prestador_confirmo_fin else '⏳' }}
+      {% if s.prestador_confirmo_fin %}Fin confirmado por vos{% else %}Confirmar fin pendiente{% endif %}
+    </div>
+    {% if s.prestador_confirmo_fin %}
+    <div>{{ '✅' if s.solicitante_confirmo_fin else '⏳' }}
+      {% if s.solicitante_confirmo_fin %}Solicitante confirmó{% else %}Esperando confirmación del solicitante{% endif %}
+    </div>
+    {% endif %}
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+<!-- ACCIONES -->
+{% if s.estado == 'ACEPTADO' and not s.prestador_confirmo_llegada %}
+<div class="detail-actions">
+  <!-- Confirmar llegada con GPS -->
+  <div id="llegada-wrap" style="background:#eafaf1;border:2px solid #27ae60;border-radius:12px;padding:1rem;margin-bottom:.75rem;text-align:center;">
+    <div style="font-size:.9rem;color:#1a5e2e;margin-bottom:.6rem;">📍 ¿Ya llegaste al domicilio?<br>Tocá el botón cuando estés en el lugar</div>
+    <button type="button" id="btn-llegada"
+            onclick="confirmarLlegada({{ s.id }})"
+            style="background:#27ae60;color:#fff;border:none;border-radius:25px;padding:.75rem 1.5rem;font-size:1rem;font-weight:700;cursor:pointer;width:100%;">
+      📍 Confirmar llegada
+    </button>
+    <div id="llegada-msg" style="margin-top:.6rem;font-size:.85rem;display:none;"></div>
+  </div>
+  <button type="button" class="btn btn-cancel btn-full"
+          onclick="document.getElementById('form-cancelar').style.display='block'">
+    Cancelar servicio
+  </button>
+  <form method="POST" action="{{ url_for('prestador.servicio_cancelar', sid=s.id) }}"
+        id="form-cancelar" style="display:none;margin-top:.5rem;"
+        onsubmit="return document.querySelector('#form-cancelar [name=motivo]').value.trim() || (alert('El motivo es obligatorio.'), false);">
+    <input type="text" name="motivo" placeholder="Motivo de cancelación (obligatorio)"
+           class="input-motivo" required>
+    <button type="submit" class="btn btn-reject-confirm btn-full">Confirmar cancelación</button>
+  </form>
+</div>
+
+{% elif s.estado == 'ACTIVO' and not s.prestador_confirmo_fin %}
+<div class="detail-actions">
+  <!-- Confirmar finalización -->
+  <div style="background:#eafaf1;border:2px solid #27ae60;border-radius:12px;padding:1rem;margin-bottom:.75rem;text-align:center;">
+    <div style="font-size:.9rem;color:#1a5e2e;margin-bottom:.6rem;">✅ ¿Terminaste el servicio?</div>
+    <form method="POST" action="{{ url_for('prestador.servicio_finalizar', sid=s.id) }}"
+          onsubmit="return confirm('¿Confirmás que terminaste el servicio?');">
+      <button type="submit"
+              style="background:#27ae60;color:#fff;border:none;border-radius:25px;padding:.75rem 1.5rem;font-size:1rem;font-weight:700;cursor:pointer;width:100%;">
+        ✅ Confirmar finalización
+      </button>
+    </form>
+  </div>
+  <button type="button" class="btn btn-cancel btn-full"
+          onclick="document.getElementById('form-cancelar').style.display='block'">
+    Cancelar servicio
+  </button>
+  <form method="POST" action="{{ url_for('prestador.servicio_cancelar', sid=s.id) }}"
+        id="form-cancelar" style="display:none;margin-top:.5rem;"
+        onsubmit="return document.querySelector('#form-cancelar [name=motivo]').value.trim() || (alert('El motivo es obligatorio.'), false);">
+    <input type="text" name="motivo" placeholder="Motivo de cancelación (obligatorio)"
+           class="input-motivo" required>
+    <button type="submit" class="btn btn-reject-confirm btn-full">Confirmar cancelación</button>
+  </form>
+</div>
+
+{% elif s.estado == 'ACTIVO' and s.prestador_confirmo_fin and not s.solicitante_confirmo_fin %}
+<div class="detail-actions">
+  <div style="background:#f0f9ff;border:1px solid #3498db;border-radius:12px;padding:1rem;text-align:center;color:#1a4a6b;font-size:.9rem;">
+    ⏳ Esperando confirmación del solicitante...
+  </div>
+</div>
+
+{% elif s.estado in ('ACEPTADO', 'ACTIVO') %}
+<div class="detail-actions">
+  <!-- Fallback manual -->
+  <form method="POST" action="{{ url_for('prestador.servicio_finalizar', sid=s.id) }}"
+        onsubmit="return confirm('¿Confirmar finalización?');">
+    <button type="submit" class="btn btn-accept btn-full">✓ Marcar como finalizado</button>
+  </form>
+  <button type="button" class="btn btn-cancel btn-full" style="margin-top:.5rem;"
+          onclick="document.getElementById('form-cancelar').style.display='block'">
+    Cancelar servicio
+  </button>
+  <form method="POST" action="{{ url_for('prestador.servicio_cancelar', sid=s.id) }}"
+        id="form-cancelar" style="display:none;margin-top:.5rem;"
+        onsubmit="return document.querySelector('#form-cancelar [name=motivo]').value.trim() || (alert('El motivo es obligatorio.'), false);">
+    <input type="text" name="motivo" placeholder="Motivo de cancelación (obligatorio)"
+           class="input-motivo" required>
+    <button type="submit" class="btn btn-reject-confirm btn-full">Confirmar cancelación</button>
+  </form>
+</div>
+{% elif s.estado == 'PENDIENTE' %}
+<div class="detail-actions">
+  <form method="POST" action="{{ url_for('prestador.servicio_aceptar', sid=s.id) }}"
+        onsubmit="return confirm('¿Aceptar este servicio?');">
+    <button type="submit" class="btn btn-accept btn-full">✓ Aceptar solicitud</button>
+  </form>
+  <button type="button" class="btn btn-reject btn-full"
+          onclick="document.getElementById('form-rechazar').style.display='block'">
+    ✕ Rechazar solicitud
+  </button>
+  <form method="POST" action="{{ url_for('prestador.servicio_rechazar', sid=s.id) }}"
+        id="form-rechazar" style="display:none;">
+    <input type="text" name="motivo" placeholder="Motivo (opcional)" class="input-motivo">
+    <button type="submit" class="btn btn-reject-confirm btn-full">Confirmar rechazo</button>
+  </form>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+@keyframes pulso { 0%,100%{opacity:1} 50%{opacity:.4} }
+.llegada-loading { animation: pulso 1.2s ease-in-out infinite; }
+</style>
+<script>
+function confirmarLlegada(sid) {
+  var btn = document.getElementById('btn-llegada');
+  var msg = document.getElementById('llegada-msg');
+
+  // Estado inicial: loading
+  btn.disabled = true;
+  btn.innerHTML = '<span class="llegada-loading">📍 Verificando ubicación...</span>';
+  msg.style.display = 'none';
+
+  // CASO C: GPS no disponible en el navegador
+  if (!navigator.geolocation) {
+    mostrarMsg('error',
+      '⚠️ Tu navegador no soporta geolocalización. ' +
+      'Usá Chrome o actualizá tu navegador para poder confirmar la llegada.');
+    btn.disabled = false;
+    btn.innerHTML = '📍 Confirmar llegada';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    // GPS obtenido → enviar al servidor
+    function(pos) {
+      btn.innerHTML = '<span class="llegada-loading">📡 Confirmando en el servidor...</span>';
+      fetch('/prestador/servicios/' + sid + '/confirmar-llegada', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({lat: pos.coords.latitude, lon: pos.coords.longitude})
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          // CASO A: OK, dentro del radio — ocultar botón, mostrar mensaje y nuevo botón de finalización
+          btn.style.display = 'none';
+          mostrarMsg('ok', '✅ Llegada confirmada. Estás a ' + data.distancia + ' metros del domicilio.');
+          var wrap = document.getElementById('llegada-wrap');
+          if (wrap) {
+            var finBtn = document.createElement('button');
+            finBtn.type = 'button';
+            finBtn.textContent = '✅ Ir a confirmar finalización del servicio';
+            finBtn.style.cssText = 'display:block;width:100%;background:#27ae60;color:#fff;border:none;'
+              + 'border-radius:25px;padding:.75rem 1.5rem;font-size:1rem;font-weight:700;cursor:pointer;margin-top:.75rem;';
+            finBtn.onclick = function() { location.reload(); };
+            wrap.appendChild(finBtn);
+          }
+          setTimeout(function() { location.reload(); }, 3000);
+        } else if (data.demasiado_lejos) {
+          // CASO B: GPS ok pero lejos
+          mostrarMsg('warn',
+            '⚠️ Estás a ' + data.distancia + ' metros del domicilio, ' +
+            'pero el radio permitido es de ' + data.radio + ' m. ' +
+            'Acercate más al domicilio e intentá de nuevo.');
+          btn.disabled = false;
+          btn.innerHTML = '📍 Intentar de nuevo';
+        } else {
+          mostrarMsg('error', '❌ ' + (data.error || 'Error inesperado. Intentá de nuevo.'));
+          btn.disabled = false;
+          btn.innerHTML = '📍 Confirmar llegada';
+        }
+      })
+      .catch(function() {
+        // CASO D: error de red/conexión
+        mostrarMsg('error',
+          '❌ Error de conexión con el servidor. ' +
+          'Verificá tu conexión a internet e intentá de nuevo.');
+        btn.disabled = false;
+        btn.innerHTML = '📍 Confirmar llegada';
+      });
+    },
+    // CASO C: GPS denegado o no disponible
+    function(err) {
+      var detalle = '';
+      if (err.code === 1) {
+        detalle = 'Permiso denegado. Ingresá a Configuración → Privacidad → Ubicación y permitílo para este sitio.';
+      } else if (err.code === 2) {
+        detalle = 'No se pudo obtener tu ubicación. Verificá que el GPS esté activado en tu dispositivo.';
+      } else {
+        detalle = 'Se agotó el tiempo de espera del GPS. Asegurate de tener señal y volvé a intentar.';
+      }
+      mostrarMsg('warn', '⚠️ No pudimos acceder a tu ubicación. ' + detalle);
+      btn.disabled = false;
+      btn.innerHTML = '📍 Confirmar llegada';
+    },
+    {timeout: 15000, enableHighAccuracy: true, maximumAge: 0}
+  );
+}
+
+function mostrarMsg(tipo, texto) {
+  var msg = document.getElementById('llegada-msg');
+  if (!msg) return;
+  msg.textContent = texto;
+  msg.style.display = 'block';
+  var estilos = {
+    ok:    {color:'#1a5e2e', bg:'#eafaf1', border:'#27ae60'},
+    warn:  {color:'#7d3c00', bg:'#fff3e0', border:'#e67e22'},
+    error: {color:'#78080b', bg:'#fdecea', border:'#c0392b'},
+  };
+  var e = estilos[tipo] || estilos.error;
+  msg.style.color           = e.color;
+  msg.style.background      = e.bg;
+  msg.style.border          = '1px solid ' + e.border;
+  msg.style.borderRadius    = '8px';
+  msg.style.padding         = '.5rem .75rem';
+  msg.style.fontSize        = '.85rem';
+}
+</script>
+{% endblock %}

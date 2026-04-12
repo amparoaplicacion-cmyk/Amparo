@@ -1,0 +1,273 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Configuración de Comisiones{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Comisiones</span>
+  </nav>
+  <h1 class="page-title">💲 Configuración de Comisiones</h1>
+</div>
+
+<!-- ADVERTENCIA -->
+<div style="background:#FEF9E7; border-left:4px solid #F39C12; color:#7D6608;
+            padding:12px 16px; border-radius:4px; margin-bottom:20px; font-size:14px;">
+  ⚠️ <strong>Atención:</strong> Los cambios aplican a nuevos servicios.
+  Los servicios ya registrados conservan su comisión original.
+</div>
+
+<form method="POST" action="{{ url_for('admin.configuracion_comisiones') }}" id="form-comision">
+<div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start;">
+
+  <!-- COLUMNA IZQUIERDA -->
+  <div>
+
+    <!-- SECCIÓN 1: COMISIONES INDEPENDIENTES -->
+    <div class="card" style="margin-bottom:20px;">
+      <div style="font-weight:700; color:#1A5276; font-size:15px; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid #EAECEE;">
+        COMISIONES
+      </div>
+
+      <p style="font-size:13px; color:#5D6D7E; margin-bottom:16px;">
+        Cada porcentaje se aplica de forma independiente sobre el monto del servicio.
+      </p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:10px;">
+        <div>
+          <label class="form-label" style="font-size:13px; font-weight:600;">Comisión al solicitante</label>
+          <p style="font-size:12px; color:#7F8C8D; margin-bottom:8px;">Se suma al monto que paga.</p>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="number" name="comision_sol_pct" id="inp-sol" class="form-input"
+                   min="0" max="100" step="0.5"
+                   value="{{ comision_sol_pct }}" style="max-width:80px;"
+                   oninput="validarComisiones(); calcEjemplo()">
+            <span style="color:#5D6D7E;">%</span>
+          </div>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:13px; font-weight:600;">Comisión al prestador</label>
+          <p style="font-size:12px; color:#7F8C8D; margin-bottom:8px;">Se descuenta de lo que recibe.</p>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <input type="number" name="comision_pres_pct" id="inp-pres" class="form-input"
+                   min="0" max="100" step="0.5"
+                   value="{{ comision_pres_pct }}" style="max-width:80px;"
+                   oninput="validarComisiones(); calcEjemplo()">
+            <span style="color:#5D6D7E;">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="com-error" style="display:none; color:#E74C3C; font-size:13px; margin-top:6px;">
+        Los porcentajes deben estar entre 0 y 100.
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: PENALIDAD POR CANCELACIÓN -->
+    <div class="card" style="margin-bottom:20px;">
+      <div style="font-weight:700; color:#1A5276; font-size:15px; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid #EAECEE;">
+        PENALIDAD POR CANCELACIÓN
+      </div>
+
+      <p style="font-size:13px; color:#5D6D7E; margin-bottom:12px;">
+        Porcentaje del servicio que se cobra si el solicitante cancela después de que el prestador aceptó.
+      </p>
+
+      <div class="form-group" style="margin-bottom:14px;">
+        <label class="form-label" style="font-size:13px;">Porcentaje de penalidad</label>
+        <div style="display:flex; align-items:center; gap:6px;">
+          <input type="number" name="cancelacion_penalidad_pct" id="inp-pen" class="form-input"
+                 min="0" max="100" step="1"
+                 value="{{ cancelacion_penalidad_pct|int }}" style="max-width:80px;"
+                 oninput="calcEjemplo()">
+          <span style="color:#5D6D7E;">% del monto del servicio</span>
+        </div>
+      </div>
+
+      <p style="font-size:13px; color:#5D6D7E; margin-bottom:10px;">
+        Del total de penalidad, ¿cómo se distribuye?
+      </p>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; max-width:320px; margin-bottom:10px;">
+        <div>
+          <label class="form-label" style="font-size:13px;">Va al prestador</label>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <input type="number" name="cancelacion_prestador_pct" id="inp-pen-pr" class="form-input"
+                   min="0" max="100" step="1"
+                   value="{{ cancelacion_prestador_pct|int }}" style="max-width:70px;"
+                   oninput="validarPen()">
+            <span style="color:#5D6D7E; font-size:13px;">%</span>
+          </div>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:13px;">Va a AMPARO</label>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <input type="number" name="cancelacion_amparo_pct" id="inp-pen-am" class="form-input"
+                   min="0" max="100" step="1"
+                   value="{{ cancelacion_amparo_pct|int }}" style="max-width:70px;"
+                   oninput="validarPen()">
+            <span style="color:#5D6D7E; font-size:13px;">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="pen-error" style="display:none; color:#E74C3C; font-size:13px;">
+        Los porcentajes deben sumar 100%.
+      </div>
+      <div id="pen-ok" style="color:#27AE60; font-size:13px;">
+        ✓ Suma: <span id="pen-suma">{{ (cancelacion_prestador_pct + cancelacion_amparo_pct)|int }}</span>%
+      </div>
+    </div>
+
+    <!-- GUARDAR -->
+    <div style="margin-bottom:20px;">
+      <button type="submit" id="btn-guardar" class="btn btn-primary"
+              onclick="return confirm('¿Confirmar los cambios? Afectarán todos los nuevos servicios.')">
+        Guardar cambios
+      </button>
+      <a href="{{ url_for('admin.configuracion') }}" class="btn btn-secondary" style="margin-left:8px;">
+        Cancelar
+      </a>
+    </div>
+
+  </div>
+
+  <!-- COLUMNA DERECHA: EJEMPLO EN TIEMPO REAL -->
+  <div>
+    <div class="card" style="position:sticky; top:20px;">
+      <div style="font-weight:700; color:#1A5276; font-size:15px; margin-bottom:16px; padding-bottom:10px; border-bottom:1px solid #EAECEE;">
+        EJEMPLO EN TIEMPO REAL
+      </div>
+      <p style="font-size:13px; color:#7F8C8D; margin-bottom:14px;">
+        Para un servicio de $10.000:
+      </p>
+
+      <div id="ejemplo-box">
+        <div style="display:flex; justify-content:space-between; font-size:14px; padding:6px 0; border-bottom:1px solid #EAECEE;">
+          <span style="color:#555;">Monto del servicio</span>
+          <span style="font-weight:600;">$ 10.000</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:14px; padding:6px 0; border-bottom:1px solid #EAECEE;">
+          <span style="color:#555;">+ Comisión al solicitante (<span id="ej-sol-pct">—</span>%)</span>
+          <span id="ej-sol-paga" style="font-weight:600; color:#E67E22;">$ —</span>
+        </div>
+        <div style="display:flex; justify-content:space-between; font-size:14px; padding:6px 0; border-bottom:1px solid #EAECEE;">
+          <span style="color:#555;">− Comisión al prestador (<span id="ej-pres-pct">—</span>%)</span>
+          <span id="ej-pres-desc" style="font-weight:600; color:#E74C3C;">$ —</span>
+        </div>
+
+        <div style="margin-top:14px; background:#EBF5FB; border-radius:8px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; font-size:14px; padding:4px 0;">
+            <span style="color:#1A5276; font-weight:600;">Total paga el solicitante</span>
+            <strong id="ej-total-sol" style="color:#1A5276;">$ —</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:14px; padding:4px 0;">
+            <span style="color:#27AE60; font-weight:600;">Total recibe el prestador</span>
+            <strong id="ej-total-pres" style="color:#27AE60;">$ —</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:14px; padding:4px 0;">
+            <span style="color:#E67E22; font-weight:600;">Total recibe AMPARO</span>
+            <strong id="ej-total-amp" style="color:#E67E22;">$ —</strong>
+          </div>
+        </div>
+
+        <div style="margin-top:16px; border-top:1px solid #EAECEE; padding-top:12px;">
+          <div style="font-size:13px; color:#1A5276; font-weight:600; margin-bottom:6px;">Penalidad por cancelación</div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0; color:#7F8C8D;">
+            <span>Total penalidad (<span id="ej-pen-pct">—</span>%)</span>
+            <span id="ej-pen-total">$ —</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0; color:#7F8C8D;">
+            <span>Al prestador</span>
+            <span id="ej-pen-pres">$ —</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:13px; padding:3px 0; color:#7F8C8D;">
+            <span>A AMPARO</span>
+            <span id="ej-pen-amp">$ —</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</form>
+
+<style>
+.breadcrumb { font-size:.85rem; color:#888; margin-bottom:.5rem; }
+.breadcrumb a { color:#1A5276; text-decoration:none; }
+.breadcrumb a:hover { text-decoration:underline; }
+@media (max-width:768px) {
+  #form-comision > div { grid-template-columns:1fr !important; }
+}
+</style>
+
+<script>
+function fmt(n) {
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+
+function validarComisiones() {
+  var sol  = parseFloat(document.getElementById('inp-sol').value);
+  var pres = parseFloat(document.getElementById('inp-pres').value);
+  var ok = !isNaN(sol) && !isNaN(pres) && sol >= 0 && sol <= 100 && pres >= 0 && pres <= 100;
+  document.getElementById('com-error').style.display = ok ? 'none' : 'block';
+  actualizarBoton();
+}
+
+function validarPen() {
+  var pr = parseFloat(document.getElementById('inp-pen-pr').value) || 0;
+  var am = parseFloat(document.getElementById('inp-pen-am').value) || 0;
+  var suma = Math.round((pr + am) * 100) / 100;
+  document.getElementById('pen-suma').textContent = suma;
+  var ok = Math.abs(suma - 100) < 0.01 && pr >= 0 && am >= 0;
+  document.getElementById('pen-error').style.display = ok ? 'none'  : 'block';
+  document.getElementById('pen-ok').style.display    = ok ? 'block' : 'none';
+  actualizarBoton();
+}
+
+function actualizarBoton() {
+  var comOk = document.getElementById('com-error').style.display === 'none';
+  var penOk = document.getElementById('pen-error').style.display === 'none'
+              && document.getElementById('pen-ok').style.display !== 'none';
+  document.getElementById('btn-guardar').disabled = !(comOk && penOk);
+}
+
+function calcEjemplo() {
+  var base    = 10000;
+  var solPct  = parseFloat(document.getElementById('inp-sol').value)  || 0;
+  var presPct = parseFloat(document.getElementById('inp-pres').value) || 0;
+
+  var comSol  = base * solPct  / 100;
+  var comPres = base * presPct / 100;
+  var comAmparo = comSol + comPres;
+
+  var totalSol  = base + comSol;
+  var totalPres = base - comPres;
+
+  document.getElementById('ej-sol-pct').textContent   = solPct;
+  document.getElementById('ej-pres-pct').textContent  = presPct;
+  document.getElementById('ej-sol-paga').textContent  = fmt(comSol);
+  document.getElementById('ej-pres-desc').textContent = fmt(comPres);
+  document.getElementById('ej-total-sol').textContent  = fmt(totalSol);
+  document.getElementById('ej-total-pres').textContent = fmt(totalPres);
+  document.getElementById('ej-total-amp').textContent  = fmt(comAmparo);
+
+  var penPct   = parseFloat(document.getElementById('inp-pen').value) || 0;
+  var penPrPct = (parseFloat(document.getElementById('inp-pen-pr').value) || 0) / 100;
+  var penAmPct = (parseFloat(document.getElementById('inp-pen-am').value) || 0) / 100;
+  var penTotal = base * penPct / 100;
+  document.getElementById('ej-pen-pct').textContent   = penPct;
+  document.getElementById('ej-pen-total').textContent = fmt(penTotal);
+  document.getElementById('ej-pen-pres').textContent  = fmt(penTotal * penPrPct);
+  document.getElementById('ej-pen-amp').textContent   = fmt(penTotal * penAmPct);
+}
+
+validarComisiones();
+validarPen();
+calcEjemplo();
+</script>
+
+{% endblock %}

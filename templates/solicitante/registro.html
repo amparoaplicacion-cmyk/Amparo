@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AMPARO Solicitantes — Registrarse</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --violeta:   #7D3C98;
+      --violeta-l: #f3e8fb;
+      --violeta-d: #5b2c6f;
+      --rojo:      #c0392b;
+      --rojo-l:    #fde8e8;
+      --naranja:   #e67e22;
+      --borde:     #e5e9ed;
+      --gris:      #f7f9fb;
+      --texto:     #222;
+      --sub:       #666;
+    }
+    body { font-family: Arial, sans-serif; background: #f4f6f8; color: var(--texto); min-height: 100vh; }
+    .page { max-width: 480px; margin: 0 auto; padding: 1.25rem 1rem 70px; }
+
+    /* Header */
+    .reg-header { text-align: center; padding: 1.25rem 0 1rem; }
+    .reg-brand { font-size: 1.1rem; font-weight: 700; color: var(--violeta); margin-bottom: .25rem; }
+    .reg-title { font-size: 1.4rem; font-weight: 700; }
+    .reg-sub   { font-size: .88rem; color: var(--sub); margin-top: .25rem; }
+
+    /* Progress */
+    .steps-wrap  { display: flex; flex-direction: column; align-items: center; }
+    .steps-row   { display: flex; align-items: center; }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--borde);
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: .82rem; font-weight: 700; color: var(--sub); transition: all .2s;
+    }
+    .step-dot.active { background: var(--violeta); border-color: var(--violeta); color: #fff; }
+    .step-dot.done   { background: var(--violeta-l); border-color: var(--violeta); color: var(--violeta-d); }
+    .step-line { width: 60px; height: 2px; background: var(--borde); }
+    .step-line.done { background: var(--violeta); }
+    .steps-labels { display: flex; justify-content: space-between; width: 100%; margin-top: .3rem; }
+    .steps-labels span { font-size: .72rem; color: var(--sub); width: 80px; text-align: center; }
+    .steps-labels span:last-child { text-align: right; }
+
+    /* Form */
+    .form-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 1.5rem; margin-top: 1.25rem; }
+    .step-title { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; color: var(--texto); }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .35rem; }
+    .form-hint  { font-size: .75rem; color: var(--sub); margin-top: .25rem; display: block; }
+    .form-input {
+      width: 100%; padding: .6rem .85rem;
+      border: 1.5px solid var(--borde); border-radius: 8px; font-size: .9rem;
+      transition: border-color .15s;
+    }
+    .form-input:focus { outline: none; border-color: var(--violeta); box-shadow: 0 0 0 3px rgba(125,60,152,.12); }
+    .form-row { display: flex; gap: .6rem; }
+    .form-row .form-group { flex: 1; }
+    textarea.form-input { resize: vertical; min-height: 80px; font-family: inherit; }
+
+    /* Password */
+    .pwd-wrap { position: relative; }
+    .pwd-toggle { position: absolute; right: .75rem; top: 50%; transform: translateY(-50%); background: none; border: none; cursor: pointer; color: var(--sub); font-size: 1rem; }
+    .strength-bar  { height: 4px; border-radius: 2px; margin-top: .4rem; background: var(--borde); overflow: hidden; }
+    .strength-fill { height: 100%; width: 0; border-radius: 2px; transition: width .3s, background .3s; }
+    .strength-label { font-size: .75rem; margin-top: .2rem; }
+
+    /* Confidential box */
+    .confid-box {
+      background: var(--violeta-l); border-radius: 10px; padding: .85rem;
+      font-size: .83rem; color: var(--violeta-d); margin-bottom: 1rem; line-height: 1.5;
+    }
+
+    /* Buttons */
+    .btn {
+      display: block; width: 100%; padding: .85rem;
+      border-radius: 25px; font-size: 1rem; font-weight: 700;
+      text-align: center; cursor: pointer; border: none; text-decoration: none;
+      transition: opacity .15s;
+    }
+    .btn:active { opacity: .8; }
+    .btn-violeta { background: var(--violeta); color: #fff; }
+    .btn-outline  { background: #fff; color: var(--sub); border: 1.5px solid var(--borde); margin-top: .5rem; }
+
+    /* Alerts */
+    .alert { padding: .65rem .9rem; border-radius: 8px; font-size: .88rem; margin-bottom: .5rem; }
+    .alert-error { background: var(--rojo-l); color: var(--rojo); }
+
+    .login-link { display: none; }
+
+    /* Barra fija inferior */
+    .login-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid #e0e0e0;
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      z-index: 100;
+    }
+    .login-bar__text { font-size: .88rem; color: var(--sub); }
+    .login-bar__btn {
+      color: var(--violeta); font-weight: 700; font-size: .88rem;
+      text-decoration: none; border: 1.5px solid var(--violeta);
+      border-radius: 20px; padding: .3rem .85rem;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="reg-header">
+    <div class="reg-brand">● AMPARO Solicitantes</div>
+    <div class="reg-title">Registrate como solicitante</div>
+    <div class="reg-sub">Encontrá el cuidado que tu familiar necesita</div>
+  </div>
+
+  <!-- Progreso -->
+  <div class="steps-wrap" style="margin-top:.75rem;">
+    <div class="steps-row">
+      <div class="step-dot active" id="dot1">1</div>
+      <div class="step-line" id="line1"></div>
+      <div class="step-dot" id="dot2">2</div>
+    </div>
+    <div class="steps-labels">
+      <span>Datos de cuenta</span>
+      <span>Datos del familiar</span>
+    </div>
+  </div>
+
+  <!-- Flash -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div style="margin:.75rem 0;">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message|safe }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" id="reg-form" novalidate autocomplete="off">
+    <input type="hidden" name="paso_actual" id="paso-actual" value="1">
+
+    <!-- ═══ PASO 1 ════════════════════════════════════════════════════ -->
+    <div id="step1" class="form-card">
+      <div class="step-title">1. Tus datos de cuenta</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre *</label>
+          <input type="text" name="nombre" class="form-input" required maxlength="80"
+                 value="{{ request.form.get('nombre', '') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido *</label>
+          <input type="text" name="apellido" class="form-input" required maxlength="80"
+                 value="{{ request.form.get('apellido', '') }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" class="form-input" required maxlength="120"
+               value="{{ request.form.get('email', '') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Teléfono <span style="font-weight:400;color:#888;">(opcional)</span></label>
+        <div style="display:flex;align-items:center;border:1.5px solid var(--borde);border-radius:8px;overflow:hidden;">
+          <span style="padding:.6rem .65rem;background:#f0f0f0;color:#555;font-size:.9rem;border-right:1.5px solid var(--borde);white-space:nowrap;flex-shrink:0;">+54</span>
+          <input type="tel" name="telefono" class="form-input" maxlength="30"
+                 value="{{ request.form.get('telefono', '') }}"
+                 placeholder="11 56789345"
+                 style="border:none;border-radius:0;box-shadow:none;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contraseña *</label>
+        <div class="pwd-wrap">
+          <input type="password" name="password" id="pwd" class="form-input" required
+                 oninput="checkStrength(this.value)" autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePwd('pwd')">👁</button>
+        </div>
+        <div class="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        <div class="strength-label" id="strength-label" style="color:#aaa;">Ingresá una contraseña</div>
+        <span class="form-hint">Mínimo 8 caracteres, 1 mayúscula, 1 carácter especial (ej: # $ @ ! _)</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Confirmar contraseña *</label>
+        <div class="pwd-wrap">
+          <input type="password" name="confirmar_password" id="pwd2" class="form-input" required
+                 oninput="checkMatch()" autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePwd('pwd2')">👁</button>
+        </div>
+        <div id="match-label" style="font-size:.75rem;margin-top:.2rem;color:#aaa;"></div>
+      </div>
+
+      <!-- Aceptación cobro automático -->
+      <label id="check-cobro-label"
+             style="display:flex;align-items:flex-start;gap:.75rem;background:#f3e8fb;
+                    border:1.5px solid #c3a0e8;border-radius:12px;padding:1rem;
+                    margin-bottom:1rem;cursor:pointer;">
+        <input type="checkbox" id="check-cobro" name="acepto_cobro_automatico" value="1"
+               style="margin-top:.2rem;accent-color:#7D3C98;width:18px;height:18px;flex-shrink:0;"
+               onchange="toggleSiguiente()">
+        <span style="font-size:.83rem;color:#444;line-height:1.5;">
+          Acepto que <strong>AMPARO</strong> procesará el cobro automáticamente al finalizar cada
+          servicio contratado, usando el medio de pago registrado en mi cuenta.
+          El importe se calculará según las horas y tarifa acordadas.
+        </span>
+      </label>
+
+      <!-- Método de pago -->
+      <div class="form-group" style="margin-top:.25rem;">
+        <label class="form-label">💳 Método de pago *</label>
+
+        <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem;">
+          <label style="display:flex;align-items:center;gap:.6rem;background:#f7f3fb;border:1.5px solid var(--borde);border-radius:8px;padding:.65rem .85rem;cursor:pointer;"
+                 id="lbl-mp">
+            <input type="radio" name="metodo_pago" value="mercadopago" id="radio-mp"
+                   onchange="togglePago()"
+                   style="accent-color:#7D3C98;width:16px;height:16px;flex-shrink:0;">
+            <span style="font-size:.88rem;color:#444;">
+              <strong>Mercado Pago</strong>
+              <span style="display:block;font-size:.78rem;color:#888;">Pagás desde tu cuenta MP al finalizar cada servicio.</span>
+            </span>
+          </label>
+
+          <label style="display:flex;align-items:center;gap:.6rem;background:#f7f3fb;border:1.5px solid var(--borde);border-radius:8px;padding:.65rem .85rem;cursor:pointer;"
+                 id="lbl-card">
+            <input type="radio" name="metodo_pago" value="tarjeta" id="radio-card"
+                   onchange="togglePago()"
+                   style="accent-color:#7D3C98;width:16px;height:16px;flex-shrink:0;">
+            <span style="font-size:.88rem;color:#444;">
+              <strong>Tarjeta de crédito o débito</strong>
+              <span style="display:block;font-size:.78rem;color:#888;">Guardamos tu tarjeta de forma segura vía Mercado Pago.</span>
+            </span>
+          </label>
+        </div>
+
+        <!-- Panel Mercado Pago -->
+        <div id="panel-mp" style="display:none;background:#f9f5fd;border:1.5px solid #c3a0e8;border-radius:10px;padding:.85rem;margin-bottom:.5rem;">
+          <label class="form-label" style="margin-bottom:.3rem;">Email de Mercado Pago *</label>
+          <input type="email" id="email-mp" name="email_mp" class="form-input"
+                 placeholder="tu-cuenta@gmail.com" maxlength="120"
+                 value="{{ request.form.get('email_mp', '') }}">
+          <span class="form-hint">Ingresá el email de tu cuenta de Mercado Pago. Se usará para procesar los cobros automáticos.</span>
+        </div>
+
+        <!-- Panel Tarjeta -->
+        <div id="panel-card" style="display:none;background:#f9f5fd;border:1.5px solid #c3a0e8;border-radius:10px;padding:.85rem;margin-bottom:.5rem;">
+          {% if mp_modo == 'sandbox' %}
+          <div style="background:#e8f4fd;border:1px solid #90cdf4;border-radius:8px;padding:.6rem .85rem;margin-bottom:.75rem;font-size:.82rem;color:#1a5276;">
+            ℹ️ Modo prueba activo. Podés ingresar cualquier tarjeta con formato válido.
+          </div>
+          {% endif %}
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label class="form-label">Número de tarjeta *</label>
+            <input type="text" id="card-number" class="form-input" maxlength="19"
+                   placeholder="0000 0000 0000 0000" inputmode="numeric"
+                   oninput="formatCardNumber(this)">
+          </div>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label class="form-label">Nombre en la tarjeta *</label>
+            <input type="text" id="card-name" class="form-input" maxlength="60"
+                   placeholder="Como figura en la tarjeta" autocomplete="cc-name"
+                   style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
+          </div>
+          <div style="display:flex;gap:.6rem;">
+            <div class="form-group" style="flex:1;margin-bottom:.75rem;">
+              <label class="form-label">Venc. mes *</label>
+              <input type="text" id="exp-month" class="form-input" maxlength="2"
+                     placeholder="MM" inputmode="numeric">
+            </div>
+            <div class="form-group" style="flex:1;margin-bottom:.75rem;">
+              <label class="form-label">Venc. año *</label>
+              <input type="text" id="exp-year" class="form-input" maxlength="2"
+                     placeholder="AA" inputmode="numeric">
+            </div>
+            <div class="form-group" style="flex:1;margin-bottom:.75rem;">
+              <label class="form-label">CVV *</label>
+              <input type="text" id="card-cvv" class="form-input" maxlength="4"
+                     placeholder="123" inputmode="numeric">
+            </div>
+          </div>
+          <span class="form-hint" style="color:#7D3C98;font-size:.78rem;">
+            🔒 Datos encriptados. AMPARO nunca almacena el número completo de tu tarjeta.
+          </span>
+        </div>
+
+        <!-- Campos ocultos para enviar al servidor -->
+        <input type="hidden" id="card-token"     name="card_token">
+        <input type="hidden" id="card-last-four" name="card_last_four">
+        <input type="hidden" id="card-type"      name="card_type">
+        <input type="hidden" id="mp-error-msg"   name="mp_error">
+      </div>
+
+      <div id="pago-error" style="display:none;background:#fde8e8;color:#c0392b;border-radius:8px;padding:.65rem .85rem;font-size:.85rem;margin-bottom:.75rem;"></div>
+
+      <button type="button" class="btn btn-violeta" id="btn-siguiente"
+              onclick="irPaso2()" disabled style="opacity:.45;cursor:not-allowed;">
+        Siguiente →
+      </button>
+      <a href="{{ url_for('auth.login') }}?app=solicitante" class="btn btn-outline">Ya tengo cuenta</a>
+    </div>
+
+    <!-- ═══ PASO 2 ════════════════════════════════════════════════════ -->
+    <div id="step2" class="form-card" style="display:none;">
+      <div class="step-title">2. Datos de la persona a cuidar</div>
+
+      <!-- GPS WIDGET -->
+      <div class="form-group">
+        <label class="form-label">📍 Tu ubicación</label>
+        <small style="display:block;color:#555;margin-bottom:.5rem;line-height:1.4;">
+          Necesitamos tu ubicación para mostrarte prestadores cercanos.
+        </small>
+
+        <input type="hidden" name="latitud"       id="gps-lat"      value="{{ request.form.get('latitud','') }}">
+        <input type="hidden" name="longitud"      id="gps-lon"      value="{{ request.form.get('longitud','') }}">
+        <input type="hidden" name="codigo_postal" id="gps-cp"       value="{{ request.form.get('codigo_postal','') }}">
+        <input type="hidden" name="localidad"     id="gps-localidad" value="{{ request.form.get('localidad','') }}">
+        <input type="hidden" name="provincia"     id="gps-provincia" value="{{ request.form.get('provincia','') }}">
+
+        <div id="gps-display" style="display:none;background:#f3e8fb;border:1px solid #c39bd3;border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem;font-size:.85rem;color:#5b2c6f;">
+          ✓ <span id="gps-text"></span>
+          <button type="button" onclick="limpiarUbicacion()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;">✕</button>
+        </div>
+
+        <button type="button" onclick="detectarUbicacion()" id="btn-gps"
+                style="width:100%;padding:.55rem;border-radius:20px;border:1.5px solid var(--violeta);background:#fff;color:var(--violeta);font-size:.88rem;font-weight:600;cursor:pointer;margin-bottom:.5rem;">
+          📍 Detectar mi ubicación automáticamente
+        </button>
+
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <input type="text" id="cp-manual" class="form-input" maxlength="8" inputmode="numeric"
+                 placeholder="O ingresá tu código postal (ej: 1414)" style="flex:1;">
+          <button type="button" onclick="buscarPorCP()"
+                  style="padding:.55rem .9rem;border-radius:8px;border:1.5px solid var(--violeta);background:#fff;color:var(--violeta);font-size:.85rem;cursor:pointer;white-space:nowrap;">
+            Buscar
+          </button>
+        </div>
+        <span class="form-hint">Si no podés usar GPS, ingresá tu código postal y hacé clic en Buscar.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Dirección <span style="font-weight:400;color:#888;">(opcional)</span></label>
+        <input type="text" name="direccion" class="form-input" maxlength="200"
+               value="{{ request.form.get('direccion', '') }}"
+               placeholder="Calle, número, piso...">
+      </div>
+
+      <div class="confid-box">
+        🔒 <strong>Datos confidenciales</strong><br>
+        Solo los ves vos y el prestador asignado a cada servicio.
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre de la persona a cuidar</label>
+          <input type="text" name="familiar_nombre" class="form-input" maxlength="120"
+                 value="{{ request.form.get('familiar_nombre', '') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Edad</label>
+          <input type="number" name="familiar_edad" class="form-input" min="0" max="120"
+                 value="{{ request.form.get('familiar_edad', '') }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Condición de salud</label>
+        <input type="text" name="familiar_condicion" class="form-input" maxlength="200"
+               value="{{ request.form.get('familiar_condicion', '') }}"
+               placeholder="Ej: Alzheimer, movilidad reducida...">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Necesidades especiales</label>
+        <textarea name="familiar_necesidades" class="form-input"
+                  placeholder="Cuidados especiales, alergias, preferencias...">{{ request.form.get('familiar_necesidades', '') }}</textarea>
+      </div>
+
+      <button type="submit" class="btn btn-violeta">Registrarme ✓</button>
+      <button type="button" class="btn btn-outline" onclick="irPaso1()">← Volver al paso 1</button>
+    </div>
+
+  </form>
+
+  <div class="login-link">
+    ¿Ya tenés cuenta? <a href="{{ url_for('auth.login') }}?app=solicitante">Iniciá sesión</a>
+  </div>
+
+</div>
+
+<script>
+let pwdStrength = 0;
+
+function checkStrength(val) {
+  let s = 0;
+  if (val.length >= 8) s++;
+  if (/[A-Z]/.test(val)) s++;
+  if (/[^a-zA-Z0-9]/.test(val)) s++;
+  pwdStrength = s;
+
+  const fill  = document.getElementById('strength-fill');
+  const label = document.getElementById('strength-label');
+
+  if (val.length === 0) {
+    fill.style.width = '0'; label.textContent = 'Ingresá una contraseña'; label.style.color = '#aaa';
+  } else if (s < 2) {
+    fill.style.cssText = 'width:33%;background:#c0392b';
+    label.textContent  = 'Débil — agregá mayúscula y carácter especial';
+    label.style.color  = '#c0392b';
+  } else if (s === 2) {
+    fill.style.cssText = 'width:66%;background:#e67e22';
+    label.textContent  = 'Media — falta un requisito';
+    label.style.color  = '#e67e22';
+  } else {
+    fill.style.cssText = 'width:100%;background:#7D3C98';
+    label.textContent  = 'Fuerte ✓';
+    label.style.color  = '#7D3C98';
+  }
+  checkMatch();
+}
+
+function checkMatch() {
+  const p1  = document.getElementById('pwd').value;
+  const p2  = document.getElementById('pwd2').value;
+  const lbl = document.getElementById('match-label');
+  if (!p2) { lbl.textContent = ''; return; }
+  if (p1 === p2) { lbl.textContent = 'Las contraseñas coinciden ✓'; lbl.style.color = '#7D3C98'; }
+  else           { lbl.textContent = 'Las contraseñas no coinciden'; lbl.style.color = '#c0392b'; }
+}
+
+function togglePwd(id) {
+  const f = document.getElementById(id);
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+function toggleSiguiente() {
+  var ok  = document.getElementById('check-cobro').checked;
+  var btn = document.getElementById('btn-siguiente');
+  btn.disabled    = !ok;
+  btn.style.opacity = ok ? '1' : '.45';
+  btn.style.cursor  = ok ? 'pointer' : 'not-allowed';
+}
+
+// ── Método de pago ─────────────────────────────────────────────────
+function togglePago() {
+  var modo = document.querySelector('input[name=metodo_pago]:checked');
+  document.getElementById('panel-mp').style.display   = (modo && modo.value === 'mercadopago') ? 'block' : 'none';
+  document.getElementById('panel-card').style.display = (modo && modo.value === 'tarjeta')     ? 'block' : 'none';
+  document.getElementById('pago-error').style.display = 'none';
+  ['lbl-mp','lbl-card'].forEach(function(id) {
+    var el = document.getElementById(id);
+    el.style.borderColor = '#e5e9ed';
+    el.style.background  = '#f7f3fb';
+  });
+  if (modo) {
+    var lbl = document.getElementById(modo.value === 'mercadopago' ? 'lbl-mp' : 'lbl-card');
+    lbl.style.borderColor = '#7D3C98';
+    lbl.style.background  = '#f3e8fb';
+  }
+}
+
+function formatCardNumber(el) {
+  var v = el.value.replace(/\D/g, '').slice(0, 16);
+  el.value = v.match(/.{1,4}/g)?.join(' ') || v;
+}
+
+function mostrarPagoError(msg) {
+  var el = document.getElementById('pago-error');
+  el.textContent = msg;
+  el.style.display = 'block';
+  el.scrollIntoView({behavior:'smooth', block:'nearest'});
+}
+
+async function irPaso2() {
+  const nombre   = document.querySelector('[name=nombre]').value.trim();
+  const apellido = document.querySelector('[name=apellido]').value.trim();
+  const email    = document.querySelector('[name=email]').value.trim();
+  const pwd      = document.getElementById('pwd').value;
+  const pwd2     = document.getElementById('pwd2').value;
+
+  if (!nombre || !apellido) { alert('Nombre y apellido son obligatorios.'); return; }
+  if (!email || !email.includes('@')) { alert('Ingresá un email válido.'); return; }
+  if (pwdStrength < 3) { alert('La contraseña es débil. Debe tener al menos 8 caracteres, 1 mayúscula y 1 carácter especial (ej: # $ @ ! _).'); return; }
+  if (pwd !== pwd2) { alert('Las contraseñas no coinciden.'); return; }
+  if (!document.getElementById('check-cobro').checked) { alert('Debés aceptar el cobro automático para continuar.'); return; }
+
+  // Validar método de pago
+  const metodoEl = document.querySelector('input[name=metodo_pago]:checked');
+  if (!metodoEl) { mostrarPagoError('Seleccioná un método de pago para continuar.'); return; }
+
+  if (metodoEl.value === 'mercadopago') {
+    const emailMp = document.getElementById('email-mp').value.trim();
+    if (!emailMp || !emailMp.includes('@')) {
+      mostrarPagoError('Ingresá un email válido de Mercado Pago.');
+      return;
+    }
+  } else if (metodoEl.value === 'tarjeta') {
+    const num  = document.getElementById('card-number').value.replace(/\s/g, '');
+    const name = document.getElementById('card-name').value.trim();
+    const mm   = document.getElementById('exp-month').value.trim();
+    const aa   = document.getElementById('exp-year').value.trim();
+    const cvv  = document.getElementById('card-cvv').value.trim();
+
+    if (num.length < 13) { mostrarPagoError('Ingresá un número de tarjeta válido.'); return; }
+    if (!name)           { mostrarPagoError('Ingresá el nombre como figura en la tarjeta.'); return; }
+    if (!mm || !aa)      { mostrarPagoError('Ingresá la fecha de vencimiento.'); return; }
+    if (!cvv)            { mostrarPagoError('Ingresá el código de seguridad.'); return; }
+
+    const mpModo = document.getElementById('mp-modo').value;
+
+    if (mpModo === 'sandbox') {
+      // Modo prueba: solo validar formato, no llamar a MP
+      const mesNum = parseInt(mm, 10);
+      const anioNum = parseInt(aa, 10);
+      const anioActual = new Date().getFullYear() % 100;
+      if (num.length !== 16)                          { mostrarPagoError('El número debe tener 16 dígitos.'); return; }
+      if (mesNum < 1 || mesNum > 12)                  { mostrarPagoError('El mes de vencimiento no es válido (01-12).'); return; }
+      if (anioNum < anioActual)                       { mostrarPagoError('El año de vencimiento debe ser futuro.'); return; }
+      if (cvv.length < 3 || cvv.length > 4)           { mostrarPagoError('El CVV debe tener 3 o 4 dígitos.'); return; }
+      if (name.trim().split(/\s+/).length < 2)        { mostrarPagoError('Ingresá nombre y apellido como figura en la tarjeta.'); return; }
+      const last4 = num.slice(-4);
+      document.getElementById('card-token').value     = 'SANDBOX_' + last4;
+      document.getElementById('card-last-four').value = last4;
+      document.getElementById('card-type').value      = 'visa';
+    } else {
+      // Tokenizar con Mercado Pago
+      const mpPublicKey = document.getElementById('mp-public-key').value;
+      if (!mpPublicKey) {
+        mostrarPagoError('El sistema de pagos no está configurado. Contactá al administrador.');
+        return;
+      }
+
+      const btn = document.getElementById('btn-siguiente');
+      btn.disabled = true;
+      btn.textContent = '⏳ Verificando tarjeta...';
+
+      try {
+        const mp = new MercadoPago(mpPublicKey);
+        const token = await mp.createCardToken({
+          cardNumber:          num,
+          cardholderName:      name,
+          cardExpirationMonth: mm.padStart(2, '0'),
+          cardExpirationYear:  aa,
+          securityCode:        cvv
+        });
+        document.getElementById('card-token').value     = token.id;
+        document.getElementById('card-last-four').value = token.last_four_digits;
+        document.getElementById('card-type').value      = token.payment_method_id;
+      } catch (err) {
+        btn.disabled = false;
+        btn.textContent = 'Siguiente →';
+        mostrarPagoError('Datos de tarjeta incorrectos. Verificalos e intentá de nuevo.');
+        return;
+      }
+
+      btn.disabled = false;
+      btn.textContent = 'Siguiente →';
+    }
+  }
+
+  document.getElementById('pago-error').style.display = 'none';
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('paso-actual').value = '2';
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('dot1').classList.remove('active');
+  document.getElementById('dot1').classList.add('done');
+  document.getElementById('dot2').classList.add('active');
+  document.getElementById('line1').classList.add('done');
+  window.scrollTo(0, 0);
+}
+
+function irPaso1() {
+  document.getElementById('paso-actual').value = '1';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+  document.getElementById('dot2').classList.remove('active');
+  document.getElementById('dot1').classList.remove('done');
+  document.getElementById('dot1').classList.add('active');
+  document.getElementById('line1').classList.remove('done');
+  window.scrollTo(0, 0);
+}
+
+// ── GPS ──────────────────────────────────────────────────────────────
+function detectarUbicacion() {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización.'); return; }
+  const btn = document.getElementById('btn-gps');
+  btn.textContent = '⏳ Detectando...'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      document.getElementById('gps-lat').value = lat;
+      document.getElementById('gps-lon').value = lon;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
+        .then(r => r.json()).then(data => {
+          const a = data.address || {};
+          const cp  = a.postcode || '';
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-cp').value = cp;
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        }).catch(() => mostrarUbicacion('', '', ''));
+      btn.textContent = '📍 Detectar mi ubicación automáticamente'; btn.disabled = false;
+    },
+    function() { btn.textContent = '📍 Detectar mi ubicación automáticamente'; btn.disabled = false; alert('No se pudo obtener tu ubicación. Usá el código postal.'); },
+    { timeout: 10000 }
+  );
+}
+
+function buscarPorCP() {
+  const cp = document.getElementById('cp-manual').value.trim();
+  if (!cp) { alert('Ingresá un código postal.'); return; }
+  fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(cp)}&country=AR&format=json&limit=1&accept-language=es`)
+    .then(r => r.json()).then(data => {
+      if (!data.length) { alert('No se encontró ese código postal en Argentina.'); return; }
+      const r = data[0];
+      document.getElementById('gps-lat').value = r.lat;
+      document.getElementById('gps-lon').value = r.lon;
+      document.getElementById('gps-cp').value = cp;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${r.lat}&lon=${r.lon}&format=json&accept-language=es`)
+        .then(r2 => r2.json()).then(data2 => {
+          const a = data2.address || {};
+          const loc  = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        });
+    }).catch(() => alert('Error al buscar el código postal.'));
+}
+
+function mostrarUbicacion(loc, cp, prov) {
+  const parts = [loc, cp, prov].filter(Boolean);
+  document.getElementById('gps-text').textContent = parts.join(', ') || 'Ubicación guardada';
+  document.getElementById('gps-display').style.display = 'block';
+}
+
+function limpiarUbicacion() {
+  ['gps-lat','gps-lon','gps-cp','gps-localidad','gps-provincia'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('gps-display').style.display = 'none';
+  document.getElementById('cp-manual').value = '';
+}
+
+// Si ya había ubicación (por error de servidor), mostrarla
+window.addEventListener('DOMContentLoaded', function() {
+  const lat = document.getElementById('gps-lat').value;
+  const cp  = document.getElementById('gps-cp').value;
+  if (lat || cp) {
+    mostrarUbicacion(
+      document.getElementById('gps-localidad').value,
+      cp,
+      document.getElementById('gps-provincia').value
+    );
+  }
+});
+
+// Limpiar formulario cuando la página viene del caché del navegador (botón Atrás)
+window.addEventListener('pageshow', function(event) {
+  if (event.persisted) {
+    var form = document.getElementById('reg-form');
+    if (form) form.reset();
+  }
+});
+</script>
+
+<input type="hidden" id="mp-public-key" value="{{ mp_public_key|default('') }}">
+<input type="hidden" id="mp-modo" value="{{ mp_modo|default('produccion') }}">
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+
+<!-- Barra fija: acceso al login -->
+<div class="login-bar">
+  <span class="login-bar__text">¿Ya tenés cuenta?</span>
+  <a href="{{ url_for('auth.login') }}?app=solicitante" class="login-bar__btn">Ingresar acá →</a>
+</div>
+
+</body>
+</html>

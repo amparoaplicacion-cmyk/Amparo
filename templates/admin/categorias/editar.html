@@ -1,0 +1,55 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Editar: {{ cat['nombre'] }}{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Editar categoría</h1>
+  <a href="{{ url_for('admin.categoria_detalle', cid=cat['id']) }}" class="btn btn-secondary">Cancelar</a>
+</div>
+
+<div class="card">
+  <form method="POST" action="{{ url_for('admin.categoria_editar', cid=cat['id']) }}">
+
+    <div class="form-group">
+      <label class="form-label">Nombre <span class="required">*</span></label>
+      <input type="text" name="nombre" class="form-input"
+             value="{{ cat['nombre'] }}"
+             placeholder="Nombre de la categoría" required>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Descripción <span class="required">*</span></label>
+      <textarea name="descripcion" class="form-input" rows="3"
+                placeholder="Descripción de la categoría..." required>{{ cat['descripcion'] or '' }}</textarea>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Requisitos de formación y documentación</label>
+      <textarea name="requisitos" class="form-input" rows="4"
+                placeholder="Describí la formación y documentación exigida...">{{ cat['requisitos'] or '' }}</textarea>
+    </div>
+
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+      <div class="form-group">
+        <label class="form-label">Tarifa mínima sugerida ($) <span class="required">*</span></label>
+        <input type="number" name="tarifa_minima" class="form-input" min="0" step="1"
+               value="{{ cat['tarifa_minima'] }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tarifa máxima sugerida ($) <span class="required">*</span></label>
+        <input type="number" name="tarifa_maxima" class="form-input" min="0" step="1"
+               value="{{ cat['tarifa_maxima'] }}" required>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+      <a href="{{ url_for('admin.categoria_detalle', cid=cat['id']) }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

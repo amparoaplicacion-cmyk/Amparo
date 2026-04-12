@@ -1,0 +1,294 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}{{ f['nombre'] }} {{ f['apellido'] }} — Solicitante{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">{{ f['nombre'] }} {{ f['apellido'] }}</h1>
+  <a href="{{ url_for('admin.solicitantes') }}" class="btn btn-secondary">← Volver al listado</a>
+</div>
+
+<!-- ACCIONES -->
+<div class="detail-actions">
+  <a href="{{ url_for('admin.solicitante_editar', fid=f['id']) }}" class="btn btn-primary">Editar datos</a>
+  {% if f['estado'] == 'ACTIVA' %}
+    <form method="POST" action="{{ url_for('admin.solicitante_desactivar', fid=f['id']) }}"
+          onsubmit="return confirm('¿Desactivar esta cuenta?')">
+      <button type="submit" class="btn btn-danger">Desactivar cuenta</button>
+    </form>
+  {% elif f['estado'] == 'INACTIVA' %}
+    <form method="POST" action="{{ url_for('admin.solicitante_reactivar', fid=f['id']) }}"
+          onsubmit="return confirm('¿Reactivar esta cuenta?')">
+      <button type="submit" class="btn btn-success">Reactivar cuenta</button>
+    </form>
+  {% endif %}
+</div>
+
+<!-- ═══ BLOQUE 1 — DATOS PERSONALES ═══════════════════════════ -->
+<div class="detail-grid">
+  <div class="detail-card">
+    <div class="detail-card__title">Datos personales</div>
+    <div class="detail-row"><span class="detail-label">Nombre</span><span class="detail-value">{{ f['nombre'] }}</span></div>
+    <div class="detail-row"><span class="detail-label">Apellido</span><span class="detail-value">{{ f['apellido'] }}</span></div>
+    <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">{{ f['email'] }}</span></div>
+    <div class="detail-row"><span class="detail-label">Teléfono</span><span class="detail-value">{{ f['telefono'] | fmt_tel }}</span></div>
+    <div class="detail-row"><span class="detail-label">Dirección</span><span class="detail-value">{{ f['direccion'] or '—' }}</span></div>
+    <div class="detail-row"><span class="detail-label">Localidad</span><span class="detail-value">{{ f['localidad'] or '—' }}{% if f['provincia'] %}, {{ f['provincia'] }}{% endif %}</span></div>
+    <div class="detail-row"><span class="detail-label">Código postal</span><span class="detail-value">{{ f['codigo_postal'] or '—' }}</span></div>
+    {% if f['latitud'] and f['longitud'] %}<div class="detail-row"><span class="detail-label">GPS</span><span class="detail-value" style="font-size:.8rem;color:#888;">{{ '%.5f'|format(f['latitud']|float) }}, {{ '%.5f'|format(f['longitud']|float) }}</span></div>{% endif %}
+  </div>
+  <div class="detail-card">
+    <div class="detail-card__title">Estado de la cuenta</div>
+    <div class="detail-row">
+      <span class="detail-label">Estado</span>
+      <span class="detail-value">
+        <span class="badge badge-{{ f['estado']|lower }}">{{ f['estado'] }}</span>
+      </span>
+    </div>
+    <div class="detail-row"><span class="detail-label">Fecha de alta</span><span class="detail-value">{{ f['fecha_alta'][:10] if f['fecha_alta'] else '—' }}</span></div>
+    <div class="detail-row"><span class="detail-label">Último ingreso</span><span class="detail-value">{{ f['ultimo_ingreso'][:16] if f['ultimo_ingreso'] else 'Nunca' }}</span></div>
+    <div class="detail-row">
+      <span class="detail-label">💳 Método de pago</span>
+      <span class="detail-value">
+        {% if f['metodo_pago_descripcion'] %}
+          {{ f['metodo_pago_descripcion'] }}
+        {% elif f['metodo_pago'] %}
+          {{ f['metodo_pago'] }}
+        {% else %}
+          <span style="color:#aaa;">No registrado</span>
+        {% endif %}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BLOQUE 2 — DATOS DE LA PERSONA A CUIDAR ════ -->
+<div class="card" style="margin-bottom:28px;">
+  <div class="section-title">👤 Datos de la persona a cuidar</div>
+  <div class="detail-grid" style="margin-bottom:0;">
+    <div>
+      <div class="detail-row"><span class="detail-label">Nombre de la persona a cuidar</span><span class="detail-value">{{ f['familiar_nombre'] or '—' }}</span></div>
+      <div class="detail-row"><span class="detail-label">Edad</span><span class="detail-value">{{ f['familiar_edad'] ~ ' años' if f['familiar_edad'] else '—' }}</span></div>
+    </div>
+    <div>
+      <div class="detail-row"><span class="detail-label">Condición de salud</span><span class="detail-value">{{ f['familiar_condicion'] or '—' }}</span></div>
+      <div class="detail-row"><span class="detail-label">Necesidades especiales</span><span class="detail-value">{{ f['familiar_necesidades'] or '—' }}</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ BLOQUE 3 — HISTORIAL DE CONTRATACIONES ═══════════════ -->
+<div class="card">
+  <div class="section-title">Historial de contrataciones</div>
+  {% if servicios %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Prestador</th>
+        <th>Categoría</th>
+        <th>Estado</th>
+        <th>Monto</th>
+        <th style="text-align:center;">Calificación</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in servicios %}
+      <tr>
+        <td>{{ s['fecha_servicio'] or '—' }}</td>
+        <td>{{ s['prestador_nombre'] }}</td>
+        <td>{{ s['categoria_nombre'] or '—' }}</td>
+        <td><span class="badge badge-info">{{ s['estado'] }}</span></td>
+        <td>{{ '$ {:,.0f}'.format(s['monto_acordado']) if s['monto_acordado'] else '—' }}</td>
+        <td style="text-align:center;">
+          {% if s['puntaje'] %}
+            <span style="color:#F39C12;">
+              {% for i in range(s['puntaje']) %}★{% endfor %}{% for i in range(5 - s['puntaje']) %}☆{% endfor %}
+            </span>
+          {% else %}
+            <span style="color:#BDC3C7; font-size:12px;">Sin calificar</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">Esta solicitante aún no tiene contrataciones registradas.</div>
+  {% endif %}
+</div>
+
+<!-- ═══ BLOQUE 4 — RESEÑAS EMITIDAS ════════════════════════════ -->
+<div class="card">
+  <div class="section-title">Reseñas emitidas</div>
+  {% if resenas %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Prestador calificado</th>
+        <th style="text-align:center;">Puntaje</th>
+        <th>Comentario</th>
+        <th style="text-align:center;">Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in resenas %}
+      <tr>
+        <td>{{ r['fecha'][:10] if r['fecha'] else '—' }}</td>
+        <td>{{ r['prestador_nombre'] }}</td>
+        <td style="text-align:center; color:#F39C12;">
+          {% for i in range(r['puntaje']) %}★{% endfor %}{% for i in range(5 - r['puntaje']) %}☆{% endfor %}
+        </td>
+        <td style="max-width:260px;">
+          {% if r['moderada'] %}
+            <em style="color:#95A5A6;">[Reseña moderada — oculta]</em>
+          {% else %}
+            {{ r['comentario'] or '—' }}
+          {% endif %}
+        </td>
+        <td style="text-align:center;">
+          <span class="badge badge-done">{{ r['estado_servicio'] or 'FINALIZADO' }}</span>
+          {% if r['moderada'] %}
+            <br><span class="badge badge-inactiva" style="font-size:.7rem;">Reseña moderada</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST"
+                action="{{ url_for('admin.solicitante_resena_moderar', fid=f['id'], rid=r['id']) }}"
+                onsubmit="return confirm('{{ '¿Restaurar esta reseña?' if r['moderada'] else '¿Moderar (ocultar) esta reseña?' }}')">
+            <button type="submit" class="btn-sm {{ 'btn-sm-unlock' if r['moderada'] else 'btn-sm-block' }}">
+              {{ 'Restaurar' if r['moderada'] else 'Moderar' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">Esta solicitante no ha emitido reseñas todavía.</div>
+  {% endif %}
+</div>
+
+<!-- ═══ BLOQUE 5 — MÉTODOS DE PAGO ══════════════════════════════ -->
+<div class="card">
+  <div class="section-title">Métodos de pago registrados</div>
+  {% if pagos_tabla %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Tipo de pago</th>
+        <th>Fecha de uso</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pagos_tabla %}
+      <tr>
+        <td>{{ p['metodo_pago'] }}</td>
+        <td>{{ p['fecha_pago'][:10] if p['fecha_pago'] else '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <div style="font-size:11px; color:#95A5A6; padding:8px 0;">
+    Solo se muestran tipos de pago. Los datos completos de tarjeta nunca se almacenan.
+  </div>
+  {% else %}
+  <div class="notif-empty">No hay métodos de pago registrados.</div>
+  {% endif %}
+</div>
+
+<!-- ═══ BLOQUE 6 — RECLAMOS ══════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">Reclamos</div>
+  {% if reclamos %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha apertura</th>
+        <th>Descripción</th>
+        <th style="text-align:center;">Estado</th>
+        <th>Resolución</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for rec in reclamos %}
+      <tr>
+        <td>{{ rec['fecha_apertura'][:10] if rec['fecha_apertura'] else '—' }}</td>
+        <td style="max-width:220px;">{{ rec['descripcion'] }}</td>
+        <td style="text-align:center;">
+          {% if rec['estado'] == 'ABIERTO' %}
+            <span class="badge" style="background:#FDEBD0; color:#784212;">ABIERTO</span>
+          {% elif rec['estado'] == 'EN_REVISION' %}
+            <span class="badge badge-info">EN REVISIÓN</span>
+          {% else %}
+            <span class="badge badge-activa">RESUELTO</span>
+          {% endif %}
+        </td>
+        <td style="max-width:200px; font-size:12px; color:#5D6D7E;">
+          {{ rec['resolucion'] or '—' }}
+        </td>
+        <td>
+          <button type="button" class="btn-sm btn-sm-view"
+                  onclick="abrirGestionar(
+                    '{{ url_for('admin.solicitante_reclamo_gestionar', fid=f['id'], rid=rec['id']) }}',
+                    '{{ rec['estado'] }}',
+                    `{{ rec['resolucion'] or '' }}`)">
+            Gestionar
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">Esta solicitante no tiene reclamos registrados.</div>
+  {% endif %}
+</div>
+
+<!-- MODAL GESTIONAR RECLAMO -->
+<div id="modal-reclamo" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3 class="modal-title">Gestionar reclamo</h3>
+    <form method="POST" id="form-reclamo">
+      <div class="form-group">
+        <label class="form-label">Estado <span class="required">*</span></label>
+        <select name="estado" id="modal-rec-estado" class="form-select" required>
+          <option value="ABIERTO">ABIERTO</option>
+          <option value="EN_REVISION">EN REVISIÓN</option>
+          <option value="RESUELTO">RESUELTO</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Resolución</label>
+        <textarea name="resolucion" id="modal-rec-resolucion" class="form-input"
+                  rows="3" placeholder="Describí cómo se resolvió el reclamo..."></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <button type="button" class="btn btn-secondary" onclick="cerrarGestionar()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirGestionar(action, estado, resolucion) {
+  document.getElementById('form-reclamo').action = action;
+  document.getElementById('modal-rec-estado').value = estado;
+  document.getElementById('modal-rec-resolucion').value = resolucion;
+  document.getElementById('modal-reclamo').style.display = 'flex';
+}
+function cerrarGestionar() {
+  document.getElementById('modal-reclamo').style.display = 'none';
+}
+document.getElementById('modal-reclamo').addEventListener('click', function(e) {
+  if (e.target === this) cerrarGestionar();
+});
+</script>
+
+{% endblock %}

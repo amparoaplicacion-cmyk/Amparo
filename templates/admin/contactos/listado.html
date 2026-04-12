@@ -1,0 +1,101 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Contactos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">💬 Contactos</h1>
+</div>
+
+<!-- FILTROS -->
+<div class="filters-bar card" style="margin-bottom:16px;">
+  <form method="GET" action="{{ url_for('admin.contactos') }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+    <div>
+      <label class="form-label" style="font-size:12px;">Tipo</label>
+      <select name="tipo" class="form-input" style="font-size:13px;padding:6px 10px;">
+        <option value="">Todos</option>
+        <option value="problema_tecnico" {{ 'selected' if tipo_f == 'problema_tecnico' }}>🔧 Problema técnico</option>
+        <option value="reclamo"          {{ 'selected' if tipo_f == 'reclamo' }}>📋 Reclamo</option>
+        <option value="sugerencia"       {{ 'selected' if tipo_f == 'sugerencia' }}>💡 Sugerencia</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" style="font-size:12px;">Estado</label>
+      <select name="estado" class="form-input" style="font-size:13px;padding:6px 10px;">
+        <option value="">Todos</option>
+        <option value="NUEVO"       {{ 'selected' if estado_f == 'NUEVO' }}>Nuevo</option>
+        <option value="EN_REVISION" {{ 'selected' if estado_f == 'EN_REVISION' }}>En revisión</option>
+        <option value="RESUELTO"    {{ 'selected' if estado_f == 'RESUELTO' }}>Resuelto</option>
+      </select>
+    </div>
+    <div>
+      <label class="form-label" style="font-size:12px;">Tipo de usuario</label>
+      <select name="tipo_usuario" class="form-input" style="font-size:13px;padding:6px 10px;">
+        <option value="">Todos</option>
+        <option value="prestador" {{ 'selected' if usuario_f == 'prestador' }}>Prestador</option>
+        <option value="solicitante"   {{ 'selected' if usuario_f == 'solicitante' }}>Solicitante</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary" style="font-size:13px;padding:7px 16px;">Filtrar</button>
+    <a href="{{ url_for('admin.contactos') }}" class="btn btn-secondary" style="font-size:13px;padding:7px 16px;">Limpiar</a>
+  </form>
+</div>
+
+<!-- TABLA -->
+<div class="card">
+  {% if contactos %}
+  <div class="table-responsive">
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Usuario</th>
+        <th>Tipo</th>
+        <th>Asunto</th>
+        <th>Mensaje</th>
+        <th>Estado</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in contactos %}
+      {% set tipo_color = {'problema_tecnico': '#e74c3c', 'reclamo': '#e67e22', 'sugerencia': '#27ae60'} %}
+      {% set tipo_label = {'problema_tecnico': 'Problema técnico', 'reclamo': 'Reclamo', 'sugerencia': 'Sugerencia'} %}
+      {% set estado_color = {'NUEVO': '#e74c3c', 'EN_REVISION': '#e67e22', 'RESUELTO': '#27ae60'} %}
+      <tr>
+        <td style="font-size:12px;color:#888;">{{ c['fecha_envio'][:16] }}</td>
+        <td>
+          <div style="font-size:13px;font-weight:600;">{{ c['usuario_nombre'] }}</div>
+          <div style="font-size:11px;color:#888;">{{ 'Prestador' if c['tipo_usuario'] == 'prestador' else 'Solicitante' }}</div>
+        </td>
+        <td>
+          <span style="background:{{ tipo_color.get(c['tipo_contacto'],'#888') }}20;color:{{ tipo_color.get(c['tipo_contacto'],'#888') }};border-radius:10px;padding:2px 10px;font-size:12px;font-weight:600;">
+            {{ tipo_label.get(c['tipo_contacto'], c['tipo_contacto']) }}
+          </span>
+        </td>
+        <td style="font-size:13px;">{{ c['asunto'] }}</td>
+        <td style="font-size:12px;color:#555;max-width:220px;">
+          {% if c['descripcion'] %}
+            {{ c['descripcion'][:100] }}{% if c['descripcion']|length > 100 %}…{% endif %}
+          {% else %}—{% endif %}
+        </td>
+        <td>
+          <span style="background:{{ estado_color.get(c['estado'],'#888') }}20;color:{{ estado_color.get(c['estado'],'#888') }};border-radius:10px;padding:2px 10px;font-size:12px;font-weight:600;">
+            {{ c['estado'].replace('_',' ') }}
+          </span>
+        </td>
+        <td>
+          <a href="{{ url_for('admin.contacto_detalle', cid=c['id']) }}" class="btn btn-secondary" style="font-size:12px;padding:5px 12px;">
+            Ver y responder
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  {% else %}
+  <div class="notif-empty">No hay contactos con los filtros seleccionados.</div>
+  {% endif %}
+</div>
+
+{% endblock %}

@@ -1,0 +1,126 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/reportes/_periodo.html' import selector %}
+{% block titulo %}Prestadores mejor calificados{% endblock %}
+
+{% block content %}
+{% set reporte_nombre = 'prestadores' %}
+<div class="page-header no-print">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.reportes') }}">Reportes</a> &rsaquo;
+    <span>Prestadores mejor calificados</span>
+  </nav>
+  <h1 class="page-title">⭐ Prestadores mejor calificados — {{ label_periodo }}</h1>
+</div>
+
+{{ selector(periodo, desde, hasta, 'admin.reporte_prestadores') }}
+
+<!-- FILTROS ADICIONALES -->
+<div class="filtros-bar no-print">
+  <form method="GET" action="{{ url_for('admin.reporte_prestadores') }}" class="filtros-form">
+    <input type="hidden" name="periodo" value="{{ periodo }}">
+    <input type="hidden" name="desde"   value="{{ desde }}">
+    <input type="hidden" name="hasta"   value="{{ hasta }}">
+
+    <label class="filtro-label">
+      Categoría:
+      <select name="categoria" class="filtro-select">
+        <option value="">Todas</option>
+        {% for cat in categorias %}
+        <option value="{{ cat.id }}" {{ 'selected' if cat_filtro == cat.id | string }}>
+          {{ cat.nombre }}
+        </option>
+        {% endfor %}
+      </select>
+    </label>
+
+    <label class="filtro-label">
+      Mínimo de reseñas:
+      <input type="number" name="min_resenas" value="{{ min_resenas }}"
+             min="1" max="100" class="filtro-num">
+    </label>
+
+    <button type="submit" class="btn-filtrar">Filtrar</button>
+  </form>
+</div>
+
+<!-- TABLA RANKING -->
+{% if tabla %}
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th><th>Prestador</th><th>Categoría</th><th>Zona o Barrio</th>
+        <th class="text-center">Puntaje</th>
+        <th class="text-center">Reseñas</th>
+        <th class="text-center">Servicios</th>
+        <th class="text-right">Facturado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in tabla %}
+      <tr>
+        <td class="text-center"><strong>{{ f.pos }}</strong></td>
+        <td>
+          <div class="prestador-cell">
+            {% if f.foto_url %}
+            <img src="{{ f.foto_url }}" class="mini-foto" alt="">
+            {% else %}
+            <div class="mini-foto-placeholder">👤</div>
+            {% endif %}
+            <span>{{ f.prestador }}</span>
+          </div>
+        </td>
+        <td>{{ f.categoria }}</td>
+        <td>{{ f.zona }}</td>
+        <td class="text-center">
+          <div class="puntaje-cell">
+            <span class="stars-mini">
+              {% for i in range(5) %}{{ '★' if i < f.puntaje | int else '☆' }}{% endfor %}
+            </span>
+            <strong>{{ f.puntaje }}</strong>
+          </div>
+        </td>
+        <td class="text-center">{{ f.resenas }}</td>
+        <td class="text-center">{{ f.servicios }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.facturado) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  No hay prestadores que cumplan los criterios (mínimo {{ min_resenas }} reseña(s)) en el período seleccionado.
+</div>
+{% endif %}
+
+<style>
+.filtros-bar {
+  background: #fff; border: 1px solid #dde3ea; border-radius: 10px;
+  padding: .85rem 1rem; margin-bottom: 1.5rem;
+}
+.filtros-form { display: flex; gap: 1rem; align-items: center; flex-wrap: wrap; }
+.filtro-label { font-size: .88rem; display: flex; align-items: center; gap: .4rem; }
+.filtro-select, .filtro-num {
+  border: 1px solid #ccc; border-radius: 5px;
+  padding: .3rem .6rem; font-size: .88rem;
+}
+.filtro-num { width: 70px; }
+.btn-filtrar {
+  background: #1A5276; color: #fff; border: none;
+  border-radius: 6px; padding: .4rem 1rem; cursor: pointer; font-size: .88rem;
+}
+
+.prestador-cell { display: flex; align-items: center; gap: .6rem; }
+.mini-foto { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+.mini-foto-placeholder {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: #f0f4f8; display: flex; align-items: center;
+  justify-content: center; font-size: 1rem; flex-shrink: 0;
+}
+.puntaje-cell { display: flex; flex-direction: column; align-items: center; gap: .1rem; }
+.stars-mini { color: #E67E22; font-size: .85rem; letter-spacing: 1px; }
+</style>
+{% include 'admin/reportes/_estilos_comunes.html' %}
+{% endblock %}

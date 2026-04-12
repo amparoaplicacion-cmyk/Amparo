@@ -1,0 +1,128 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Contacto{% endblock %}
+
+{% block content %}
+{% set active_tab = 'contacto' %}
+
+<div class="page-title-bar">
+  <h1>Contacto</h1>
+</div>
+
+<!-- SECCIÓN 1: Mis mensajes -->
+{% if mis_contactos %}
+<div style="margin-bottom:1.25rem;">
+  <div style="font-size:.8rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.6rem;">
+    Mis mensajes
+  </div>
+  {% set tipo_icons = {'problema_tecnico': '🔧', 'reclamo': '📋', 'sugerencia': '💡'} %}
+  {% set tipo_labels = {'problema_tecnico': 'Problema técnico', 'reclamo': 'Reclamo', 'sugerencia': 'Sugerencia'} %}
+  <div style="display:flex;flex-direction:column;gap:.6rem;">
+    {% for m in mis_contactos %}
+    <div style="background:#fff;border:1px solid #e5e9ed;border-radius:12px;padding:.85rem 1rem;">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem;">
+        <div style="flex:1;min-width:0;">
+          <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.2rem;">
+            <span>{{ tipo_icons.get(m.tipo_contacto, '📩') }}</span>
+            <span style="font-size:.78rem;color:#888;">{{ tipo_labels.get(m.tipo_contacto, m.tipo_contacto) }}</span>
+          </div>
+          <div style="font-weight:600;font-size:.92rem;color:#222;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            {{ m.asunto }}
+          </div>
+          <div style="font-size:.75rem;color:#aaa;margin-top:.15rem;">
+            {{ m.fecha_envio[:10] if m.fecha_envio else '' }}
+          </div>
+          {% if m.estado == 'RESUELTO' %}
+          <div style="margin-top:.35rem;font-size:.8rem;color:#1E8449;font-weight:600;">
+            ✉️ Tenes una respuesta
+          </div>
+          {% endif %}
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.4rem;flex-shrink:0;">
+          {% if m.estado == 'RESUELTO' %}
+          <span style="background:#D5F5E3;color:#1E8449;font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;">Respondido</span>
+          {% else %}
+          <span style="background:#fef5e7;color:#e67e22;font-size:.72rem;font-weight:700;padding:.2rem .55rem;border-radius:20px;">Pendiente</span>
+          {% endif %}
+          <a href="{{ url_for('prestador.contacto_detalle', cid=m.id) }}"
+             style="font-size:.8rem;color:#1E8449;font-weight:600;text-decoration:none;border:1px solid #1E8449;border-radius:8px;padding:.2rem .6rem;">
+            Ver detalle
+          </a>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
+
+<!-- SECCIÓN 2: Enviarnos un mensaje -->
+<div style="font-size:.8rem;font-weight:700;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:.75rem;{% if mis_contactos %}border-top:1px solid #e5e9ed;padding-top:.75rem;{% endif %}">
+  Enviarnos un mensaje
+</div>
+
+{% if not tipo_preseleccionado %}
+<!-- TARJETAS DE TIPO -->
+<div style="display:flex;flex-direction:column;gap:.75rem;margin-bottom:1rem;">
+
+  <a href="{{ url_for('prestador.contacto') }}?tipo=problema_tecnico"
+     style="text-decoration:none;display:block;background:#fdecea;border:1px solid #f5c6c6;border-radius:12px;padding:1rem 1.1rem;">
+    <div style="font-size:1.4rem;margin-bottom:.25rem;">🔧</div>
+    <div style="font-weight:700;color:#c0392b;font-size:.95rem;">Problema técnico</div>
+    <div style="font-size:.82rem;color:#888;margin-top:.15rem;">Algo no funciona bien en la app</div>
+  </a>
+
+  <a href="{{ url_for('prestador.contacto') }}?tipo=reclamo"
+     style="text-decoration:none;display:block;background:#fef5e7;border:1px solid #f9e29f;border-radius:12px;padding:1rem 1.1rem;">
+    <div style="font-size:1.4rem;margin-bottom:.25rem;">📋</div>
+    <div style="font-weight:700;color:#e67e22;font-size:.95rem;">Reclamo sobre un servicio</div>
+    <div style="font-size:.82rem;color:#888;margin-top:.15rem;">Tuve un inconveniente con un servicio</div>
+  </a>
+
+  <a href="{{ url_for('prestador.contacto') }}?tipo=sugerencia"
+     style="text-decoration:none;display:block;background:#eafaf1;border:1px solid #a9dfbf;border-radius:12px;padding:1rem 1.1rem;">
+    <div style="font-size:1.4rem;margin-bottom:.25rem;">💡</div>
+    <div style="font-weight:700;color:#1E8449;font-size:.95rem;">Sugerencia</div>
+    <div style="font-size:.82rem;color:#888;margin-top:.15rem;">Tengo una idea para mejorar AMPARO</div>
+  </a>
+
+</div>
+
+{% else %}
+<!-- FORMULARIO -->
+{% set tipos = {
+  'problema_tecnico': {'label': 'Problema técnico', 'color': '#c0392b', 'bg': '#fdecea'},
+  'reclamo':          {'label': 'Reclamo sobre un servicio', 'color': '#e67e22', 'bg': '#fef5e7'},
+  'sugerencia':       {'label': 'Sugerencia', 'color': '#1E8449', 'bg': '#eafaf1'}
+} %}
+{% set tipo_info = tipos.get(tipo_preseleccionado, {}) %}
+
+<div style="background:{{ tipo_info.get('bg','#f8f9fa') }};border-radius:10px;padding:.75rem 1rem;margin-bottom:1rem;font-size:.9rem;font-weight:700;color:{{ tipo_info.get('color','#333') }};">
+  {{ tipo_info.get('label', tipo_preseleccionado) }}
+</div>
+
+<form method="POST" action="{{ url_for('prestador.contacto') }}">
+  <input type="hidden" name="tipo_contacto" value="{{ tipo_preseleccionado }}">
+
+  <div class="form-group">
+    <label class="form-label">Asunto *</label>
+    <input type="text" name="asunto" class="input-text" required maxlength="100"
+           placeholder="Resumí tu consulta en pocas palabras">
+    <small class="form-hint">Máximo 100 caracteres</small>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Descripción *</label>
+    <textarea name="descripcion" class="input-textarea" rows="5" required
+              minlength="20" maxlength="1000"
+              placeholder="Describí en detalle tu consulta, problema o sugerencia..."></textarea>
+    <small class="form-hint">Mínimo 20 caracteres, máximo 1000</small>
+  </div>
+
+  <div class="form-actions">
+    <a href="{{ url_for('prestador.contacto') }}" class="btn btn-secondary-outline">← Volver</a>
+    <button type="submit" class="btn btn-accept">Enviar</button>
+  </div>
+</form>
+{% endif %}
+
+{% endblock %}

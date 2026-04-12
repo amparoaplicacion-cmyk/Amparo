@@ -1,0 +1,148 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Mis Servicios{% endblock %}
+
+{% block content %}
+{% set active_tab = 'servicios' %}
+
+<div class="page-title-bar">
+  <h1>📋 Mis Servicios</h1>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <a href="{{ url_for('prestador.servicios', tab='pendientes') }}"
+     class="tab {{ 'tab-active' if tab == 'pendientes' }}">Pendientes</a>
+  <a href="{{ url_for('prestador.servicios', tab='activos') }}"
+     class="tab {{ 'tab-active' if tab == 'activos' }}">Activos</a>
+  <a href="{{ url_for('prestador.servicios', tab='historial') }}"
+     class="tab {{ 'tab-active' if tab == 'historial' }}">Historial</a>
+</div>
+
+<!-- TAB: PENDIENTES -->
+{% if tab == 'pendientes' %}
+  {% if rows %}
+    {% for s in rows %}
+    <div class="service-card">
+      <div class="service-card__header">
+        <strong>{{ s.solicitante_nombre }}</strong>
+        <span class="badge badge-pending">Pendiente</span>
+      </div>
+      <div class="service-card__row">📅 {{ s.fecha_servicio }} · {{ s.hora_inicio }}–{{ s.hora_fin }}</div>
+      <div class="service-card__row">🏷 {{ s.categoria_nombre or '—' }}</div>
+      {% if s.monto_acordado %}
+      <div class="service-card__row">💵 ${{ "%.2f"|format(s.monto_acordado) }}</div>
+      {% endif %}
+      {% if s.mensaje_solicitante %}
+      <div class="service-card__msg">"{{ s.mensaje_solicitante }}"</div>
+      {% endif %}
+      <div class="service-card__actions">
+        <form method="POST" action="{{ url_for('prestador.servicio_aceptar', sid=s.id) }}"
+              onsubmit="return confirm('¿Aceptar este servicio?');">
+          <button type="submit" class="btn btn-accept">✓ Aceptar</button>
+        </form>
+        <button type="button" class="btn btn-reject"
+                onclick="toggleRechazo({{ s.id }})">✕ Rechazar</button>
+      </div>
+      <form method="POST" action="{{ url_for('prestador.servicio_rechazar', sid=s.id) }}"
+            id="rechazo-{{ s.id }}" class="rechazo-form" style="display:none;">
+        <input type="text" name="motivo" placeholder="Motivo (opcional)" class="input-motivo">
+        <button type="submit" class="btn btn-reject-confirm">Confirmar rechazo</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state"><p>No tenés solicitudes pendientes.</p></div>
+  {% endif %}
+
+<!-- TAB: ACTIVOS -->
+{% elif tab == 'activos' %}
+  {% if rows %}
+    {% for s in rows %}
+    <div class="service-card">
+      <div class="service-card__header">
+        <strong>{{ s.solicitante_nombre }}</strong>
+        <span class="badge {{ 'badge-active' if s.estado == 'ACTIVO' else 'badge-accepted' }}">
+          {{ s.estado }}
+        </span>
+      </div>
+      <div class="service-card__row">📅 {{ s.fecha_servicio }} · {{ s.hora_inicio }}–{{ s.hora_fin }}</div>
+      {% if s.solicitante_telefono %}
+      <div class="service-card__row">📞 {{ s.solicitante_telefono | fmt_tel }}</div>
+      {% endif %}
+      {% if s.direccion %}
+      <div class="service-card__row">📍 {{ s.direccion }}</div>
+      {% endif %}
+      {% if s.monto_acordado %}
+      <div class="service-card__row">💵 ${{ "%.2f"|format(s.monto_acordado) }}</div>
+      {% endif %}
+      <div class="service-card__actions">
+        <a href="{{ url_for('prestador.servicio_detalle', sid=s.id) }}" class="btn btn-detail">Ver detalle</a>
+        <button type="button" class="btn btn-cancel"
+                onclick="toggleCancelacion({{ s.id }})">✕ Cancelar</button>
+      </div>
+      <form method="POST" action="{{ url_for('prestador.servicio_cancelar', sid=s.id) }}"
+            id="cancelar-{{ s.id }}" class="rechazo-form" style="display:none;"
+            onsubmit="return validarCancelacion(this);">
+        <input type="text" name="motivo" placeholder="Motivo de cancelación (obligatorio)" class="input-motivo" required>
+        <button type="submit" class="btn btn-reject-confirm">Confirmar cancelación</button>
+      </form>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state"><p>No tenés servicios activos.</p></div>
+  {% endif %}
+
+<!-- TAB: HISTORIAL -->
+{% else %}
+  {% if rows %}
+    {% for s in rows %}
+    <a href="{{ url_for('prestador.servicio_detalle', sid=s.id) }}" class="history-row">
+      <div class="history-row__main">
+        <strong>{{ s.fecha_servicio }}</strong>
+        <span class="badge {{ 'badge-done' if s.estado == 'FINALIZADO' else ('badge-cancel' if s.estado == 'CANCELADO' else 'badge-reject') }}">
+          {{ s.estado }}
+        </span>
+      </div>
+      <div class="history-row__sub">{{ s.solicitante_nombre }}</div>
+      <div class="history-row__meta">
+        {% if s.monto_acordado %}${{ "%.2f"|format(s.monto_acordado) }}{% endif %}
+        {% if s.puntaje %}
+          · <span class="stars-sm">{% for i in range(s.puntaje) %}★{% endfor %}</span>
+        {% endif %}
+      </div>
+    </a>
+    {% endfor %}
+
+    <!-- Paginado -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      {% if page > 1 %}
+      <a href="{{ url_for('prestador.servicios', tab='historial', page=page-1) }}" class="pag-btn">‹ Anterior</a>
+      {% endif %}
+      <span class="pag-info">{{ page }} / {{ total_pages }}</span>
+      {% if page < total_pages %}
+      <a href="{{ url_for('prestador.servicios', tab='historial', page=page+1) }}" class="pag-btn">Siguiente ›</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% else %}
+    <div class="empty-state"><p>No hay servicios en el historial aún.</p></div>
+  {% endif %}
+{% endif %}
+
+<script>
+function toggleRechazo(id) {
+  const f = document.getElementById('rechazo-' + id);
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+function toggleCancelacion(id) {
+  const f = document.getElementById('cancelar-' + id);
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+function validarCancelacion(form) {
+  const m = form.querySelector('[name=motivo]').value.trim();
+  if (!m) { alert('El motivo de cancelación es obligatorio.'); return false; }
+  return confirm('¿Confirmás la cancelación del servicio?');
+}
+</script>
+{% endblock %}

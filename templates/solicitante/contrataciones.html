@@ -1,0 +1,198 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'servicios' %}
+{% block titulo %}Mis Servicios{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <h1>Mis Servicios</h1>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <a href="{{ url_for('solicitante.contrataciones', tab='pendientes') }}"
+     class="tab {{ 'tab-active' if tab == 'pendientes' }}">Pendientes</a>
+  <a href="{{ url_for('solicitante.contrataciones', tab='activos') }}"
+     class="tab {{ 'tab-active' if tab == 'activos' }}">Activos</a>
+  <a href="{{ url_for('solicitante.contrataciones', tab='historial') }}"
+     class="tab {{ 'tab-active' if tab == 'historial' }}">Historial</a>
+</div>
+
+{% if not rows %}
+  <div class="empty-state">
+    <div class="empty-state__icon">
+      {% if tab == 'pendientes' %}📤{% elif tab == 'activos' %}✅{% else %}📋{% endif %}
+    </div>
+    <p>
+      {% if tab == 'pendientes' %}No tenés solicitudes esperando respuesta.
+      {% elif tab == 'activos' %}No tenés servicios activos en este momento.
+      {% else %}No hay servicios en el historial.
+      {% endif %}
+    </p>
+  </div>
+{% endif %}
+
+{% if tab == 'pendientes' %}
+  {% for s in rows %}
+  <div class="service-card">
+    <div class="service-card__header">
+      {% if s.foto_url %}
+        <img src="{{ s.foto_url }}" alt="{{ s.prestador_nombre }}" class="service-card__avatar">
+      {% else %}
+        <div class="service-card__avatar--placeholder">👤</div>
+      {% endif %}
+      <div style="flex:1;">
+        <div class="service-card__name">{{ s.prestador_nombre }}</div>
+        <div class="service-card__cat">{{ s.categoria_nombre or '—' }}</div>
+      </div>
+      <span class="badge badge-pending">Esperando</span>
+    </div>
+    <div class="service-card__row">📅 {{ s.fecha_servicio }} &nbsp; 🕐 {{ s.hora_inicio }} a {{ s.hora_fin }}</div>
+    {% if s.fecha_solicitud %}
+    <div class="service-card__row elapsed-time">
+      Enviado: {{ s.fecha_solicitud[:10] }}
+    </div>
+    {% endif %}
+    <div class="service-card__actions">
+      <!-- Cancelar -->
+      <button type="button" class="btn btn-danger btn-sm"
+              onclick="toggleCancelForm('cancel-{{ s.id }}')">Cancelar solicitud</button>
+    </div>
+    <!-- Formulario cancelar inline -->
+    <div class="cancel-form-inline" id="cancel-{{ s.id }}">
+      <form method="post" action="{{ url_for('solicitante.contratacion_cancelar', sid=s.id) }}">
+        <textarea name="motivo" rows="2" placeholder="Motivo de cancelación (obligatorio)"></textarea>
+        <button type="submit" class="btn btn-danger-solid btn-sm btn-full">Confirmar cancelación</button>
+      </form>
+    </div>
+  </div>
+  {% endfor %}
+
+{% elif tab == 'activos' %}
+  {% for s in rows %}
+
+  {# — Confirmación pendiente del solicitante — #}
+  {% if s.prestador_confirmo_fin and not s.solicitante_confirmo_fin and not s.conflicto %}
+  <div style="background:#f3e8fb;border:2px solid #7D3C98;border-radius:14px;padding:1.25rem;margin-bottom:1rem;">
+    <div style="font-weight:700;font-size:1rem;margin-bottom:.35rem;color:#5b2c6f;">✅ El prestador confirmó el fin del servicio</div>
+    <div style="font-size:.88rem;color:#555;margin-bottom:.75rem;">
+      {{ s.prestador_nombre }} indicó que el servicio del {{ s.fecha_servicio }} fue completado.
+      Confirmá para cerrar el cobro automáticamente.
+    </div>
+    <form method="POST"
+          action="{{ url_for('solicitante.contratacion_confirmar_fin', sid=s.id) }}"
+          onsubmit="return confirm('¿Confirmás que el servicio fue completado? Se procesará el cobro automáticamente.')">
+      <button type="submit"
+              style="display:block;width:100%;background:#7D3C98;color:#fff;text-align:center;
+                     padding:.75rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;font-size:.95rem;margin-bottom:.5rem;">
+        ✅ Confirmar que el servicio finalizó
+      </button>
+    </form>
+    <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}"
+       style="display:block;text-align:center;color:#e67e22;font-weight:600;font-size:.85rem;text-decoration:none;">
+      ⚠️ Reportar un problema
+    </a>
+  </div>
+  {% elif s.conflicto %}
+  <div style="background:#fff3e0;border:2px solid #e67e22;border-radius:14px;padding:1rem;margin-bottom:1rem;font-size:.88rem;color:#7d3c00;">
+    ⚠️ <strong>{{ s.prestador_nombre }}</strong> — Conflicto reportado. El equipo de AMPARO lo está revisando.
+    <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}"
+       style="display:block;margin-top:.5rem;color:#e67e22;font-weight:600;text-decoration:none;">Ver detalle →</a>
+  </div>
+  {% else %}
+  <div class="service-card">
+    <div class="service-card__header">
+      {% if s.foto_url %}
+        <img src="{{ s.foto_url }}" alt="{{ s.prestador_nombre }}" class="service-card__avatar">
+      {% else %}
+        <div class="service-card__avatar--placeholder">👤</div>
+      {% endif %}
+      <div style="flex:1;">
+        <div class="service-card__name">{{ s.prestador_nombre }}</div>
+        <div class="service-card__cat">{{ s.categoria_nombre or '—' }}</div>
+      </div>
+      <span class="badge {{ 'badge-active' if s.estado == 'ACTIVO' else 'badge-accepted' }}">
+        {{ 'Activo' if s.estado == 'ACTIVO' else 'Aceptado' }}
+      </span>
+    </div>
+    <div class="service-card__row">📅 {{ s.fecha_servicio }} &nbsp; 🕐 {{ s.hora_inicio }} a {{ s.hora_fin }}</div>
+    {% if s.prestador_telefono %}
+    <div class="service-card__row">📞 <a href="tel:{{ s.prestador_telefono }}" class="link-tel">{{ s.prestador_telefono | fmt_tel }}</a></div>
+    {% endif %}
+    <div class="service-card__actions">
+      <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}"
+         class="btn btn-outline btn-sm">Ver detalle</a>
+      <button type="button" class="btn btn-danger btn-sm"
+              onclick="toggleCancelForm('cancel-{{ s.id }}')">Cancelar</button>
+    </div>
+    <div class="cancel-form-inline" id="cancel-{{ s.id }}">
+      <form method="post" action="{{ url_for('solicitante.contratacion_cancelar', sid=s.id) }}">
+        <textarea name="motivo" rows="2" placeholder="Motivo de cancelación (obligatorio)"></textarea>
+        <button type="submit" class="btn btn-danger-solid btn-sm btn-full">Confirmar cancelación</button>
+      </form>
+    </div>
+  </div>
+  {% endif %}
+
+  {% endfor %}
+
+{% else %}  {# historial #}
+  {% for s in rows %}
+  <div class="history-row">
+    <div class="history-row__main">
+      <span>{{ s.prestador_nombre }}</span>
+      <span class="badge
+        {% if s.estado == 'FINALIZADO' %}badge-done
+        {% elif s.estado == 'CANCELADO' %}badge-cancel
+        {% else %}badge-reject{% endif %}">
+        {{ s.estado.capitalize() }}
+      </span>
+    </div>
+    <div class="history-row__sub">📅 {{ s.fecha_servicio }} — {{ s.categoria_nombre or '—' }}</div>
+    {% if s.total_pagado and s.total_pagado > 0 %}
+    <div class="history-row__sub">💳 Total pagado: $ {{ "{:,.0f}".format(s.total_pagado) }}</div>
+    {% elif s.monto_acordado %}
+    <div class="history-row__sub">💳 ${{ '%.2f'|format(s.monto_acordado) }}</div>
+    {% endif %}
+    <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap;">
+      <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}"
+         class="btn btn-secondary btn-sm">Ver detalle</a>
+      {% if s.estado == 'FINALIZADO' and not s.mi_calificacion %}
+        <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}#calificar"
+           class="btn btn-primary btn-sm">Calificar ★</a>
+      {% elif s.mi_calificacion %}
+        <span style="font-size:.8rem;color:#888;padding:.35rem 0;">
+          Tu calificación: <span style="color:#f0a500;">{{ '★' * s.mi_calificacion }}</span>
+        </span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  <!-- Paginación -->
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ url_for('solicitante.contrataciones', tab='historial', page=page-1) }}" class="pag-btn">← Anterior</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+    <span class="pag-info">Página {{ page }} de {{ total_pages }}</span>
+    {% if page < total_pages %}
+      <a href="{{ url_for('solicitante.contrataciones', tab='historial', page=page+1) }}" class="pag-btn">Siguiente →</a>
+    {% else %}
+      <span></span>
+    {% endif %}
+  </div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCancelForm(id) {
+  const el = document.getElementById(id);
+  el.classList.toggle('open');
+}
+</script>
+{% endblock %}

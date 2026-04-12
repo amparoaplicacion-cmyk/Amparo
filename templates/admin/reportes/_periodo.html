@@ -1,0 +1,72 @@
+{% macro selector(periodo, desde, hasta, endpoint, extra_params='') %}
+<div class="periodo-bar">
+  <div class="periodo-btns">
+    {% for p, label in [('hoy','Hoy'),('semana','Esta semana'),('mes','Este mes'),('anio','Este año'),('personalizado','Personalizado')] %}
+    <a href="{{ url_for(endpoint, periodo=p) }}{{ extra_params }}"
+       class="periodo-btn {{ 'active' if periodo == p }}">{{ label }}</a>
+    {% endfor %}
+  </div>
+
+  {% if periodo == 'personalizado' %}
+  <form method="GET" action="{{ url_for(endpoint) }}" class="periodo-custom">
+    <input type="hidden" name="periodo" value="personalizado">
+    <label>Desde <input type="date" name="desde" value="{{ desde }}" class="date-input"></label>
+    <label>Hasta <input type="date" name="hasta" value="{{ hasta }}" class="date-input"></label>
+    <button type="submit" class="btn-aplicar">Aplicar</button>
+  </form>
+  {% endif %}
+
+  <div class="export-btns">
+    <a href="{{ url_for('admin.reporte_excel', reporte=reporte_nombre, periodo=periodo, desde=desde, hasta=hasta) }}"
+       class="btn-export btn-excel">⬇ Excel</a>
+    <a href="{{ url_for('admin.reporte_pdf', reporte=reporte_nombre, periodo=periodo, desde=desde, hasta=hasta) }}"
+       class="btn-export btn-pdf">⬇ PDF</a>
+    <button onclick="window.print()" class="btn-export btn-print">🖨 Imprimir</button>
+  </div>
+</div>
+
+<style>
+.periodo-bar {
+  display: flex; flex-wrap: wrap; gap: .75rem; align-items: center;
+  background: #fff; border: 1px solid #dde3ea; border-radius: 10px;
+  padding: .85rem 1rem; margin-bottom: 1.5rem;
+}
+.periodo-btns { display: flex; gap: .4rem; flex-wrap: wrap; flex: 1; }
+.periodo-btn {
+  padding: .35rem .85rem; border-radius: 20px; font-size: .85rem;
+  text-decoration: none; color: #1A5276; background: #f0f4f8;
+  border: 1px solid #dde3ea; transition: all .15s;
+}
+.periodo-btn.active, .periodo-btn:hover {
+  background: #1A5276; color: #fff; border-color: #1A5276;
+}
+.periodo-custom {
+  display: flex; gap: .5rem; align-items: center;
+  flex-wrap: wrap; width: 100%; margin-top: .4rem;
+}
+.periodo-custom label { font-size: .85rem; display: flex; align-items: center; gap: .35rem; }
+.date-input { border: 1px solid #ccc; border-radius: 5px; padding: .3rem .5rem; font-size: .85rem; }
+.btn-aplicar {
+  background: #1A5276; color: #fff; border: none; border-radius: 5px;
+  padding: .35rem .85rem; cursor: pointer; font-size: .85rem;
+}
+.export-btns { display: flex; gap: .4rem; flex-shrink: 0; }
+.btn-export {
+  padding: .35rem .85rem; border-radius: 6px; font-size: .82rem;
+  text-decoration: none; cursor: pointer; border: 1px solid transparent;
+  display: inline-block;
+}
+.btn-excel  { background: #d4efdf; color: #1a6b3a; border-color: #a9dfbf; }
+.btn-excel:hover { background: #a9dfbf; }
+.btn-pdf    { background: #fde8e8; color: #922b21; border-color: #f5b7b1; }
+.btn-pdf:hover { background: #f5b7b1; }
+.btn-print  { background: #f0f4f8; color: #333; border-color: #dde3ea; }
+.btn-print:hover { background: #e0e8f0; }
+
+@media print {
+  .admin-header, .admin-sidebar, .periodo-bar, .page-header .breadcrumb { display: none !important; }
+  .admin-main { margin-left: 0 !important; }
+  canvas { max-width: 100% !important; height: auto !important; }
+}
+</style>
+{% endmacro %}

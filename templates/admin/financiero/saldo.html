@@ -1,0 +1,135 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Saldo y Acumulados{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <span>Saldo y Acumulados</span>
+  </nav>
+  <h1 class="page-title">📊 Saldo y Acumulados</h1>
+</div>
+
+<!-- Saldo actual -->
+<div style="background:{% if saldo_actual >= 0 %}#eafaf1{% else %}#fdf2f2{% endif %};
+            border:2px solid {% if saldo_actual >= 0 %}#1e8449{% else %}#b03a2e{% endif %};
+            border-radius:12px;padding:1.5rem 2rem;margin-bottom:2rem;text-align:center;">
+  <div style="font-size:.9rem;color:#666;margin-bottom:.25rem;">Saldo acumulado actual</div>
+  <div style="font-size:2.4rem;font-weight:800;
+              color:{% if saldo_actual >= 0 %}#1e8449{% else %}#b03a2e{% endif %};">
+    $ {{ '{:,.2f}'.format(saldo_actual) }}
+  </div>
+</div>
+
+<!-- Resumen acumulado -->
+{% set total_cobrado = totales | selectattr('tipo','equalto','COBRO') | map(attribute='total_entrada') | sum %}
+{% set total_penalidad = totales | selectattr('tipo','equalto','PENALIDAD') | map(attribute='total_entrada') | sum %}
+{% set total_pagado = totales | selectattr('tipo','equalto','PAGO_PRESTADOR') | map(attribute='total_salida') | sum %}
+{% set saldo_neto = total_cobrado + total_penalidad - total_pagado %}
+<div style="background:#fff;border:1px solid #d6eaf8;border-radius:12px;
+            padding:1.5rem 2rem;margin-bottom:2rem;">
+  <h2 style="font-size:1rem;color:#1A5276;margin:0 0 1rem 0;font-weight:700;">
+    Resumen acumulado total de AMPARO
+  </h2>
+  <div style="display:flex;flex-direction:column;gap:.5rem;max-width:420px;">
+    <div style="display:flex;justify-content:space-between;font-size:.95rem;">
+      <span style="color:#555;">Total cobrado a solicitantes:</span>
+      <span style="font-weight:600;color:#1e8449;">$ {{ '{:,.0f}'.format(total_cobrado + total_penalidad) }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.95rem;">
+      <span style="color:#555;">Total pagado a prestadores:</span>
+      <span style="font-weight:600;color:#b03a2e;">$ {{ '{:,.0f}'.format(total_pagado) }}</span>
+    </div>
+    <div style="border-top:2px solid #1A5276;margin:.5rem 0;"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:1rem;font-weight:700;color:#1A5276;">SALDO NETO DE AMPARO:</span>
+      <span style="font-size:1.5rem;font-weight:800;
+                   color:{% if saldo_neto >= 0 %}#1a5276{% else %}#b03a2e{% endif %};">
+        $ {{ '{:,.0f}'.format(saldo_neto) }}
+      </span>
+    </div>
+  </div>
+</div>
+
+<!-- Totales por tipo -->
+{% if totales %}
+<h2 style="font-size:1rem;color:#1A5276;margin-bottom:.75rem;">Totales por tipo de movimiento</h2>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+            gap:1rem;margin-bottom:2rem;">
+  {% set tipo_styles = {
+    'COBRO':                 ('#eafaf1','#1e8449','🟢'),
+    'PAGO_PRESTADOR':        ('#fef9f0','#ca6f1e','🟠'),
+    'TRANSFERENCIA_PERSONAL':('#ebf5fb','#1a5276','🔵'),
+    'PENALIDAD':             ('#fdf2f2','#b03a2e','🔴'),
+  } %}
+  {% for t in totales %}
+  {% set sty = tipo_styles.get(t.tipo, ('#f9f9f9','#333','⚪')) %}
+  <div style="background:{{ sty[0] }};border:1px solid {{ sty[1] }}33;
+              border-radius:10px;padding:1rem 1.25rem;">
+    <div style="font-size:.8rem;font-weight:700;color:{{ sty[1] }};margin-bottom:.5rem;">
+      {{ sty[2] }} {{ t.tipo }}
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:.2rem;">
+      <span style="color:#555;">Entradas:</span>
+      <span style="font-weight:600;color:#1e8449;">$ {{ '{:,.0f}'.format(t.total_entrada or 0) }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-bottom:.2rem;">
+      <span style="color:#555;">Salidas:</span>
+      <span style="font-weight:600;color:#b03a2e;">$ {{ '{:,.0f}'.format(t.total_salida or 0) }}</span>
+    </div>
+    <div style="display:flex;justify-content:space-between;font-size:.82rem;color:#888;margin-top:.4rem;">
+      <span>Cantidad:</span>
+      <span>{{ t.cantidad }}</span>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Resumen mensual -->
+{% if por_mes %}
+<h2 style="font-size:1rem;color:#1A5276;margin-bottom:.75rem;">Resumen mensual (últimos 12 meses)</h2>
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;background:#fff;
+              border:1px solid #dde3ea;border-radius:10px;overflow:hidden;">
+  <thead>
+    <tr style="background:#1A5276;color:#fff;">
+      <th style="padding:.7rem 1rem;text-align:left;font-size:.85rem;">Mes</th>
+      <th style="padding:.7rem 1rem;text-align:right;font-size:.85rem;">Entradas $</th>
+      <th style="padding:.7rem 1rem;text-align:right;font-size:.85rem;">Salidas $</th>
+      <th style="padding:.7rem 1rem;text-align:right;font-size:.85rem;">Neto $</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in por_mes %}
+    {% set neto = (m.entradas or 0) - (m.salidas or 0) %}
+    <tr style="border-bottom:1px solid #f0f0f0;">
+      <td style="padding:.65rem 1rem;font-weight:600;">{{ m.mes }}</td>
+      <td style="padding:.65rem 1rem;text-align:right;color:#1e8449;">
+        $ {{ '{:,.0f}'.format(m.entradas or 0) }}
+      </td>
+      <td style="padding:.65rem 1rem;text-align:right;color:#b03a2e;">
+        $ {{ '{:,.0f}'.format(m.salidas or 0) }}
+      </td>
+      <td style="padding:.65rem 1rem;text-align:right;font-weight:700;
+                 color:{% if neto >= 0 %}#1a5276{% else %}#b03a2e{% endif %};">
+        $ {{ '{:,.0f}'.format(neto) }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+{% else %}
+<div style="text-align:center;padding:2rem;color:#888;background:#fff;
+            border:1px solid #dde3ea;border-radius:10px;">
+  Sin movimientos registrados todavía.
+</div>
+{% endif %}
+
+<style>
+.breadcrumb { font-size:.85rem;color:#888;margin-bottom:.5rem; }
+.breadcrumb a { color:#1A5276;text-decoration:none; }
+.page-header { margin-bottom:1.75rem; }
+</style>
+{% endblock %}

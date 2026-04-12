@@ -1,0 +1,77 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}{{ 'Editar Zona' if zona else 'Nueva Zona' }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion_zonas') }}">Zonas Geográficas</a> &rsaquo;
+    <span>{{ 'Editar' if zona else 'Nueva zona' }}</span>
+  </nav>
+  <h1 class="page-title">
+    📍 {{ 'Editar zona: ' ~ zona.nombre if zona else 'Nueva zona' }}
+  </h1>
+</div>
+
+<div class="card-form">
+  <form method="POST"
+        action="{{ url_for('admin.configuracion_zona_editar', zid=zona.id) if zona else url_for('admin.configuracion_zona_nueva') }}">
+
+    <div class="form-group">
+      <label for="nombre">Nombre <span class="req">*</span></label>
+      <input type="text" id="nombre" name="nombre"
+             value="{{ zona.nombre if zona else '' }}"
+             class="form-control" required
+             placeholder="Ej: Norte GBA">
+    </div>
+
+    <div class="form-group">
+      <label for="ciudad">Ciudad</label>
+      <input type="text" id="ciudad" name="ciudad"
+             value="{{ zona.ciudad if zona else '' }}"
+             class="form-control" placeholder="Ej: Buenos Aires">
+    </div>
+
+    <div class="form-group">
+      <label for="provincia">Provincia</label>
+      <input type="text" id="provincia" name="provincia"
+             value="{{ zona.provincia if zona else '' }}"
+             class="form-control" placeholder="Ej: Buenos Aires">
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('admin.configuracion_zonas') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">
+        {{ 'Guardar cambios' if zona else 'Crear zona' }}
+      </button>
+    </div>
+  </form>
+</div>
+
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.card-form {
+  background: #fff; border: 1px solid #dde3ea;
+  border-radius: 10px; padding: 2rem; max-width: 480px;
+}
+.form-group { margin-bottom: 1.25rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: .4rem; color: #222; }
+.req { color: #c0392b; }
+.form-control {
+  width: 100%; padding: .55rem .75rem;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: .95rem; box-sizing: border-box;
+}
+.form-control:focus { outline: none; border-color: #1A5276; box-shadow: 0 0 0 3px rgba(26,82,118,.15); }
+.form-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
+.btn { padding: .55rem 1.4rem; border-radius: 6px; font-size: .95rem; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1A5276; color: #fff; }
+.btn-primary:hover { background: #154360; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-secondary:hover { background: #e0e0e0; }
+</style>
+{% endblock %}

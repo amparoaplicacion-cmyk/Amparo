@@ -1,0 +1,37 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = '' %}
+{% block titulo %}Notificaciones{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <h1>Notificaciones</h1>
+</div>
+
+{% if not notifs %}
+  <div class="empty-state">
+    <div class="empty-state__icon">🔔</div>
+    <p>No tenés notificaciones aún.</p>
+  </div>
+{% endif %}
+
+{% for n in notifs %}
+<div class="notif-item {{ 'notif-item--unread' if not n.leida }}">
+  <div class="notif-item__icon">
+    {% if n.tipo == 'servicio_aceptado' %}✅
+    {% elif n.tipo == 'servicio_rechazado' %}❌
+    {% elif n.tipo == 'servicio_cancelado' %}🚫
+    {% elif n.tipo == 'nueva_calificacion' %}★
+    {% elif n.tipo == 'nuevo_reclamo' %}⚠️
+    {% else %}🔔{% endif %}
+  </div>
+  <div style="flex:1;">
+    <div class="notif-item__title">{{ n.titulo }}</div>
+    {% if n.mensaje %}
+      <div class="notif-item__msg">{{ n.mensaje }}</div>
+    {% endif %}
+    <div class="notif-item__fecha">{{ n.fecha[:16].replace('T', ' ') if n.fecha }}</div>
+  </div>
+</div>
+{% endfor %}
+
+{% endblock %}

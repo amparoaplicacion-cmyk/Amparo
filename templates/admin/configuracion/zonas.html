@@ -1,0 +1,122 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Zonas Geográficas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Zonas Geográficas</span>
+  </nav>
+  <div class="header-row">
+    <h1 class="page-title">📍 Zonas Geográficas</h1>
+    <a href="{{ url_for('admin.configuracion_zona_nueva') }}" class="btn btn-primary">+ Nueva zona</a>
+  </div>
+</div>
+
+<div class="table-card">
+  {% if zonas %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Ciudad</th>
+        <th>Provincia</th>
+        <th>Estado</th>
+        <th>Prestadores activos</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for z in zonas %}
+      <tr>
+        <td><strong>{{ z.nombre }}</strong></td>
+        <td>{{ z.ciudad or '—' }}</td>
+        <td>{{ z.provincia or '—' }}</td>
+        <td>
+          {% if z.activa %}
+            <span class="badge badge-ok">Activa</span>
+          {% else %}
+            <span class="badge badge-off">Inactiva</span>
+          {% endif %}
+        </td>
+        <td class="text-center">{{ z.cant_prestadores }}</td>
+        <td class="actions-cell">
+          <a href="{{ url_for('admin.configuracion_zona_editar', zid=z.id) }}"
+             class="btn-sm btn-edit">Editar</a>
+
+          <form method="POST"
+                action="{{ url_for('admin.configuracion_zona_toggle', zid=z.id) }}"
+                style="display:inline;"
+                {% if z.activa and z.cant_prestadores > 0 %}
+                  onsubmit="return confirm('Esta zona tiene {{ z.cant_prestadores }} prestador(es) activo(s). No se puede desactivar.');"
+                {% elif z.activa %}
+                  onsubmit="return confirm('¿Desactivar la zona {{ z.nombre }}?');"
+                {% else %}
+                  onsubmit="return confirm('¿Activar la zona {{ z.nombre }}?');"
+                {% endif %}>
+            <button type="submit" class="btn-sm {{ 'btn-deactivate' if z.activa else 'btn-activate' }}">
+              {{ 'Desactivar' if z.activa else 'Activar' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">
+    <p>No hay zonas registradas aún.</p>
+    <a href="{{ url_for('admin.configuracion_zona_nueva') }}" class="btn btn-primary">Crear primera zona</a>
+  </div>
+  {% endif %}
+</div>
+
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.header-row { display: flex; justify-content: space-between; align-items: center; }
+
+.table-card {
+  background: #fff; border: 1px solid #dde3ea;
+  border-radius: 10px; overflow: hidden;
+}
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th {
+  background: #f0f4f8; color: #1A5276;
+  font-size: .85rem; text-align: left;
+  padding: .75rem 1rem; border-bottom: 1px solid #dde3ea;
+}
+.data-table td { padding: .75rem 1rem; border-bottom: 1px solid #f0f0f0; font-size: .9rem; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr:hover td { background: #f9fbfd; }
+.text-center { text-align: center; }
+
+.badge {
+  display: inline-block; padding: .2rem .6rem;
+  border-radius: 20px; font-size: .8rem; font-weight: 600;
+}
+.badge-ok  { background: #d4efdf; color: #1e8449; }
+.badge-off { background: #fadbd8; color: #c0392b; }
+
+.actions-cell { display: flex; gap: .5rem; align-items: center; }
+.btn-sm {
+  padding: .25rem .7rem; border-radius: 5px;
+  font-size: .82rem; cursor: pointer; border: none;
+  text-decoration: none; display: inline-block;
+}
+.btn-edit  { background: #eaf2ff; color: #1A5276; }
+.btn-edit:hover { background: #d4e6f1; }
+.btn-deactivate { background: #fde8e8; color: #c0392b; }
+.btn-deactivate:hover { background: #fadbd8; }
+.btn-activate { background: #d4efdf; color: #1e8449; }
+.btn-activate:hover { background: #a9dfbf; }
+
+.empty-state { padding: 3rem; text-align: center; color: #888; }
+.btn { padding: .55rem 1.25rem; border-radius: 6px; font-size: .9rem; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1A5276; color: #fff; }
+.btn-primary:hover { background: #154360; }
+</style>
+{% endblock %}

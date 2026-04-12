@@ -1,0 +1,589 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}{{ p['nombre'] }} {{ p['apellido'] }} — Prestador{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">{{ p['nombre'] }} {{ p['apellido'] }}</h1>
+  <a href="{{ url_for('admin.prestadores') }}" class="btn btn-secondary">← Volver al listado</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 1 — DATOS PERSONALES Y PERFIL
+     ═══════════════════════════════════════════════════════ -->
+<div class="prestador-hero card">
+  <div class="prestador-hero__foto">
+    {% if p['foto_url'] %}
+      {% if p['foto_url'].startswith('/') or p['foto_url'].startswith('http') %}
+      <img src="{{ p['foto_url'] }}" class="avatar-lg" alt="Foto de perfil">
+      {% else %}
+      <img src="{{ url_for('static', filename='uploads/prestadores/' + p['foto_url']) }}"
+           class="avatar-lg" alt="Foto de perfil">
+      {% endif %}
+    {% else %}
+      <div class="avatar-lg avatar-lg--default">👤</div>
+    {% endif %}
+  </div>
+  <div class="prestador-hero__info">
+    <div class="detail-grid" style="margin-bottom:0">
+      <div>
+        <div class="detail-row"><span class="detail-label">Email</span><span class="detail-value">{{ p['email'] }}</span></div>
+        <div class="detail-row"><span class="detail-label">Teléfono</span><span class="detail-value">{{ p['telefono'] | fmt_tel }}</span></div>
+        <div class="detail-row"><span class="detail-label">Categoría</span><span class="detail-value">{{ p['categoria_nombre'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Localidad</span><span class="detail-value">{{ p['localidad'] or '—' }}{% if p['provincia'] %}, {{ p['provincia'] }}{% endif %}</span></div>
+        <div class="detail-row"><span class="detail-label">Código postal</span><span class="detail-value">{{ p['codigo_postal'] or '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Radio cobertura</span><span class="detail-value">{{ p['radio_cobertura_km'] or 10 }} km</span></div>
+        {% if p['latitud'] and p['longitud'] %}<div class="detail-row"><span class="detail-label">GPS</span><span class="detail-value" style="font-size:.8rem;color:#888;">{{ '%.5f'|format(p['latitud']|float) }}, {{ '%.5f'|format(p['longitud']|float) }}</span></div>{% endif %}
+      </div>
+      <div>
+        <div class="detail-row"><span class="detail-label">Experiencia</span><span class="detail-value">{{ p['experiencia_anios'] }} año{{ 's' if p['experiencia_anios'] != 1 }}</span></div>
+        <div class="detail-row"><span class="detail-label">💲 Tarifa por hora</span><span class="detail-value">
+          {% if p['tarifa_hora'] and p['tarifa_hora'] > 0 %}
+            $ {{ '%.2f'|format(p['tarifa_hora']) }}
+          {% else %}
+            <span style="color:#888;">No definida</span>
+          {% endif %}
+        </span></div>
+        <div class="detail-row"><span class="detail-label">Estado del perfil</span>
+          <span class="detail-value">
+            <span class="badge badge-perfil-{{ p['estado_perfil']|lower|replace('_','-') }}">{{ p['estado_perfil']|replace('_',' ') }}</span>
+          </span>
+        </div>
+        <div class="detail-row"><span class="detail-label">Fecha de alta</span><span class="detail-value">{{ p['fecha_alta'][:10] if p['fecha_alta'] else '—' }}</span></div>
+        <div class="detail-row"><span class="detail-label">Fecha aprobación</span><span class="detail-value">{{ p['fecha_aprobacion'][:10] if p['fecha_aprobacion'] else '—' }}</span></div>
+      </div>
+    </div>
+    {% if p['descripcion'] %}
+    <div style="margin-top:12px; font-size:13px; color:#5D6D7E; border-top:1px solid #EAECEE; padding-top:10px;">
+      <strong>Descripción:</strong> {{ p['descripcion'] }}
+    </div>
+    {% endif %}
+  </div>
+  <div style="margin-top:16px;">
+    <a href="{{ url_for('admin.prestador_editar', pid=p['id']) }}" class="btn btn-primary">Editar datos</a>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 2 — VERIFICACIÓN DE DOCUMENTACIÓN
+     ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">Verificación de documentación</div>
+
+  {% if todos_verificados and p['estado_perfil'] != 'APROBADO' %}
+  <div class="alert alert-success" style="margin-bottom:16px;">
+    ✓ Los 3 documentos están verificados. Podés aprobar el perfil completo desde el Bloque 3.
+  </div>
+  {% endif %}
+
+  <div class="doc-grid">
+
+    <!-- ── DNI ── -->
+    <div class="doc-block">
+      <div class="doc-block__header">
+        <span class="doc-block__title">DNI</span>
+        <span class="badge badge-doc-{{ p['dni_verificado']|lower }}">{{ p['dni_verificado'] }}</span>
+      </div>
+
+      {% if p['numero_dni'] %}
+      <div style="font-size:13px; color:#444; margin-bottom:8px;">
+        Número ingresado: <strong>{{ p['numero_dni'] }}</strong>
+      </div>
+      {% else %}
+      <div style="font-size:13px; color:#e67e22; margin-bottom:8px;">
+        ⚠️ El prestador no ingresó su número de DNI
+      </div>
+      {% endif %}
+
+      <!-- Foto frente -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:12px; color:#666; margin-bottom:4px; font-weight:600;">Foto del DNI (frente):</div>
+        {% if p['dni_foto_frente_url'] %}
+        <a href="{{ p['dni_foto_frente_url'] }}" target="_blank">
+          <img src="{{ p['dni_foto_frente_url'] }}" style="max-width:220px;border-radius:6px;border:1px solid #ccc;" alt="Frente DNI">
+        </a>
+        {% else %}
+        <div style="font-size:12px; color:#e67e22;">⚠️ El prestador no subió la foto del frente del DNI</div>
+        {% endif %}
+      </div>
+
+      <!-- Selfie con DNI -->
+      <div style="margin-bottom:10px;">
+        <div style="font-size:12px; color:#666; margin-bottom:4px; font-weight:600;">Selfie sosteniendo el DNI:</div>
+        {% if p['dni_foto_selfie_url'] %}
+        <a href="{{ p['dni_foto_selfie_url'] }}" target="_blank">
+          <img src="{{ p['dni_foto_selfie_url'] }}" style="width:110px;height:110px;object-fit:cover;border-radius:50%;border:2px solid #2E86C1;" alt="Selfie DNI">
+        </a>
+        {% else %}
+        <div style="font-size:12px; color:#e67e22;">⚠️ El prestador no subió la selfie con el DNI</div>
+        {% endif %}
+      </div>
+
+      <!-- Nota para el admin -->
+      <div style="background:#fef9e7;border:1px solid #f9e79f;border-radius:6px;padding:8px;font-size:11px;color:#7d6608;margin-bottom:8px;line-height:1.5;">
+        La verificación es manual. Compará el número de DNI con la foto del documento y verificá que la selfie corresponde a la misma persona.
+        <!-- TODO: Integrar API RENAPER para verificación automática cuando el volumen de prestadores lo justifique. Contacto: https://www.argentina.gob.ar/renaper -->
+      </div>
+
+      <div class="doc-block__actions">
+        {% if p['dni_verificado'] != 'VERIFICADO' and p['numero_dni'] and p['dni_foto_frente_url'] and p['dni_foto_selfie_url'] %}
+        <form method="POST"
+              action="{{ url_for('admin.prestador_doc_aprobar', pid=p['id'], doc='dni') }}"
+              style="display:inline"
+              onsubmit="return confirm('¿Aprobar DNI?')">
+          <button type="submit" class="btn btn-success" style="font-size:13px; padding:6px 14px;">✓ Aprobar</button>
+        </form>
+        {% elif p['dni_verificado'] != 'VERIFICADO' %}
+        <span style="font-size:12px; color:#e67e22;">⚠️ Falta número o fotos del DNI para poder aprobar</span>
+        {% endif %}
+        {% if p['dni_verificado'] != 'RECHAZADO' %}
+        <button type="button" class="btn btn-danger" style="font-size:13px; padding:6px 14px;"
+                onclick="abrirModal('{{ url_for('admin.prestador_doc_rechazar', pid=p['id'], doc='dni') }}','Rechazar DNI')">
+          ✗ Rechazar
+        </button>
+        {% endif %}
+        {% if p['dni_verificado'] == 'VERIFICADO' %}
+        <span style="color:#1E8449; font-size:13px; font-weight:bold;">✓ Verificado</span>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ── ANTECEDENTES ── -->
+    <div class="doc-block">
+      <div class="doc-block__header">
+        <span class="doc-block__title">Certificado de Antecedentes</span>
+        <span class="badge badge-doc-{{ p['antecedentes_ok']|lower }}">{{ p['antecedentes_ok'] }}</span>
+      </div>
+
+      {% if p['antecedentes_ok'] == 'VERIFICADO' and p['antecedentes_fecha_vencimiento'] %}
+        {% if p['antecedentes_fecha_vencimiento'] < hoy_iso %}
+        <div style="background:#fdecea;border:1px solid #e74c3c;border-radius:6px;padding:10px;margin-bottom:10px;font-size:13px;color:#c0392b;">
+          ⚠️ Certificado <strong>VENCIDO</strong> el {{ p['antecedentes_fecha_vencimiento'].split('-')|reverse|join('/') }}. El prestador no puede tomar nuevos servicios hasta renovarlo.
+        </div>
+        {% elif p['antecedentes_fecha_vencimiento'] <= alert_iso %}
+        <div style="background:#fef5e7;border:1px solid #e67e22;border-radius:6px;padding:10px;margin-bottom:10px;font-size:13px;color:#d35400;">
+          ⏰ El certificado vence el {{ p['antecedentes_fecha_vencimiento'].split('-')|reverse|join('/') }}. Recordá al prestador que lo renueve.
+        </div>
+        {% endif %}
+      {% endif %}
+
+      {% if p['antecedentes_pdf_url'] %}
+      <div style="margin-bottom:10px;">
+        <div style="font-size:12px;color:#666;margin-bottom:4px;font-weight:600;">Archivo:</div>
+        <a href="{{ url_for('admin.prestador_antecedentes_ver', pid=p['id']) }}"
+           target="_blank" class="btn btn-secondary" style="font-size:12px;padding:4px 10px;">
+          📄 Ver PDF
+        </a>
+      </div>
+      {% if p['antecedentes_fecha_emision'] %}
+      <div style="font-size:13px;color:#444;margin-bottom:2px;">
+        Fecha de emisión: <strong>{{ p['antecedentes_fecha_emision'].split('-')|reverse|join('/') }}</strong>
+      </div>
+      {% endif %}
+      {% if p['antecedentes_fecha_vencimiento'] %}
+      <div style="font-size:13px;color:#444;margin-bottom:8px;">
+        Fecha de vencimiento: <strong>{{ p['antecedentes_fecha_vencimiento'].split('-')|reverse|join('/') }}</strong>
+      </div>
+      {% endif %}
+      {% else %}
+      <div style="font-size:12px;color:#666;margin-bottom:8px;line-height:1.5;">
+        El prestador solicita el certificado al Registro Nacional de Reincidencia para
+        ser enviado a <strong>antecedentes@amparo.com</strong>.
+      </div>
+      {% endif %}
+
+      <!-- Formulario subida de PDF -->
+      <form method="POST"
+            action="{{ url_for('admin.prestador_antecedentes_subir', pid=p['id']) }}"
+            enctype="multipart/form-data"
+            style="margin-top:10px;padding-top:10px;border-top:1px solid #eee;">
+        <div style="font-size:12px;font-weight:600;color:#555;margin-bottom:6px;">
+          📤 {{ 'Reemplazar' if p['antecedentes_pdf_url'] else 'Subir' }} certificado
+        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end;">
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:2px;">Archivo PDF <span style="color:red">*</span></div>
+            <input type="file" name="antecedentes_pdf" accept=".pdf" required
+                   style="font-size:12px;">
+          </div>
+          <div>
+            <div style="font-size:11px;color:#888;margin-bottom:2px;">Fecha de emisión <span style="color:red">*</span></div>
+            <input type="date" name="fecha_emision" required
+                   style="font-size:12px;padding:4px 6px;border:1px solid #ccc;border-radius:4px;">
+          </div>
+          <button type="submit" class="btn btn-success" style="font-size:12px;padding:6px 12px;"
+                  onclick="return confirm('¿Subir este certificado y marcarlo como VERIFICADO?')">
+            ✓ Subir y verificar
+          </button>
+        </div>
+      </form>
+
+      <div class="doc-block__actions" style="margin-top:10px;">
+        {% if p['antecedentes_ok'] != 'RECHAZADO' %}
+        <button type="button" class="btn btn-danger" style="font-size:13px;padding:6px 14px;"
+                onclick="abrirModal('{{ url_for('admin.prestador_doc_rechazar', pid=p['id'], doc='antecedentes') }}','Rechazar Certificado de Antecedentes')">
+          ✗ Rechazar
+        </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ── CERTIFICADOS DE FORMACIÓN ── -->
+    <div class="doc-block">
+      <div class="doc-block__header">
+        <span class="doc-block__title">Certificados de Formación</span>
+        <span class="badge badge-doc-{{ p['certificados_ok']|lower }}">{{ p['certificados_ok'] }}</span>
+      </div>
+      {% if p['certificado_url'] %}
+      <div style="font-size:13px; margin-bottom:8px;">
+        📄 <a href="{{ p['certificado_url'] }}" target="_blank" style="color:#1A5276;">Ver archivo subido</a>
+      </div>
+      {% else %}
+      <div style="font-size:12px; color:#666; margin-bottom:8px;">
+        Pendiente de recepción por email (<strong>certificados@amparo.com</strong>) o subida de archivo.
+      </div>
+      {% endif %}
+      <div class="doc-block__actions">
+        {% if p['certificados_ok'] != 'VERIFICADO' %}
+        <form method="POST"
+              action="{{ url_for('admin.prestador_doc_aprobar', pid=p['id'], doc='certificados') }}"
+              style="display:inline"
+              onsubmit="return confirm('¿Aprobar Certificados de Formación?')">
+          <button type="submit" class="btn btn-success" style="font-size:13px; padding:6px 14px;">✓ Aprobar</button>
+        </form>
+        {% endif %}
+        {% if p['certificados_ok'] != 'RECHAZADO' %}
+        <button type="button" class="btn btn-danger" style="font-size:13px; padding:6px 14px;"
+                onclick="abrirModal('{{ url_for('admin.prestador_doc_rechazar', pid=p['id'], doc='certificados') }}','Rechazar Certificados de Formación')">
+          ✗ Rechazar
+        </button>
+        {% endif %}
+        {% if p['certificados_ok'] == 'VERIFICADO' %}
+        <span style="color:#1E8449; font-size:13px; font-weight:bold;">✓ Verificado</span>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 3 — ESTADO DEL PERFIL
+     ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">Estado del perfil</div>
+
+  <div style="display:flex; align-items:center; gap:16px; margin-bottom:20px;">
+    <span style="font-size:15px;">Estado actual:</span>
+    <span class="badge badge-perfil-{{ p['estado_perfil']|lower|replace('_','-') }}" style="font-size:13px; padding:5px 12px;">
+      {{ p['estado_perfil']|replace('_', ' ') }}
+    </span>
+  </div>
+
+  {% if p['motivo_rechazo'] %}
+  <div class="alert alert-error" style="margin-bottom:16px;">
+    <strong>Motivo del último rechazo/suspensión:</strong> {{ p['motivo_rechazo'] }}
+  </div>
+  {% endif %}
+
+  <div class="detail-actions">
+
+    {% if todos_verificados and p['estado_perfil'] in ('EN_REVISION', 'RECHAZADO') %}
+    <form method="POST"
+          action="{{ url_for('admin.prestador_aprobar', pid=p['id']) }}"
+          onsubmit="return confirm('¿Aprobar el perfil completo de este prestador?')">
+      <button type="submit" class="btn btn-success">✓ Aprobar perfil completo</button>
+    </form>
+    {% endif %}
+
+    {% if p['estado_perfil'] not in ('RECHAZADO',) %}
+    <button type="button" class="btn btn-danger"
+            onclick="abrirModal(
+              '{{ url_for('admin.prestador_rechazar', pid=p['id']) }}',
+              'Rechazar el perfil de {{ p['nombre'] }} {{ p['apellido'] }}')">
+      Rechazar perfil
+    </button>
+    {% endif %}
+
+    {% if p['estado_perfil'] == 'APROBADO' %}
+    <button type="button" class="btn btn-warning"
+            onclick="abrirModal(
+              '{{ url_for('admin.prestador_suspender', pid=p['id']) }}',
+              'Suspender a {{ p['nombre'] }} {{ p['apellido'] }}')">
+      Suspender
+    </button>
+    {% endif %}
+
+    {% if p['estado_perfil'] == 'SUSPENDIDO' %}
+    <form method="POST"
+          action="{{ url_for('admin.prestador_reactivar', pid=p['id']) }}"
+          onsubmit="return confirm('¿Reactivar el perfil de este prestador?')">
+      <button type="submit" class="btn btn-success">Reactivar</button>
+    </form>
+    {% endif %}
+
+  </div>
+
+  <div style="font-size:12px; color:#95A5A6; margin-top:8px;">
+    El historial completo de cambios de estado estará disponible próximamente.
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 4 — DATOS DE COBRO
+     ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">💰 Datos de cobro</div>
+  {% if p['cbu'] or p['email_mp'] %}
+    {% if p['cbu'] %}
+    <div class="detail-row">
+      <span class="detail-label">Transferencia bancaria</span>
+      <span class="detail-value"><strong>CBU:</strong> {{ p['cbu'] }}
+        {% if p['metodo_cobro'] == 'transferencia' and p['alias_mp'] %} · Alias: {{ p['alias_mp'] }}{% endif %}
+      </span>
+    </div>
+    {% endif %}
+    {% if p['email_mp'] %}
+    <div class="detail-row">
+      <span class="detail-label">Mercado Pago</span>
+      <span class="detail-value"><strong>Email:</strong> {{ p['email_mp'] }}
+        {% if p['metodo_cobro'] == 'mercadopago' and p['alias_mp'] %} · Alias: {{ p['alias_mp'] }}{% endif %}
+      </span>
+    </div>
+    {% endif %}
+    <div class="detail-row">
+      <span class="detail-label">Método preferido</span>
+      <span class="detail-value">{{ '🏦 Transferencia bancaria' if p['metodo_cobro'] == 'transferencia' else '💳 Mercado Pago' }}</span>
+    </div>
+  {% else %}
+  <div class="alert alert-error" style="margin:0;">
+    ⚠️ El prestador no cargó sus datos de cobro. No se puede liquidar hasta que los complete.
+  </div>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 5 — INFORMACIÓN FISCAL
+     ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">📄 Información fiscal</div>
+  {% set cond_labels = {'monotributista': 'Monotributista', 'relacion_dependencia': 'Relación de dependencia', 'no_informada': 'No informada'} %}
+  <div class="detail-row">
+    <span class="detail-label">Condición fiscal</span>
+    <span class="detail-value">{{ cond_labels.get(p['condicion_fiscal'] or 'no_informada', 'No informada') }}</span>
+  </div>
+  {% if p['cuit'] %}
+  <div class="detail-row">
+    <span class="detail-label">CUIT</span>
+    <span class="detail-value">{{ p['cuit'] }}</span>
+  </div>
+  {% endif %}
+  <div class="detail-row">
+    <span class="detail-label">Estado factura</span>
+    <span class="detail-value">
+      {% if p['factura_requerida'] %}
+        <span style="color:#e67e22;font-weight:bold;">⚠️ Requerida</span>
+      {% else %}
+        <span style="color:#1E8449;font-weight:bold;">✓ No requerida</span>
+      {% endif %}
+    </span>
+  </div>
+  <div class="detail-row">
+    <span class="detail-label">Facturado este mes</span>
+    <span class="detail-value">$ {{ '{:,.0f}'.format(monto_mes) }}
+      <span style="font-size:12px;color:#888;">/ límite $ {{ '{:,.0f}'.format(factura_limite) }}</span>
+    </span>
+  </div>
+  {% if p['factura_requerida'] %}
+  <div style="margin-top:12px;">
+    <form method="POST"
+          action="{{ url_for('admin.prestador_factura_recibida', pid=p['id']) }}"
+          onsubmit="return confirm('¿Confirmar recepción de factura?')">
+      <button type="submit" class="btn btn-success" style="font-size:13px; padding:6px 14px;">
+        ✓ Factura recibida
+      </button>
+    </form>
+  </div>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 6 — CURRICULUM VITAE
+     ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">📋 Curriculum Vitae</div>
+  {% if p['cv_url'] %}
+  <div class="detail-row">
+    <span class="detail-label">Archivo subido</span>
+    <span class="detail-value">
+      <a href="{{ p['cv_url'] }}" target="_blank" class="btn btn-secondary" style="font-size:13px; padding:5px 12px;">
+        📄 Ver CV
+      </a>
+    </span>
+  </div>
+  {% elif p['cv_email_enviado'] %}
+  <div class="detail-row">
+    <span class="detail-label">CV por email</span>
+    <span class="detail-value" style="color:#1E8449;font-weight:bold;">✓ Recibido</span>
+  </div>
+  {% else %}
+  <div style="color:#888;font-size:13px;margin-bottom:12px;">Sin CV cargado.</div>
+  <form method="POST"
+        action="{{ url_for('admin.prestador_cv_recibido', pid=p['id']) }}"
+        onsubmit="return confirm('¿Marcar CV como recibido por email?')">
+    <button type="submit" class="btn btn-secondary" style="font-size:13px; padding:6px 14px;">
+      📧 Marcar CV recibido por email
+    </button>
+  </form>
+  {% endif %}
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     BLOQUE 7 — HISTORIAL DE SERVICIOS
+     ═══════════════════════════════════════════════════════ -->
+<div class="card">
+  <div class="section-title">
+    Historial de servicios
+    {% if promedio %}
+      &nbsp;—&nbsp;
+      <span style="font-size:13px; font-weight:normal; color:#5D6D7E;">
+        Puntaje promedio:
+        <strong style="color:#1A5276;">{{ promedio }} ★</strong>
+      </span>
+    {% endif %}
+  </div>
+
+  {% if servicios %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Solicitante</th>
+        <th>Monto</th>
+        <th>Estado</th>
+        <th style="text-align:center;">Calificación</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in servicios %}
+      <tr>
+        <td>{{ s['fecha_servicio'] or '—' }}</td>
+        <td>{{ s['solicitante_nombre'] }}</td>
+        <td>{{ '$ {:,.0f}'.format(s['monto_acordado']) if s['monto_acordado'] else '—' }}</td>
+        <td><span class="badge badge-info">{{ s['estado'] }}</span></td>
+        <td style="text-align:center;">
+          {% if s['puntaje'] %}
+            <span style="color:#F39C12;">
+              {% for i in range(s['puntaje']) %}★{% endfor %}{% for i in range(5 - s['puntaje']) %}☆{% endfor %}
+            </span>
+          {% else %}
+            <span style="color:#BDC3C7;">Sin calificar</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">Este prestador aún no tiene servicios registrados.</div>
+  {% endif %}
+</div>
+
+<!-- CALIFICACIONES -->
+<div class="card" style="margin-top:20px;">
+  <div class="section-title">
+    Reseñas recibidas
+    {% if calificaciones_list %}
+      &nbsp;—&nbsp;
+      <span style="font-size:13px; font-weight:normal; color:#5D6D7E;">
+        {{ calificaciones_list|length }} reseña{{ 's' if calificaciones_list|length != 1 }}
+        {% if promedio %} · Promedio: <strong style="color:#E67E22;">{{ promedio }} ★</strong>{% endif %}
+      </span>
+    {% endif %}
+  </div>
+  {% if calificaciones_list %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Solicitante</th>
+        <th style="text-align:center;">Puntaje</th>
+        <th>Comentario</th>
+        <th style="text-align:center;">Estado</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for c in calificaciones_list %}
+      <tr style="{{ 'opacity:0.5;background:#f8f8f8;' if c['moderada'] }}">
+        <td style="white-space:nowrap;">{{ c['fecha'][:10] if c['fecha'] else '—' }}</td>
+        <td>{{ c['solicitante_nombre'] }}</td>
+        <td style="text-align:center; color:#F39C12; font-size:15px;">
+          {% for i in range(c['puntaje']) %}★{% endfor %}{% for i in range(5 - c['puntaje']) %}☆{% endfor %}
+          <div style="font-size:11px; color:#7F8C8D;">{{ c['puntaje'] }}/5</div>
+        </td>
+        <td style="font-size:13px; color:#555; font-style:{{ 'italic' if c['comentario'] else 'normal' }};">
+          {{ c['comentario'] or '—' }}
+        </td>
+        <td style="text-align:center;">
+          {% if c['moderada'] %}
+            <span style="background:#95A5A6;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">Oculta</span>
+          {% else %}
+            <span style="background:#27AE60;color:#fff;padding:2px 8px;border-radius:10px;font-size:11px;">Visible</span>
+          {% endif %}
+        </td>
+        <td>
+          <form method="POST"
+                action="{{ url_for('admin.prestador_calificacion_moderar', pid=p.id, rid=c['id']) }}"
+                onsubmit="return confirm('{{ '¿Restaurar esta reseña?' if c['moderada'] else '¿Ocultar esta reseña?' }}')">
+            <button type="submit" class="btn-sm"
+                    style="background:{{ '#27AE60' if c['moderada'] else '#95A5A6' }};color:#fff;border:none;cursor:pointer;padding:3px 8px;border-radius:4px;font-size:12px;">
+              {{ 'Restaurar' if c['moderada'] else 'Moderar' }}
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">Este prestador aún no tiene calificaciones.</div>
+  {% endif %}
+</div>
+
+<!-- MODAL DE MOTIVO -->
+<div id="modal-motivo" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3 class="modal-title">Motivo requerido</h3>
+    <p class="modal-desc" id="modal-desc-text" style="margin-bottom:14px; font-size:13px; color:#5D6D7E;"></p>
+    <form method="POST" id="modal-form">
+      <div class="form-group">
+        <label class="form-label">Motivo <span class="required">*</span></label>
+        <textarea name="motivo" id="modal-motivo-text" class="form-input"
+                  rows="3" placeholder="Describí el motivo..." required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-danger">Confirmar</button>
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirModal(action, desc) {
+  document.getElementById('modal-form').action = action;
+  document.getElementById('modal-desc-text').textContent = desc;
+  document.getElementById('modal-motivo-text').value = '';
+  document.getElementById('modal-motivo').style.display = 'flex';
+}
+function cerrarModal() {
+  document.getElementById('modal-motivo').style.display = 'none';
+}
+document.getElementById('modal-motivo').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,102 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Servicios{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">📋 Servicios</h1>
+</div>
+
+<!-- Filtros -->
+<form method="GET" action="{{ url_for('admin.servicios_admin') }}" class="filter-bar" style="display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;margin-bottom:1.25rem;">
+  <div>
+    <label style="font-size:.8rem;color:#666;display:block;margin-bottom:.2rem;">Fecha</label>
+    <input type="date" name="fecha" value="{{ fecha }}"
+           style="border:1px solid #ddd;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;">
+  </div>
+  <div>
+    <label style="font-size:.8rem;color:#666;display:block;margin-bottom:.2rem;">Estado</label>
+    <select name="estado" style="border:1px solid #ddd;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;">
+      <option value="">Todos</option>
+      {% for e in ['PENDIENTE','ACEPTADO','ACTIVO','FINALIZADO','CANCELADO','RECHAZADO'] %}
+      <option value="{{ e }}" {{ 'selected' if estado == e }}>{{ e.capitalize() }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div style="flex:1;min-width:160px;">
+    <label style="font-size:.8rem;color:#666;display:block;margin-bottom:.2rem;">Buscar</label>
+    <input type="text" name="busqueda" value="{{ busqueda }}" placeholder="Prestador o solicitante..."
+           style="width:100%;border:1px solid #ddd;border-radius:8px;padding:.45rem .6rem;font-size:.9rem;">
+  </div>
+  <button type="submit" class="btn btn-primary btn-sm">Filtrar</button>
+  {% if fecha or estado or busqueda %}
+  <a href="{{ url_for('admin.servicios_admin') }}" class="btn btn-sm" style="background:#eee;color:#444;">Limpiar</a>
+  {% endif %}
+</form>
+
+<!-- Tabla -->
+{% if servicios %}
+<div class="table-card">
+  <div class="table-responsive">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha</th>
+        <th>Horario</th>
+        <th>Prestador</th>
+        <th>Solicitante</th>
+        <th>Categoría</th>
+        <th>Estado</th>
+        <th>GPS</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sv in servicios %}
+      <tr>
+        <td>{{ sv.id }}</td>
+        <td style="white-space:nowrap;">{{ sv.fecha_servicio }}</td>
+        <td style="white-space:nowrap;">{{ sv.hora_inicio }}–{{ sv.hora_fin }}</td>
+        <td>{{ sv.prestador_nombre }}</td>
+        <td>{{ sv.solicitante_nombre }}</td>
+        <td style="font-size:.82rem;color:#888;">{{ sv.categoria_nombre or '—' }}</td>
+        <td>
+          {% if sv.conflicto %}
+            <span class="badge badge-pending" style="background:#e67e22;">⚠️ Conflicto</span>
+          {% elif sv.estado == 'PENDIENTE' %}
+            <span class="badge badge-pending">Pendiente</span>
+          {% elif sv.estado == 'ACEPTADO' %}
+            <span class="badge badge-accepted">Aceptado</span>
+          {% elif sv.estado == 'ACTIVO' %}
+            <span class="badge badge-active">Activo</span>
+          {% elif sv.estado == 'FINALIZADO' %}
+            <span class="badge badge-done">Finalizado</span>
+          {% elif sv.estado == 'CANCELADO' %}
+            <span class="badge badge-cancel">Cancelado</span>
+          {% else %}
+            <span class="badge badge-reject">{{ sv.estado }}</span>
+          {% endif %}
+        </td>
+        <td style="font-size:.82rem;text-align:center;">
+          {% if sv.solicitante_confirmo_fin %}✅✅
+          {% elif sv.prestador_confirmo_fin %}⏳👨‍👩‍👧
+          {% elif sv.prestador_confirmo_llegada %}✅⏳
+          {% else %}⏳⏳{% endif %}
+        </td>
+        <td>
+          <a href="{{ url_for('admin.servicio_admin_detalle', sid=sv.id) }}" class="btn btn-primary btn-sm">
+            Ver →
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>No se encontraron servicios con los filtros aplicados.</p>
+</div>
+{% endif %}
+{% endblock %}

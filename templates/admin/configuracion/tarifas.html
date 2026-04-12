@@ -1,0 +1,64 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Tarifas por Categoría{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Tarifas por Categoría</span>
+  </nav>
+  <h1 class="page-title">💲 Rangos de Tarifa por Categoría</h1>
+  <p class="page-subtitle">Definí el rango mínimo y máximo de tarifa por hora para cada categoría. Cada prestador fija su propia tarifa dentro de este rango al registrarse o editar su perfil.</p>
+</div>
+
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for cat, msg in messages %}
+      <div class="alert alert-{{ cat }}" style="margin-bottom:1rem;">{{ msg }}</div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+<div class="card" style="max-width:640px;">
+  <table style="width:100%;border-collapse:collapse;">
+    <thead>
+      <tr style="background:#f7f9fb;border-bottom:2px solid #dde3ea;">
+        <th style="text-align:left;padding:.75rem 1rem;font-size:.85rem;color:#555;">Categoría</th>
+        <th style="text-align:center;padding:.75rem 1rem;font-size:.85rem;color:#555;">Tarifa mínima / hora</th>
+        <th style="text-align:center;padding:.75rem 1rem;font-size:.85rem;color:#555;">Tarifa máxima / hora</th>
+        <th style="text-align:center;padding:.75rem 1rem;font-size:.85rem;color:#555;">Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in categorias %}
+      <tr style="border-bottom:1px solid #e5e9ed;">
+        <td style="padding:.75rem 1rem;font-weight:600;">{{ cat.nombre }}</td>
+        <td style="padding:.75rem 1rem;">
+          <form method="POST" action="{{ url_for('admin.configuracion_tarifas') }}"
+                style="display:flex;align-items:center;justify-content:center;gap:.5rem;">
+            <input type="hidden" name="categoria_id" value="{{ cat.id }}">
+            <span style="font-size:.95rem;color:#555;">$</span>
+            <input type="number" name="tarifa_minima" step="0.01" min="0"
+                   value="{{ '%.2f'|format(cat.tarifa_minima or 0) }}"
+                   style="width:100px;padding:.4rem .6rem;border:1px solid #d5d8dc;border-radius:6px;font-size:.9rem;text-align:right;">
+        </td>
+        <td style="padding:.75rem 1rem;text-align:center;">
+            <span style="font-size:.95rem;color:#555;">$</span>
+            <input type="number" name="tarifa_maxima" step="0.01" min="0"
+                   value="{{ '%.2f'|format(cat.tarifa_maxima or 0) }}"
+                   style="width:100px;padding:.4rem .6rem;border:1px solid #d5d8dc;border-radius:6px;font-size:.9rem;text-align:right;">
+        </td>
+        <td style="padding:.75rem 1rem;text-align:center;">
+            <button type="submit" class="btn btn-primary btn-sm">Guardar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% if not categorias %}
+  <p style="text-align:center;color:#888;padding:1.5rem;">No hay categorías activas.</p>
+  {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,137 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/reportes/_periodo.html' import selector %}
+{% block titulo %}Tiempos de contratación{% endblock %}
+
+{% block content %}
+{% set reporte_nombre = 'tiempos' %}
+<div class="page-header no-print">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.reportes') }}">Reportes</a> &rsaquo;
+    <span>Tiempos de contratación</span>
+  </nav>
+  <h1 class="page-title">⏱️ Tiempos de contratación — {{ label_periodo }}</h1>
+</div>
+
+{{ selector(periodo, desde, hasta, 'admin.reporte_tiempos') }}
+
+<!-- INDICADORES -->
+{% if tabla %}
+{% set total_sol = tabla | sum(attribute='total') %}
+{% set total_acept = tabla | sum(attribute='aceptados') %}
+{% set avg_hrs = (tabla | sum(attribute='hrs_sol_acept') / tabla | length) | round(1) %}
+{% set avg_dias = (tabla | sum(attribute='dias_inicio') / tabla | length) | round(1) %}
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Total solicitudes</div>
+    <div class="kpi-value">{{ total_sol }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Tasa de aceptación</div>
+    <div class="kpi-value kpi-up">
+      {{ (total_acept / total_sol * 100) | round(1) if total_sol else 0 }}%
+    </div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Hs. prom. a aceptación</div>
+    <div class="kpi-value">{{ avg_hrs }} hs</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Días prom. a inicio</div>
+    <div class="kpi-value">{{ avg_dias }} días</div>
+  </div>
+</div>
+{% endif %}
+
+<!-- GRÁFICO -->
+<div class="chart-card">
+  <h2 class="chart-title">Evolución: horas a aceptación y tasa de aceptación (%)</h2>
+  {% if meses %}
+  <canvas id="chartTiempos" height="100"></canvas>
+  {% else %}
+  <div class="empty-chart">Sin datos en el período seleccionado.</div>
+  {% endif %}
+</div>
+
+<!-- TABLA -->
+{% if tabla %}
+<div class="table-card">
+  <h2 class="chart-title">Detalle por mes</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Mes</th>
+        <th class="text-center">Solicitudes</th>
+        <th class="text-center">Aceptadas</th>
+        <th class="text-center">Rechazadas</th>
+        <th class="text-center">Tasa aceptación</th>
+        <th class="text-center">Hs. solicitud → aceptación</th>
+        <th class="text-center">Días aceptación → inicio</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in tabla %}
+      <tr>
+        <td>{{ f.mes }}</td>
+        <td class="text-center">{{ f.total }}</td>
+        <td class="text-center">{{ f.aceptados }}</td>
+        <td class="text-center">{{ f.rechazados }}</td>
+        <td class="text-center">
+          <span class="pct-badge {{ 'pct-alta' if f.tasa_acept >= 70 else ('pct-media' if f.tasa_acept >= 40 else 'pct-baja') }}">
+            {{ f.tasa_acept }}%
+          </span>
+        </td>
+        <td class="text-center">{{ f.hrs_sol_acept }} hs</td>
+        <td class="text-center">{{ f.dias_inicio }} días</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No hay datos de servicios para el período seleccionado.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if meses %}
+new Chart(document.getElementById('chartTiempos').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: {{ meses | tojson }},
+    datasets: [
+      {
+        label: 'Hs. solicitud → aceptación',
+        data: {{ chart_hrs | tojson }},
+        borderColor: '#1A5276', backgroundColor: 'rgba(26,82,118,.1)',
+        tension: 0.3, fill: false, yAxisID: 'y'
+      },
+      {
+        label: 'Tasa de aceptación (%)',
+        data: {{ chart_tasa | tojson }},
+        borderColor: '#1E8449', backgroundColor: 'rgba(30,132,73,.1)',
+        tension: 0.3, fill: false, yAxisID: 'y2'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: {
+      y:  { beginAtZero: true, position: 'left',  title: { display: true, text: 'Horas' } },
+      y2: { beginAtZero: true, position: 'right', title: { display: true, text: '%' },
+            max: 100, grid: { drawOnChartArea: false } }
+    }
+  }
+});
+{% endif %}
+</script>
+
+<style>
+.pct-badge { display: inline-block; padding: .15rem .5rem; border-radius: 12px; font-size: .8rem; font-weight: 600; }
+.pct-alta  { background: #d4efdf; color: #1a6b3a; }
+.pct-media { background: #fef9e7; color: #9a7d0a; }
+.pct-baja  { background: #fde8e8; color: #922b21; }
+</style>
+{% include 'admin/reportes/_estilos_comunes.html' %}
+{% endblock %}

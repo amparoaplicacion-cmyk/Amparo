@@ -1,0 +1,149 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Editar — {{ p['nombre'] }} {{ p['apellido'] }}{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Editar prestador</h1>
+  <a href="{{ url_for('admin.prestador_detalle', pid=p['id']) }}" class="btn btn-secondary">
+    ← Volver al detalle
+  </a>
+</div>
+
+<form method="POST" action="{{ url_for('admin.prestador_editar', pid=p['id']) }}"
+      enctype="multipart/form-data" novalidate>
+
+  <!-- Datos personales -->
+  <div class="form-card" style="margin-bottom:20px;">
+    <div class="section-title" style="margin-bottom:18px;">Datos personales</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Nombre <span class="required">*</span></label>
+        <input type="text" name="nombre" class="form-input" value="{{ p['nombre'] }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Apellido <span class="required">*</span></label>
+        <input type="text" name="apellido" class="form-input" value="{{ p['apellido'] }}" required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input type="email" class="form-input" value="{{ p['email'] }}" disabled>
+        <span class="form-hint">El email no puede modificarse desde aquí.</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Teléfono</label>
+        <input type="text" name="telefono" class="form-input"
+               value="{{ p['telefono'] or '' }}" placeholder="Necesario">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Código postal</label>
+        <input type="text" name="codigo_postal" class="form-input"
+               value="{{ p['codigo_postal'] or '' }}" placeholder="Ej: 1425">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Localidad</label>
+        <input type="text" name="localidad" class="form-input"
+               value="{{ p['localidad'] or '' }}" placeholder="Ej: Palermo">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Provincia</label>
+        <input type="text" name="provincia" class="form-input"
+               value="{{ p['provincia'] or '' }}" placeholder="Ej: Buenos Aires">
+      </div>
+    </div>
+  </div>
+
+  <!-- Perfil profesional -->
+  <div class="form-card">
+    <div class="section-title" style="margin-bottom:18px;">Perfil profesional</div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Categoría</label>
+        <select name="categoria_id" class="form-select">
+          <option value="">Sin asignar</option>
+          {% for cat in categorias %}
+            <option value="{{ cat['id'] }}"
+                    {{ 'selected' if p['categoria_id'] == cat['id'] }}>
+              {{ cat['nombre'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Zona de cobertura</label>
+        <select name="zona_id" class="form-select">
+          <option value="">Sin asignar</option>
+          {% for z in zonas %}
+            <option value="{{ z['id'] }}"
+                    {{ 'selected' if p['zona_id'] == z['id'] }}>
+              {{ z['nombre'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Años de experiencia</label>
+        <input type="number" name="experiencia_anios" class="form-input"
+               value="{{ p['experiencia_anios'] }}" min="0" max="50">
+      </div>
+      <div class="form-group">
+        <label class="form-label">💲 Tarifa por hora</label>
+        <div style="display:flex;align-items:center;gap:.4rem;">
+          <span style="font-size:.9rem;color:#555;">$</span>
+          <input type="number" name="tarifa_hora" class="form-input"
+                 value="{{ '%.2f'|format(p['tarifa_hora'] or 0) }}"
+                 step="0.01" min="0" style="max-width:130px;">
+        </div>
+        <span class="form-hint">Tarifa que verá el solicitante al solicitar el servicio.</span>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Foto de perfil</label>
+        {% if p['foto_url'] %}
+          <div style="margin-bottom:8px;">
+            {% if p['foto_url'].startswith('/') or p['foto_url'].startswith('http') %}
+            <img src="{{ p['foto_url'] }}"
+                 style="width:60px; height:60px; border-radius:50%; object-fit:cover;">
+            {% else %}
+            <img src="{{ url_for('static', filename='uploads/prestadores/' + p['foto_url']) }}"
+                 style="width:60px; height:60px; border-radius:50%; object-fit:cover;">
+            {% endif %}
+          </div>
+        {% endif %}
+        <input type="file" name="foto" class="form-input" accept=".jpg,.jpeg,.png,.webp">
+        <span class="form-hint">Dejá vacío para conservar la foto actual.</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Descripción personal</label>
+      <textarea name="descripcion" class="form-input" rows="3"
+                placeholder="Presentación del prestador...">{{ p['descripcion'] or '' }}</textarea>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+      <a href="{{ url_for('admin.prestador_detalle', pid=p['id']) }}"
+         class="btn btn-secondary">Cancelar</a>
+    </div>
+  </div>
+
+</form>
+
+{% endblock %}

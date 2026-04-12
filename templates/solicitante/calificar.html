@@ -1,0 +1,103 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'servicios' %}
+{% block titulo %}Calificar servicio{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}" class="btn-back">← Volver</a>
+  <h1>Calificar servicio</h1>
+</div>
+
+<div style="max-width:480px;margin:0 auto;padding:0 .5rem 2rem;">
+
+  <!-- Tarjeta del prestador -->
+  <div style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:1.5rem;text-align:center;margin-bottom:1.25rem;">
+    {% if s.foto_url %}
+    <img src="{{ s.foto_url }}" alt="{{ s.prestador_nombre }}"
+         style="width:80px;height:80px;border-radius:50%;object-fit:cover;border:3px solid #7D3C98;display:block;margin:0 auto .75rem;">
+    {% else %}
+    <div style="width:80px;height:80px;border-radius:50%;background:#f3e8fb;border:3px solid #7D3C98;
+                display:flex;align-items:center;justify-content:center;font-size:2.2rem;margin:0 auto .75rem;">👤</div>
+    {% endif %}
+    <div style="font-size:1.15rem;font-weight:700;color:#222;margin-bottom:.2rem;">{{ s.prestador_nombre }}</div>
+    <div style="font-size:.88rem;color:#888;">{{ s.categoria_nombre or '—' }}</div>
+    <div style="font-size:.85rem;color:#aaa;margin-top:.3rem;">Servicio del {{ s.fecha_servicio }}</div>
+  </div>
+
+  <!-- Formulario de calificación -->
+  <div style="background:#fff;border-radius:16px;box-shadow:0 2px 12px rgba(0,0,0,.08);padding:1.5rem;">
+    <p style="font-size:1.05rem;font-weight:700;color:#333;text-align:center;margin:0 0 1.25rem;">
+      ¿Cómo fue el servicio?
+    </p>
+
+    <form method="POST">
+      <input type="hidden" name="puntaje" id="puntaje_input">
+
+      <!-- Estrellas interactivas -->
+      <div id="stars-container"
+           style="display:flex;justify-content:center;gap:.4rem;font-size:3rem;cursor:pointer;margin-bottom:1.25rem;line-height:1;">
+        {% for i in [1,2,3,4,5] %}
+        <span class="star-btn" data-value="{{ i }}"
+              style="color:#DDD;transition:color .1s;min-width:44px;text-align:center;user-select:none;">★</span>
+        {% endfor %}
+      </div>
+
+      <div class="form-group" style="margin-bottom:1rem;">
+        <label style="font-size:.9rem;font-weight:600;color:#444;display:block;margin-bottom:.4rem;">
+          Comentario <span style="color:#999;font-weight:400;">(opcional)</span>
+        </label>
+        <textarea name="comentario" rows="3"
+                  style="width:100%;border:1px solid #ddd;border-radius:10px;padding:.7rem;
+                         font-size:.95rem;resize:vertical;box-sizing:border-box;font-family:inherit;"
+                  placeholder="Contá tu experiencia con este prestador..."></textarea>
+      </div>
+
+      <button type="submit" id="btn-enviar"
+              style="width:100%;background:#7D3C98;color:#fff;border:none;border-radius:25px;
+                     padding:.95rem;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:.75rem;
+                     opacity:.5;" disabled>
+        ⭐ Enviar calificación
+      </button>
+    </form>
+
+    <div style="text-align:center;">
+      <a href="{{ url_for('solicitante.dashboard') }}"
+         style="color:#aaa;font-size:.88rem;text-decoration:underline;cursor:pointer;">
+        Calificar después
+      </a>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const stars  = document.querySelectorAll('.star-btn');
+  const input  = document.getElementById('puntaje_input');
+  const btnEnv = document.getElementById('btn-enviar');
+
+  function highlight(upTo) {
+    stars.forEach(s => {
+      s.style.color = parseInt(s.dataset.value) <= upTo ? '#F1C40F' : '#DDD';
+    });
+  }
+
+  stars.forEach(s => {
+    s.addEventListener('mouseover', () => highlight(parseInt(s.dataset.value)));
+    s.addEventListener('click', () => {
+      const val = parseInt(s.dataset.value);
+      input.value = val;
+      highlight(val);
+      btnEnv.disabled = false;
+      btnEnv.style.opacity = '1';
+    });
+  });
+
+  document.getElementById('stars-container').addEventListener('mouseleave', () => {
+    highlight(parseInt(input.value) || 0);
+  });
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,209 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Inicio{% endblock %}
+
+{% block content %}
+{% set active_tab = 'inicio' %}
+
+<!-- Saludo -->
+<div class="greeting">
+  <p class="greeting__hello">Hola, <strong>{{ nombre }}</strong> 👋</p>
+  <p class="greeting__date">{{ hoy }}</p>
+</div>
+
+<!-- INDICADORES 2x2 -->
+<div class="kpi-grid">
+
+  <div class="kpi-tile kpi-pending">
+    <div class="kpi-tile__icon">🔔</div>
+    <div class="kpi-tile__value">{{ pendientes_count }}</div>
+    <div class="kpi-tile__label">Solicitudes pendientes</div>
+  </div>
+
+  <div class="kpi-tile">
+    <div class="kpi-tile__icon">📅</div>
+    {% if proximo %}
+      <div class="kpi-tile__value kpi-tile__value--sm">{{ proximo.fecha_servicio }}</div>
+      <div class="kpi-tile__label">{{ proximo.hora_inicio }} — Próximo servicio</div>
+    {% else %}
+      <div class="kpi-tile__value kpi-tile__value--sm">—</div>
+      <div class="kpi-tile__label">Sin servicios próximos</div>
+    {% endif %}
+  </div>
+
+  <div class="kpi-tile">
+    <div class="kpi-tile__icon">💰</div>
+    <div class="kpi-tile__value">${{ "%.0f"|format(cobros_pendientes) }}</div>
+    <div class="kpi-tile__label">Cobros pendientes</div>
+  </div>
+
+  <div class="kpi-tile">
+    <div class="kpi-tile__icon">⭐</div>
+    <div class="kpi-tile__value">{{ puntaje if puntaje > 0 else '—' }}</div>
+    <div class="kpi-tile__label">Mi puntaje ({{ resenas }} reseñas)</div>
+  </div>
+
+</div>
+
+<!-- SERVICIOS HOY — CONFIRMACIÓN GPS -->
+{% if servicios_hoy %}
+<div class="section">
+  <h2 class="section__title">📍 Servicios de hoy</h2>
+  {% for s in servicios_hoy %}
+  <div style="background:#eafaf1;border:2px solid #27ae60;border-radius:12px;padding:1rem;margin-bottom:.75rem;">
+    <div style="font-weight:700;margin-bottom:.3rem;">{{ s.solicitante_nombre }}</div>
+    <div style="font-size:.85rem;color:#555;margin-bottom:.6rem;">
+      ⏰ {{ s.hora_inicio }}–{{ s.hora_fin }}
+      {% if s.direccion %} · 📍 {{ s.direccion }}{% endif %}
+    </div>
+    {% if not s.prestador_confirmo_llegada %}
+    <button type="button" id="btn-llegada-{{ s.id }}"
+            onclick="confirmarLlegadaDash({{ s.id }})"
+            style="width:100%;background:#27ae60;color:#fff;border:none;border-radius:20px;padding:.65rem;font-size:.95rem;font-weight:700;cursor:pointer;">
+      📍 Confirmar llegada
+    </button>
+    <div id="llegada-msg-{{ s.id }}" style="margin-top:.4rem;font-size:.82rem;display:none;"></div>
+    {% elif not s.prestador_confirmo_fin %}
+    <a href="{{ url_for('prestador.servicio_detalle', sid=s.id) }}"
+       style="display:block;width:100%;background:#27ae60;color:#fff;border-radius:20px;padding:.65rem;font-size:.95rem;font-weight:700;text-align:center;text-decoration:none;">
+      ✅ Confirmar finalización →
+    </a>
+    {% elif not s.solicitante_confirmo_fin %}
+    <div style="text-align:center;color:#1a4a6b;font-size:.88rem;font-weight:600;">
+      ⏳ Esperando confirmación del solicitante...
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- SOLICITUDES NUEVAS -->
+{% if solicitudes %}
+<div class="section">
+  <div class="section__header">
+    <h2 class="section__title">🔔 Solicitudes nuevas</h2>
+    {% if total_pendientes > 3 %}
+    <a href="{{ url_for('prestador.servicios', tab='pendientes') }}" class="link-ver-todas">Ver todas</a>
+    {% endif %}
+  </div>
+
+  {% for s in solicitudes %}
+  <div class="solicitud-card">
+    <div class="solicitud-card__top">
+      <strong>{{ s.solicitante_nombre }}</strong>
+      <span class="badge badge-pending">Pendiente</span>
+    </div>
+    <div class="solicitud-card__info">
+      📅 {{ s.fecha_servicio }} · {{ s.hora_inicio }}–{{ s.hora_fin }}
+    </div>
+    <div class="solicitud-card__info">
+      🏷 {{ s.categoria_nombre or 'Sin categoría' }}
+      {% if s.monto_acordado %} · ${{ "%.0f"|format(s.monto_acordado) }}{% endif %}
+    </div>
+    {% if s.mensaje_solicitante %}
+    <div class="solicitud-card__msg">"{{ s.mensaje_solicitante }}"</div>
+    {% endif %}
+    <div class="solicitud-card__actions">
+      <form method="POST" action="{{ url_for('prestador.servicio_aceptar', sid=s.id) }}"
+            onsubmit="return confirm('¿Aceptar este servicio?');">
+        <button type="submit" class="btn btn-accept">✓ Aceptar</button>
+      </form>
+      <button type="button" class="btn btn-reject"
+              onclick="mostrarRechazo({{ s.id }})">✕ Rechazar</button>
+    </div>
+
+    <!-- Form de rechazo inline -->
+    <form method="POST" action="{{ url_for('prestador.servicio_rechazar', sid=s.id) }}"
+          id="form-rechazar-{{ s.id }}" class="rechazo-form" style="display:none;">
+      <input type="text" name="motivo" placeholder="Motivo (opcional)" class="input-motivo">
+      <button type="submit" class="btn btn-reject-confirm">Confirmar rechazo</button>
+    </form>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- PRÓXIMOS SERVICIOS -->
+{% if proximos %}
+<div class="section">
+  <h2 class="section__title">📅 Próximos servicios</h2>
+  {% for s in proximos %}
+  <a href="{{ url_for('prestador.servicio_detalle', sid=s.id) }}" class="servicio-row">
+    <div class="servicio-row__main">
+      <strong>{{ s.fecha_servicio }}</strong> · {{ s.hora_inicio }}–{{ s.hora_fin }}
+      <span class="badge {{ 'badge-active' if s.estado == 'ACTIVO' else 'badge-accepted' }}">
+        {{ s.estado }}
+      </span>
+    </div>
+    <div class="servicio-row__sub">{{ s.solicitante_nombre }}</div>
+    {% if s.direccion %}<div class="servicio-row__sub">📍 {{ s.direccion }}</div>{% endif %}
+  </a>
+  {% endfor %}
+</div>
+{% endif %}
+
+{% if not solicitudes and not proximos %}
+<div class="empty-state">
+  <div class="empty-state__icon">✨</div>
+  <p>Todo al día — no tenés solicitudes ni servicios próximos.</p>
+</div>
+{% endif %}
+
+<script>
+function mostrarRechazo(id) {
+  var f = document.getElementById('form-rechazar-' + id);
+  f.style.display = f.style.display === 'none' ? 'block' : 'none';
+}
+
+function confirmarLlegadaDash(sid) {
+  var btn = document.getElementById('btn-llegada-' + sid);
+  var msg = document.getElementById('llegada-msg-' + sid);
+  btn.disabled = true;
+  btn.textContent = '⏳ Obteniendo ubicación...';
+
+  if (!navigator.geolocation) {
+    msg.textContent = '⚠️ Tu navegador no soporta geolocalización.';
+    msg.style.color = '#c0392b'; msg.style.display = 'block';
+    btn.disabled = false; btn.textContent = '📍 Confirmar llegada'; return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      btn.textContent = '⏳ Verificando...';
+      fetch('/prestador/servicios/' + sid + '/confirmar-llegada', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({lat: pos.coords.latitude, lon: pos.coords.longitude})
+      })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.ok) {
+          msg.textContent = '✅ Llegada confirmada! (' + data.distancia + 'm)';
+          msg.style.color = '#1a5e2e'; msg.style.display = 'block';
+          setTimeout(function() { location.reload(); }, 1500);
+        } else if (data.demasiado_lejos) {
+          msg.textContent = '⚠️ Estás a ' + data.distancia + 'm. Acercate más.';
+          msg.style.color = '#7d3c00'; msg.style.display = 'block';
+          btn.disabled = false; btn.textContent = '📍 Intentar de nuevo';
+        } else {
+          msg.textContent = data.error || 'Error.';
+          msg.style.color = '#c0392b'; msg.style.display = 'block';
+          btn.disabled = false; btn.textContent = '📍 Confirmar llegada';
+        }
+      })
+      .catch(function() {
+        msg.textContent = 'Error de conexión.';
+        msg.style.color = '#c0392b'; msg.style.display = 'block';
+        btn.disabled = false; btn.textContent = '📍 Confirmar llegada';
+      });
+    },
+    function() {
+      msg.textContent = '⚠️ Permitir acceso a la ubicación en la configuración del celular.';
+      msg.style.color = '#7d3c00'; msg.style.display = 'block';
+      btn.disabled = false; btn.textContent = '📍 Confirmar llegada';
+    },
+    {timeout: 15000, enableHighAccuracy: true}
+  );
+}
+</script>
+{% endblock %}

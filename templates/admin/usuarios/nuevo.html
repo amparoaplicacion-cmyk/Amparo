@@ -1,0 +1,81 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Nuevo usuario{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Nuevo usuario</h1>
+  <a href="{{ url_for('admin.usuarios') }}" class="btn btn-secondary">← Volver al listado</a>
+</div>
+
+<div class="form-card">
+
+  <!-- CONTRASEÑA GENERADA -->
+  <div class="password-display">
+    <div class="password-display__label">Contraseña inicial generada automáticamente</div>
+    <div class="password-display__value">{{ password_generada }}</div>
+    <div class="password-display__warning">
+      Anotá esta contraseña antes de guardar. Se la deberás comunicar al usuario.
+    </div>
+  </div>
+
+  <form method="POST" action="{{ url_for('admin.usuario_nuevo') }}" novalidate>
+
+    <!-- Contraseña oculta para enviarla en el POST -->
+    <input type="hidden" name="password_generada" value="{{ password_generada }}">
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="nombre">Nombre <span class="required">*</span></label>
+        <input type="text" id="nombre" name="nombre" class="form-input"
+               value="{{ form.get('nombre', '') }}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="apellido">Apellido <span class="required">*</span></label>
+        <input type="text" id="apellido" name="apellido" class="form-input"
+               value="{{ form.get('apellido', '') }}" required>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" for="email">Email <span class="required">*</span></label>
+        <input type="email" id="email" name="email" class="form-input"
+               value="{{ form.get('email', '') }}"
+               placeholder="usuario@ejemplo.com" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="telefono">Teléfono</label>
+        <div style="display:flex;align-items:center;border:1px solid #d5d8dc;border-radius:6px;overflow:hidden;">
+          <span style="padding:.5rem .65rem;background:#f0f0f0;color:#555;font-size:.9rem;border-right:1px solid #d5d8dc;white-space:nowrap;flex-shrink:0;">+54</span>
+          <input type="tel" id="telefono" name="telefono" class="form-input"
+                 value="{{ form.get('telefono', '') }}"
+                 placeholder="11 56789345"
+                 style="border:none;border-radius:0;box-shadow:none;">
+        </div>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" for="tipo_usuario">Tipo de usuario <span class="required">*</span></label>
+      <select id="tipo_usuario" name="tipo_usuario" class="form-select" required>
+        <option value="">Seleccioná un tipo...</option>
+        <option value="admin"     {{ 'selected' if form.get('tipo_usuario') == 'admin'     }}>Admin operativo</option>
+        <option value="prestador" {{ 'selected' if form.get('tipo_usuario') == 'prestador' }}>Prestador</option>
+        <option value="solicitante"   {{ 'selected' if form.get('tipo_usuario') == 'solicitante'   }}>Solicitante</option>
+        <option value="admin_financiero" {{ 'selected' if form.get('tipo_usuario') == 'admin_financiero' }}>
+          Admin Financiero
+        </option>
+      </select>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary">Guardar usuario</button>
+      <a href="{{ url_for('admin.usuarios') }}" class="btn btn-secondary">Cancelar</a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

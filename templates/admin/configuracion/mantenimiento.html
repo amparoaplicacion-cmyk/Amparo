@@ -1,0 +1,422 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Mantenimiento y Backups{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Mantenimiento y Backups</span>
+  </nav>
+  <h1 class="page-title">🗄️ Mantenimiento y Backups</h1>
+</div>
+
+<!-- ESTADO DEL SISTEMA -->
+<div class="section-card">
+  <h2 class="section-title">Estado del sistema</h2>
+  <div class="info-grid">
+    <div class="info-item">
+      <span class="info-label">Versión de Python</span>
+      <span class="info-value">{{ estado.python_version }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Versión de Flask</span>
+      <span class="info-value">{{ estado.flask_version }}</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Tamaño de la base de datos</span>
+      <span class="info-value">{{ estado.db_size_mb }} MB</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">Fecha y hora del servidor</span>
+      <span class="info-value">{{ estado.servidor_datetime }}</span>
+    </div>
+  </div>
+
+  <h3 class="subsection-title">Registros por tabla</h3>
+  <div class="table-counts">
+    {% for tabla, cant in estado.conteos.items() %}
+    <div class="count-chip">
+      <span class="count-table">{{ tabla }}</span>
+      <span class="count-val">{{ cant }}</span>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- BACKUPS -->
+<div class="section-card">
+  <div class="backup-header">
+    <div>
+      <h2 class="section-title">Backups</h2>
+      <p class="info-note">Último backup: <strong>{{ ultimo_backup }}</strong></p>
+    </div>
+    <form method="POST"
+          action="{{ url_for('admin.configuracion_backup') }}"
+          onsubmit="return confirm('¿Generar un backup ahora?');">
+      <button type="submit" class="btn btn-primary">🗄 Generar backup ahora</button>
+    </form>
+  </div>
+
+  {% if backups %}
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Tipo</th>
+        <th>Tamaño</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td>{{ b.fecha }}<br><code style="font-size:.75rem;">{{ b.nombre }}</code></td>
+        <td>
+          {% if b.tipo == 'Seguridad' %}
+          <span class="badge-seguridad">Seguridad</span>
+          {% else %}
+          <span class="badge-normal">Normal</span>
+          {% endif %}
+        </td>
+        <td>{{ b.tamanio }}</td>
+        <td style="display:flex; gap:6px; flex-wrap:wrap;">
+          <a href="{{ url_for('admin.configuracion_backup_descargar', nombre=b.nombre) }}"
+             class="btn-sm btn-download">⬇ Descargar</a>
+          <button type="button" class="btn-sm btn-restore"
+                  onclick="abrirModal('{{ b.nombre }}', '{{ b.fecha }}', '{{ b.tamanio }}')">🔄 Restaurar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state">No hay backups disponibles aún.</div>
+  {% endif %}
+</div>
+
+<!-- SECCIÓN RESTAURAR -->
+<div class="section-card" style="border-left:4px solid #E74C3C;">
+  <h2 class="section-title" style="color:#C0392B;">🔄 Restaurar base de datos</h2>
+
+  <div style="background:#FDEDEC; border-radius:6px; padding:12px 16px; margin-bottom:20px; font-size:13px; color:#7B241C;">
+    ⚠️ <strong>Esta operación reemplaza TODOS los datos actuales</strong> con los del backup seleccionado.
+    Esta acción NO SE PUEDE DESHACER. El sistema creará un backup automático antes de restaurar.
+  </div>
+
+  <!-- SECCIÓN 1: Desde el servidor -->
+  <h3 class="subsection-title" style="margin-top:0;">Backups disponibles en el servidor</h3>
+
+  {% if backups %}
+  <table class="data-table" style="margin-bottom:20px;">
+    <thead>
+      <tr>
+        <th>Fecha y hora</th>
+        <th>Tipo</th>
+        <th>Tamaño</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for b in backups %}
+      <tr>
+        <td>{{ b.fecha }}<br><code style="font-size:.75rem;">{{ b.nombre }}</code></td>
+        <td>
+          {% if b.tipo == 'Seguridad' %}
+          <span class="badge-seguridad">Seguridad</span>
+          {% else %}
+          <span class="badge-normal">Normal</span>
+          {% endif %}
+        </td>
+        <td>{{ b.tamanio }}</td>
+        <td>
+          <button type="button" class="btn-sm btn-restore"
+                  onclick="abrirModal('{{ b.nombre }}', '{{ b.fecha }}', '{{ b.tamanio }}')">🔄 Restaurar</button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty-state" style="margin-bottom:20px;">
+    No hay backups disponibles en el servidor. Podés subir uno desde tu computadora.
+  </div>
+  {% endif %}
+
+  <!-- SECCIÓN 2: Subir desde PC -->
+  <div style="border-top:1px solid #EAECEE; padding-top:20px; margin-top:4px;">
+    <h3 class="subsection-title" style="margin-top:0;">📤 Subir backup desde tu computadora</h3>
+    <p style="font-size:13px; color:#5D6D7E; margin-bottom:14px;">
+      Si tenés un backup guardado en tu PC, Dropbox, OneDrive o disco externo, podés subirlo acá para restaurarlo.
+    </p>
+
+    <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
+      <label class="btn btn-secondary" style="cursor:pointer; font-size:.88rem; margin:0;">
+        📂 Seleccionar archivo .db
+        <input type="file" id="input-archivo-subir" accept=".db" style="display:none;"
+               onchange="previsualizarArchivo(this)">
+      </label>
+      <span id="archivo-subir-preview" style="font-size:13px; color:#555; display:none;"></span>
+    </div>
+
+    <button type="button" id="btn-subir-restaurar" class="btn btn-danger"
+            style="display:none;" onclick="abrirModalSubir()">
+      📤 Subir y restaurar
+    </button>
+    <p style="font-size:12px; color:#999; margin-top:8px;">Solo se aceptan archivos .db</p>
+  </div>
+
+  <div style="border-top:1px solid #EAECEE; padding-top:16px; margin-top:16px;
+              background:#F8F9FA; border-radius:6px; padding:14px 16px; font-size:13px; color:#555;">
+    <strong style="color:#1A5276;">💡 ¿Cómo recuperar un backup externo?</strong><br><br>
+    <strong>Si guardaste backups en Dropbox u OneDrive:</strong><br>
+    1. Abrí Dropbox/OneDrive en tu computadora &nbsp;
+    2. Entrá a la carpeta "AMPARO Backups" &nbsp;
+    3. Descargá el archivo .db que querés restaurar &nbsp;
+    4. Subilo acá con el botón de arriba<br><br>
+    <strong>Si recibiste el backup por WeTransfer:</strong><br>
+    1. Abrí el email con el link de WeTransfer &nbsp;
+    2. Descargá el archivo .db &nbsp;
+    3. Subilo acá con el botón de arriba<br><br>
+    ⚠️ Después de restaurar reiniciá la aplicación para que los cambios tomen efecto.
+  </div>
+</div>
+
+<!-- MODAL: Restaurar desde servidor -->
+<div id="modal-restaurar" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+     z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; padding:28px 32px; max-width:460px; width:90%; box-shadow:0 8px 30px rgba(0,0,0,.25);">
+    <div style="font-size:18px; font-weight:700; color:#C0392B; margin-bottom:16px;">⚠️ Confirmación de restauración</div>
+
+    <div style="background:#f9f9f9; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;">
+      <div style="margin-bottom:4px;"><strong>Archivo:</strong> <span id="modal-archivo-nombre" style="font-family:monospace; word-break:break-all;"></span></div>
+      <div style="margin-bottom:4px;"><strong>Fecha:</strong> <span id="modal-fecha"></span></div>
+      <div><strong>Tamaño:</strong> <span id="modal-tamanio"></span></div>
+    </div>
+
+    <p style="font-size:14px; color:#C0392B; font-weight:600; margin-bottom:4px;">Se perderán TODOS los datos actuales.</p>
+    <p style="font-size:13px; color:#555; margin-bottom:16px;">El sistema hará un backup automático antes de restaurar por seguridad.</p>
+
+    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:6px;">
+      Para confirmar escribí: <span style="color:#C0392B; font-family:monospace;">RESTAURAR</span>
+    </label>
+    <input type="text" id="modal-confirmacion" class="form-input"
+           placeholder="Escribí RESTAURAR" autocomplete="off"
+           oninput="verificarConfirmacion()"
+           style="width:100%; margin-bottom:18px; box-sizing:border-box;">
+
+    <form method="POST" action="{{ url_for('admin.configuracion_restaurar') }}" id="form-restaurar">
+      <input type="hidden" name="archivo" id="modal-archivo-input">
+      <input type="hidden" name="confirmacion" id="modal-confirmacion-hidden">
+    </form>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button type="button" class="btn" style="background:#eee; color:#333;"
+              onclick="cerrarModal()">❌ Cancelar</button>
+      <button type="button" id="btn-confirmar-restaurar" class="btn btn-danger"
+              disabled onclick="enviarRestauracion()">✅ Confirmar restauración</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Subir y restaurar desde PC -->
+<div id="modal-subir" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);
+     z-index:1000; align-items:center; justify-content:center;">
+  <div style="background:#fff; border-radius:10px; padding:28px 32px; max-width:460px; width:90%; box-shadow:0 8px 30px rgba(0,0,0,.25);">
+    <div style="font-size:18px; font-weight:700; color:#C0392B; margin-bottom:16px;">⚠️ Confirmación de restauración</div>
+
+    <div style="background:#f9f9f9; border-radius:6px; padding:10px 14px; margin-bottom:14px; font-size:13px;">
+      <div style="margin-bottom:4px;"><strong>Archivo:</strong> <span id="modal-subir-nombre" style="font-family:monospace; word-break:break-all;"></span></div>
+      <div><strong>Tamaño:</strong> <span id="modal-subir-tamanio"></span></div>
+    </div>
+
+    <p style="font-size:14px; color:#C0392B; font-weight:600; margin-bottom:4px;">Se perderán TODOS los datos actuales.</p>
+    <p style="font-size:13px; color:#555; margin-bottom:16px;">El sistema hará un backup automático antes de restaurar por seguridad.</p>
+
+    <label style="font-size:13px; font-weight:600; display:block; margin-bottom:6px;">
+      Para confirmar escribí: <span style="color:#C0392B; font-family:monospace;">RESTAURAR</span>
+    </label>
+    <input type="text" id="modal-subir-confirmacion" class="form-input"
+           placeholder="Escribí RESTAURAR" autocomplete="off"
+           oninput="verificarConfirmacionSubir()"
+           style="width:100%; margin-bottom:18px; box-sizing:border-box;">
+
+    <form method="POST" action="{{ url_for('admin.configuracion_subir_restaurar') }}"
+          id="form-subir-restaurar" enctype="multipart/form-data">
+      <input type="hidden" name="confirmacion" id="modal-subir-confirmacion-hidden">
+      <!-- El input file real se copia dinámicamente al submit -->
+    </form>
+
+    <div style="display:flex; gap:10px; justify-content:flex-end;">
+      <button type="button" class="btn" style="background:#eee; color:#333;"
+              onclick="cerrarModalSubir()">❌ Cancelar</button>
+      <button type="button" id="btn-confirmar-subir" class="btn btn-danger"
+              disabled onclick="enviarSubirRestauracion()">✅ Confirmar restauración</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.section-card {
+  background: #fff; border: 1px solid #dde3ea;
+  border-radius: 10px; padding: 1.75rem;
+  margin-bottom: 1.5rem; max-width: 820px;
+}
+.section-title { font-size: 1.05rem; color: #1A5276; margin: 0 0 1rem; }
+.subsection-title { font-size: .95rem; color: #333; margin: 1.25rem 0 .75rem; }
+
+.info-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: .85rem; margin-bottom: .5rem;
+}
+.info-item {
+  background: #f7f9fb; border-radius: 7px;
+  padding: .75rem 1rem;
+}
+.info-label { display: block; font-size: .78rem; color: #888; margin-bottom: .2rem; }
+.info-value { font-size: .95rem; font-weight: 600; color: #1A5276; }
+.info-note { font-size: .88rem; color: #555; margin: .25rem 0 0; }
+
+.table-counts { display: flex; flex-wrap: wrap; gap: .5rem; }
+.count-chip {
+  display: flex; align-items: center; gap: .5rem;
+  background: #f0f4f8; border-radius: 20px;
+  padding: .25rem .85rem; font-size: .82rem;
+}
+.count-table { color: #555; }
+.count-val { font-weight: 700; color: #1A5276; }
+
+.backup-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+.backup-header h2 { margin-bottom: .2rem; }
+
+.data-table { width: 100%; border-collapse: collapse; margin-top: .5rem; }
+.data-table th {
+  background: #f0f4f8; color: #1A5276;
+  font-size: .85rem; text-align: left;
+  padding: .65rem 1rem; border-bottom: 1px solid #dde3ea;
+}
+.data-table td { padding: .65rem 1rem; border-bottom: 1px solid #f0f0f0; font-size: .9rem; vertical-align: middle; }
+.data-table tr:last-child td { border-bottom: none; }
+code { font-size: .82rem; background: #f4f4f4; padding: 2px 5px; border-radius: 4px; }
+
+.empty-state { color: #aaa; font-size: .9rem; padding: 1rem 0; }
+
+.badge-normal {
+  background: #EBF5FB; color: #1A5276;
+  font-size: .75rem; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+}
+.badge-seguridad {
+  background: #FEF9E7; color: #B7770D;
+  font-size: .75rem; padding: 2px 8px; border-radius: 10px; font-weight: 600;
+}
+
+.btn { padding: .55rem 1.25rem; border-radius: 6px; font-size: .9rem; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1A5276; color: #fff; }
+.btn-primary:hover { background: #154360; }
+.btn-secondary { background: #f0f4f8; color: #333; border: 1px solid #ccc; }
+.btn-secondary:hover { background: #e2e8f0; }
+
+.btn-sm {
+  padding: .25rem .75rem; border-radius: 5px;
+  font-size: .82rem; cursor: pointer; border: none;
+  text-decoration: none; display: inline-block;
+}
+.btn-download { background: #e8f4fd; color: #1A5276; }
+.btn-download:hover { background: #d4e6f1; }
+.btn-restore { background: #fdecea; color: #C0392B; }
+.btn-restore:hover { background: #f5b7b1; }
+.btn-danger { background: #C0392B; color: #fff; }
+.btn-danger:hover { background: #a93226; }
+.btn-danger:disabled { background: #e0a89f; cursor: not-allowed; }
+.form-input { border:1px solid #ccc; border-radius:5px; padding:.45rem .75rem; font-size:.9rem; }
+</style>
+
+<script>
+/* ── Modal restaurar desde servidor ── */
+function abrirModal(nombre, fecha, tamanio) {
+  document.getElementById('modal-archivo-nombre').textContent = nombre;
+  document.getElementById('modal-fecha').textContent          = fecha;
+  document.getElementById('modal-tamanio').textContent        = tamanio;
+  document.getElementById('modal-archivo-input').value        = nombre;
+  document.getElementById('modal-confirmacion').value         = '';
+  document.getElementById('btn-confirmar-restaurar').disabled = true;
+  document.getElementById('modal-restaurar').style.display    = 'flex';
+}
+
+function cerrarModal() {
+  document.getElementById('modal-restaurar').style.display = 'none';
+}
+
+function verificarConfirmacion() {
+  var val = document.getElementById('modal-confirmacion').value;
+  document.getElementById('btn-confirmar-restaurar').disabled = (val !== 'RESTAURAR');
+}
+
+function enviarRestauracion() {
+  var val = document.getElementById('modal-confirmacion').value;
+  if (val !== 'RESTAURAR') return;
+  document.getElementById('modal-confirmacion-hidden').value = val;
+  document.getElementById('form-restaurar').submit();
+}
+
+document.getElementById('modal-restaurar').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+
+/* ── Subir archivo desde PC ── */
+function previsualizarArchivo(input) {
+  var f = input.files[0];
+  if (!f) return;
+  var kb = (f.size / 1024).toFixed(0);
+  var size = f.size >= 1024*1024 ? (f.size/(1024*1024)).toFixed(1)+' MB' : kb+' KB';
+  var preview = document.getElementById('archivo-subir-preview');
+  preview.textContent = f.name + ' (' + size + ')';
+  preview.style.display = 'inline';
+  document.getElementById('btn-subir-restaurar').style.display = 'inline-block';
+}
+
+function abrirModalSubir() {
+  var input = document.getElementById('input-archivo-subir');
+  var f = input.files[0];
+  if (!f) return;
+  var kb = (f.size / 1024).toFixed(0);
+  var size = f.size >= 1024*1024 ? (f.size/(1024*1024)).toFixed(1)+' MB' : kb+' KB';
+  document.getElementById('modal-subir-nombre').textContent    = f.name;
+  document.getElementById('modal-subir-tamanio').textContent   = size;
+  document.getElementById('modal-subir-confirmacion').value    = '';
+  document.getElementById('btn-confirmar-subir').disabled      = true;
+  document.getElementById('modal-subir').style.display         = 'flex';
+}
+
+function cerrarModalSubir() {
+  document.getElementById('modal-subir').style.display = 'none';
+}
+
+function verificarConfirmacionSubir() {
+  var val = document.getElementById('modal-subir-confirmacion').value;
+  document.getElementById('btn-confirmar-subir').disabled = (val !== 'RESTAURAR');
+}
+
+function enviarSubirRestauracion() {
+  var val = document.getElementById('modal-subir-confirmacion').value;
+  if (val !== 'RESTAURAR') return;
+  document.getElementById('modal-subir-confirmacion-hidden').value = val;
+
+  // Mover el input file al form antes de submit
+  var fileInput = document.getElementById('input-archivo-subir');
+  fileInput.name = 'archivo_backup';
+  document.getElementById('form-subir-restaurar').appendChild(fileInput);
+  document.getElementById('form-subir-restaurar').submit();
+}
+
+document.getElementById('modal-subir').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModalSubir();
+});
+</script>
+
+{% endblock %}

@@ -1,0 +1,139 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/reportes/_periodo.html' import selector %}
+{% block titulo %}Reporte de Transacciones{% endblock %}
+
+{% block content %}
+{% set reporte_nombre = 'transacciones' %}
+<div class="page-header no-print">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.reportes') }}">Reportes</a> &rsaquo;
+    <span>Transacciones</span>
+  </nav>
+  <h1 class="page-title">💰 Transacciones — {{ label_periodo }}</h1>
+</div>
+
+{{ selector(periodo, desde, hasta, 'admin.reporte_transacciones') }}
+
+<!-- INDICADORES -->
+<div class="kpi-row">
+  <div class="kpi-card">
+    <div class="kpi-label">Total transacciones</div>
+    <div class="kpi-value">{{ total_tx }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Monto bruto total</div>
+    <div class="kpi-value">${{ "%.2f"|format(total_bruto) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Comisiones cobradas</div>
+    <div class="kpi-value">${{ "%.2f"|format(total_com) }}</div>
+  </div>
+  <div class="kpi-card">
+    <div class="kpi-label">Vs. período anterior</div>
+    <div class="kpi-value {% if comparativa is not none %}{{ 'kpi-up' if comparativa >= 0 else 'kpi-down' }}{% endif %}">
+      {% if comparativa is not none %}
+        {{ '↑' if comparativa >= 0 else '↓' }} {{ comparativa | abs }}%
+      {% else %}—{% endif %}
+    </div>
+  </div>
+</div>
+
+<!-- GRÁFICOS -->
+<div class="charts-row">
+  <div class="chart-card chart-wide">
+    <h2 class="chart-title">Monto total por mes</h2>
+    {% if meses %}
+    <canvas id="chartLinea" height="100"></canvas>
+    {% else %}
+    <div class="empty-chart">Sin datos en el período.</div>
+    {% endif %}
+  </div>
+  <div class="chart-card chart-narrow">
+    <h2 class="chart-title">Distribución por método</h2>
+    {% if chart_metodos_labels %}
+    <canvas id="chartTorta"></canvas>
+    {% else %}
+    <div class="empty-chart">Sin datos.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TABLA -->
+{% if tabla %}
+<div class="table-card">
+  <h2 class="chart-title">Detalle por mes</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Mes</th><th class="text-right">Cantidad</th>
+        <th class="text-right">Monto bruto</th><th class="text-right">Comisiones</th>
+        <th class="text-right">Monto neto</th><th class="text-right">Ticket prom.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in tabla %}
+      <tr>
+        <td>{{ f.mes }}</td>
+        <td class="text-right">{{ f.cantidad }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.bruto) }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.comisiones) }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.neto) }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.ticket_prom) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td><strong>TOTAL</strong></td>
+        <td class="text-right"><strong>{{ total_tx }}</strong></td>
+        <td class="text-right"><strong>${{ "%.2f"|format(total_bruto) }}</strong></td>
+        <td class="text-right"><strong>${{ "%.2f"|format(total_com) }}</strong></td>
+        <td class="text-right"><strong>${{ "%.2f"|format(total_bruto - total_com) }}</strong></td>
+        <td class="text-right">—</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No hay transacciones en el período seleccionado.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if meses %}
+new Chart(document.getElementById('chartLinea').getContext('2d'), {
+  type: 'line',
+  data: {
+    labels: {{ meses | tojson }},
+    datasets: [{
+      label: 'Monto bruto ($)',
+      data: {{ chart_montos | tojson }},
+      borderColor: '#1A5276', backgroundColor: 'rgba(26,82,118,.1)',
+      tension: 0.3, fill: true, pointRadius: 4
+    }]
+  },
+  options: { responsive: true, plugins: { legend: { display: false } },
+             scales: { y: { beginAtZero: true } } }
+});
+{% endif %}
+{% if chart_metodos_labels %}
+new Chart(document.getElementById('chartTorta').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ chart_metodos_labels | tojson }},
+    datasets: [{ data: {{ chart_metodos_data | tojson }},
+      backgroundColor: ['#1A5276','#1E8449','#E67E22','#7D3C98','#7F8C8D'] }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+{% endif %}
+</script>
+
+<style>
+.charts-row { display: flex; gap: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.chart-wide  { flex: 2; min-width: 300px; }
+.chart-narrow { flex: 1; min-width: 220px; }
+</style>
+{% include 'admin/reportes/_estilos_comunes.html' %}
+{% endblock %}

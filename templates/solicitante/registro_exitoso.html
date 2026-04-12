@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AMPARO Solicitantes — ¡Registro exitoso!</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Arial, sans-serif; background: #f4f6f8; min-height: 100vh;
+           display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .card {
+      background: #fff; border-radius: 16px; box-shadow: 0 4px 20px rgba(0,0,0,.1);
+      padding: 2.5rem 2rem; max-width: 420px; width: 100%; text-align: center;
+    }
+    .icon  { font-size: 4rem; margin-bottom: 1rem; }
+    .title { font-size: 1.5rem; font-weight: 700; color: #222; margin-bottom: .5rem; }
+    .brand { font-size: .9rem; color: #7D3C98; font-weight: 700; margin-bottom: 1rem; }
+    .msg   { font-size: .9rem; color: #555; line-height: 1.6; margin-bottom: 1.5rem; }
+    .notice {
+      background: #f3e8fb; border-radius: 10px; padding: 1rem;
+      font-size: .85rem; color: #5b2c6f; margin-bottom: 1.5rem; line-height: 1.5;
+    }
+    .btn {
+      display: block; width: 100%; padding: .85rem;
+      background: #7D3C98; color: #fff; border: none; border-radius: 25px;
+      font-size: 1rem; font-weight: 700; cursor: pointer; text-decoration: none;
+      transition: opacity .15s;
+    }
+    .btn:active { opacity: .8; }
+    .btn-salir {
+      background: #fff; color: #7D3C98; border: 2px solid #7D3C98;
+      margin-top: .75rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">🎉</div>
+    <div class="brand">● AMPARO Solicitantes</div>
+    <div class="title">¡Bienvenido/a, {{ nombre }}!</div>
+    <div class="notice">
+      ✅ Tu cuenta está lista.<br>
+      Ya podés buscar prestadores para tu solicitanter.
+    </div>
+    <div class="msg">
+      Explorá los prestadores disponibles en tu zona y solicitá el servicio que necesitás.
+    </div>
+    {% if es_admin %}
+    <a href="/admin/dashboard" class="btn" style="background:#1A5276;">Volver al Panel de Administración →</a>
+    {% else %}
+    <a href="/solicitante/dashboard" class="btn">Buscar prestadores →</a>
+    <a href="/logout" class="btn btn-salir">Salir y buscar más tarde</a>
+    {% endif %}
+  </div>
+</body>
+</html>

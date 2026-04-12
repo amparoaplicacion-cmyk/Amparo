@@ -1,0 +1,70 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Liquidaciones a Prestadores{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Liquidaciones pendientes</h1>
+  <a href="{{ url_for('admin.pagos') }}" class="btn btn-secondary">Ver todas las transacciones</a>
+</div>
+
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if prestadores %}
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Prestador</th>
+        <th>Categoría</th>
+        <th style="text-align:center;">Pagos pendientes</th>
+        <th style="text-align:right;">Total a liquidar</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for pr in prestadores %}
+      <tr>
+        <td><strong>{{ pr['prestador_nombre'] }}</strong></td>
+        <td>{{ pr['categoria_nombre'] or '—' }}</td>
+        <td style="text-align:center;">{{ pr['cantidad_pagos'] }}</td>
+        <td style="text-align:right; color:#27AE60; font-weight:700; font-size:16px;">
+          ${{ '%.0f'|format(pr['total_a_liquidar']) }}
+        </td>
+        <td>
+          <div class="btn-actions">
+            <a href="{{ url_for('admin.pagos') }}?estado=PROCESADO&busqueda={{ pr['prestador_nombre'] }}"
+               class="btn-sm btn-sm-view">Ver detalle</a>
+            <form method="POST"
+                  action="{{ url_for('admin.pagos_liquidar_prestador', prestador_id=pr['prestador_id']) }}"
+                  style="display:inline"
+                  onsubmit="return confirm('¿Confirmar liquidación total de ${{ '%.0f'|format(pr['total_a_liquidar']) }} a {{ pr['prestador_nombre'] }}?')">
+              <button type="submit" class="btn-sm btn-sm-unlock">Confirmar liquidación total</button>
+            </form>
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#F2F3F4; font-weight:700; border-top:2px solid #BDC3C7;">
+        <td colspan="3" style="padding:10px 12px;">
+          Total ({{ prestadores|length }} prestador{{ 'es' if prestadores|length != 1 }})
+        </td>
+        <td style="text-align:right; padding:10px 12px; color:#27AE60;">
+          ${{ '%.0f'|format(prestadores | sum(attribute='total_a_liquidar')) }}
+        </td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:36px; display:block; margin-bottom:10px;">✅</span>
+    No hay liquidaciones pendientes. Todos los pagos están al día.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

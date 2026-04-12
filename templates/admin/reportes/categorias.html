@@ -1,0 +1,117 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/reportes/_periodo.html' import selector %}
+{% block titulo %}Reporte de Categorías{% endblock %}
+
+{% block content %}
+{% set reporte_nombre = 'categorias' %}
+<div class="page-header no-print">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.reportes') }}">Reportes</a> &rsaquo;
+    <span>Categorías más contratadas</span>
+  </nav>
+  <h1 class="page-title">📋 Categorías más contratadas — {{ label_periodo }}</h1>
+</div>
+
+{{ selector(periodo, desde, hasta, 'admin.reporte_categorias') }}
+
+<!-- GRÁFICOS -->
+<div class="charts-row">
+  <div class="chart-card chart-narrow">
+    <h2 class="chart-title">Distribución de servicios</h2>
+    {% if chart_torta_labels %}
+    <canvas id="chartTorta"></canvas>
+    {% else %}
+    <div class="empty-chart">Sin datos.</div>
+    {% endif %}
+  </div>
+  <div class="chart-card chart-wide">
+    <h2 class="chart-title">Evolución mensual por categoría</h2>
+    {% if meses_evo %}
+    <canvas id="chartBarras" height="110"></canvas>
+    {% else %}
+    <div class="empty-chart">Sin datos en el período.</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- TABLA -->
+{% if tabla %}
+<div class="table-card">
+  <h2 class="chart-title">Resumen por categoría</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>Categoría</th>
+        <th class="text-center">Prestadores activos</th>
+        <th class="text-center">Servicios</th>
+        <th class="text-right">Facturado</th>
+        <th class="text-right">Ticket prom.</th>
+        <th class="text-center">Calif. prom.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in tabla %}
+      <tr>
+        <td><strong>{{ f.nombre }}</strong></td>
+        <td class="text-center">{{ f.prestadores_activos }}</td>
+        <td class="text-center">{{ f.servicios }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.facturado) }}</td>
+        <td class="text-right">${{ "%.2f"|format(f.ticket_prom) }}</td>
+        <td class="text-center">
+          {% if f.puntaje_prom > 0 %}
+            <span class="stars" title="{{ f.puntaje_prom }}/5">
+              {% for i in range(5) %}{{ '★' if i < f.puntaje_prom | int else '☆' }}{% endfor %}
+            </span>
+            <small>({{ f.puntaje_prom }})</small>
+          {% else %}—{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No hay datos de categorías para el período seleccionado.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+const PALETA = ['#1A5276','#1E8449','#E67E22','#7D3C98','#7F8C8D','#2E86C1','#D35400'];
+{% if chart_torta_labels %}
+new Chart(document.getElementById('chartTorta').getContext('2d'), {
+  type: 'doughnut',
+  data: {
+    labels: {{ chart_torta_labels | tojson }},
+    datasets: [{ data: {{ chart_torta_data | tojson }}, backgroundColor: PALETA }]
+  },
+  options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+});
+{% endif %}
+{% if meses_evo %}
+const datasetsEvo = [
+  {% for cat, vals in datasets_evo.items() %}
+  { label: {{ cat | tojson }}, data: {{ vals | tojson }},
+    backgroundColor: PALETA[{{ loop.index0 }} % PALETA.length] },
+  {% endfor %}
+];
+new Chart(document.getElementById('chartBarras').getContext('2d'), {
+  type: 'bar',
+  data: { labels: {{ meses_evo | tojson }}, datasets: datasetsEvo },
+  options: {
+    responsive: true,
+    plugins: { legend: { position: 'top' } },
+    scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 } } }
+  }
+});
+{% endif %}
+</script>
+
+<style>
+.charts-row { display: flex; gap: 1.25rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+.chart-wide  { flex: 2; min-width: 300px; }
+.chart-narrow { flex: 1; min-width: 220px; }
+.stars { color: #E67E22; letter-spacing: 1px; }
+</style>
+{% include 'admin/reportes/_estilos_comunes.html' %}
+{% endblock %}

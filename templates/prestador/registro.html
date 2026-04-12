@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AMPARO Red — Registrarse como Prestador</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --verde:   #1E8449;
+      --verde-l: #d4efdf;
+      --verde-d: #165c34;
+      --rojo:    #c0392b;
+      --rojo-l:  #fde8e8;
+      --borde:   #e5e9ed;
+      --gris:    #f7f9fb;
+      --texto:   #222;
+      --sub:     #666;
+    }
+    body { font-family: Arial, sans-serif; background: #f4f6f8; color: var(--texto); min-height: 100vh; }
+    .page { max-width: 480px; margin: 0 auto; padding: 1.25rem 1rem 70px; }
+
+    /* Header */
+    .reg-header { text-align: center; padding: 1.25rem 0 1rem; }
+    .reg-brand { font-size: 1.1rem; font-weight: 700; color: var(--verde); margin-bottom: .25rem; }
+    .reg-title { font-size: 1.4rem; font-weight: 700; }
+    .reg-sub   { font-size: .88rem; color: var(--sub); margin-top: .25rem; }
+
+    /* Progress */
+    .progress-bar { display: flex; align-items: center; justify-content: center; gap: 0; margin: 1rem 0 1.5rem; }
+    .step-dot {
+      width: 32px; height: 32px; border-radius: 50%; border: 2px solid var(--borde);
+      background: #fff; display: flex; align-items: center; justify-content: center;
+      font-size: .82rem; font-weight: 700; color: var(--sub); transition: all .2s;
+    }
+    .step-dot.active { background: var(--verde); border-color: var(--verde); color: #fff; }
+    .step-dot.done   { background: var(--verde-l); border-color: var(--verde); color: var(--verde-d); }
+    .step-line { width: 60px; height: 2px; background: var(--borde); }
+    .step-line.done { background: var(--verde); }
+    .step-label { font-size: .72rem; color: var(--sub); text-align: center; margin-top: .3rem; }
+    .steps-wrap { display: flex; flex-direction: column; align-items: center; }
+    .steps-row  { display: flex; align-items: center; }
+    .steps-labels { display: flex; justify-content: space-between; width: 100%; padding: 0 0; margin-top: .3rem; }
+    .steps-labels span { font-size: .72rem; color: var(--sub); width: 80px; text-align: center; }
+    .steps-labels span:last-child { text-align: right; }
+
+    /* Formulario */
+    .form-card { background: #fff; border-radius: 14px; box-shadow: 0 2px 10px rgba(0,0,0,.08); padding: 1.5rem; }
+    .step-title { font-size: 1rem; font-weight: 700; margin-bottom: 1.1rem; color: var(--texto); }
+    .form-group { margin-bottom: 1rem; }
+    .form-label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: .35rem; }
+    .form-hint  { font-size: .75rem; color: var(--sub); margin-top: .25rem; display: block; }
+    .form-input {
+      width: 100%; padding: .6rem .85rem;
+      border: 1.5px solid var(--borde); border-radius: 8px; font-size: .9rem;
+      transition: border-color .15s;
+    }
+    .form-input:focus { outline: none; border-color: var(--verde); box-shadow: 0 0 0 3px rgba(30,132,73,.12); }
+    .form-row { display: flex; gap: .6rem; }
+    .form-row .form-group { flex: 1; }
+    textarea.form-input { resize: vertical; min-height: 90px; font-family: inherit; }
+
+    /* Password strength */
+    .pwd-wrap { position: relative; }
+    .pwd-toggle {
+      position: absolute; right: .75rem; top: 50%; transform: translateY(-50%);
+      background: none; border: none; cursor: pointer; color: var(--sub); font-size: 1rem;
+    }
+    .strength-bar { height: 4px; border-radius: 2px; margin-top: .4rem; background: var(--borde); overflow: hidden; }
+    .strength-fill { height: 100%; width: 0; border-radius: 2px; transition: width .3s, background .3s; }
+    .strength-label { font-size: .75rem; margin-top: .2rem; }
+    .strength-0 .strength-fill { width: 0; }
+    .strength-1 .strength-fill { width: 33%; background: var(--rojo); }
+    .strength-2 .strength-fill { width: 66%; background: #e67e22; }
+    .strength-3 .strength-fill { width: 100%; background: var(--verde); }
+    .strength-1 .strength-label { color: var(--rojo); }
+    .strength-2 .strength-label { color: #e67e22; }
+    .strength-3 .strength-label { color: var(--verde); }
+
+    /* Disponibilidad */
+    .disp-grid { overflow-x: auto; margin-top: .25rem; }
+    .disp-table { width: 100%; border-collapse: collapse; font-size: .78rem; }
+    .disp-table th { color: var(--sub); padding: .3rem .4rem; text-align: center; font-weight: 600; }
+    .disp-table td { padding: .3rem .4rem; text-align: center; }
+    .disp-table td:first-child { text-align: left; font-size: .8rem; color: var(--texto); padding-left: 0; }
+    .disp-check { display: inline-block; }
+    .disp-check input[type=checkbox] { display: none; }
+    .disp-box {
+      width: 28px; height: 28px; border-radius: 6px;
+      border: 2px solid var(--borde); background: #fff;
+      display: block; cursor: pointer; transition: all .15s;
+    }
+    .disp-check input:checked + .disp-box { background: var(--verde); border-color: var(--verde); }
+
+    /* Foto */
+    .foto-preview-wrap { text-align: center; margin-bottom: .5rem; }
+    .foto-preview { width: 80px; height: 80px; border-radius: 50%; object-fit: cover; border: 2px solid var(--verde); }
+    .foto-placeholder { width: 80px; height: 80px; border-radius: 50%; background: var(--verde-l); border: 2px solid var(--verde); display: flex; align-items: center; justify-content: center; font-size: 2rem; margin: 0 auto; }
+
+    /* Buttons */
+    .btn {
+      display: block; width: 100%; padding: .85rem;
+      border-radius: 25px; font-size: 1rem; font-weight: 700;
+      text-align: center; cursor: pointer; border: none; text-decoration: none;
+      transition: opacity .15s;
+    }
+    .btn:active { opacity: .8; }
+    .btn-verde   { background: var(--verde); color: #fff; }
+    .btn-outline { background: #fff; color: var(--sub); border: 1.5px solid var(--borde); margin-top: .5rem; }
+
+    /* Alerts */
+    .alert { padding: .65rem .9rem; border-radius: 8px; font-size: .88rem; margin-bottom: .5rem; }
+    .alert-error { background: var(--rojo-l, #fde8e8); color: var(--rojo); }
+
+    /* Login link */
+    .login-link { display: none; }
+
+    /* Barra fija inferior */
+    .login-bar {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: #fff; border-top: 1px solid #e0e0e0;
+      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      z-index: 100;
+    }
+    .login-bar__text { font-size: .88rem; color: var(--sub); }
+    .login-bar__btn {
+      color: var(--verde); font-weight: 700; font-size: .88rem;
+      text-decoration: none; border: 1.5px solid var(--verde);
+      border-radius: 20px; padding: .3rem .85rem;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <div class="reg-header">
+    <div class="reg-brand">● AMPARO Red</div>
+    <div class="reg-title">Registrate como prestador</div>
+    <div class="reg-sub">Conectá con solicitantes que necesitan tu ayuda</div>
+  </div>
+
+  <!-- Indicador de progreso -->
+  <div class="steps-wrap">
+    <div class="steps-row">
+      <div class="step-dot active" id="dot1">1</div>
+      <div class="step-line" id="line1"></div>
+      <div class="step-dot" id="dot2">2</div>
+    </div>
+    <div class="steps-labels">
+      <span>Datos de cuenta</span>
+      <span>Datos profesionales</span>
+    </div>
+  </div>
+
+  <!-- Flash messages -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div style="margin: .75rem 0;">
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}">{{ message|safe }}</div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <form method="post" enctype="multipart/form-data" id="reg-form" novalidate autocomplete="off">
+    <input type="hidden" name="paso_actual" id="paso-actual" value="1">
+
+    <!-- ═══ PASO 1 ═══════════════════════════════════════════════════════ -->
+    <div id="step1" class="form-card">
+      <div class="step-title">1. Datos de tu cuenta</div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Nombre *</label>
+          <input type="text" name="nombre" class="form-input" required maxlength="80"
+                 value="{{ request.form.get('nombre', '') }}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Apellido *</label>
+          <input type="text" name="apellido" class="form-input" required maxlength="80"
+                 value="{{ request.form.get('apellido', '') }}">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email *</label>
+        <input type="email" name="email" class="form-input" required maxlength="120"
+               value="{{ request.form.get('email', '') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Teléfono *</label>
+        <div style="display:flex;align-items:center;border:1.5px solid var(--borde);border-radius:8px;overflow:hidden;">
+          <span style="padding:.6rem .65rem;background:#f0f0f0;color:#555;font-size:.9rem;border-right:1.5px solid var(--borde);white-space:nowrap;flex-shrink:0;">+54</span>
+          <input type="tel" name="telefono" id="telefono" class="form-input" maxlength="30" required
+                 value="{{ request.form.get('telefono', '') }}"
+                 placeholder="11 56789345"
+                 style="border:none;border-radius:0;box-shadow:none;">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Número de DNI *</label>
+        <input type="text" name="numero_dni" id="numero_dni" class="form-input" required
+               maxlength="8" inputmode="numeric"
+               value="{{ request.form.get('numero_dni', '') }}"
+               placeholder="Ej: 34567890"
+               oninput="checkDNI(this.value)">
+        <div id="dni-label" style="font-size:.75rem;margin-top:.2rem;color:#aaa;"></div>
+        <span class="form-hint">Solo números, 7 u 8 dígitos</span>
+      </div>
+
+      <!-- FOTO DNI FRENTE -->
+      <div class="form-group">
+        <label class="form-label">Foto del DNI (frente) *</label>
+        <small style="display:block;color:#555;margin-bottom:.4rem;line-height:1.4;">
+          Fotografiá el frente de tu DNI. Usá buena iluminación y que se lea claramente.
+        </small>
+        <label style="background:#2E86C1;color:#fff;padding:.45rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;display:inline-block;">
+          📷 Sacar/subir foto del DNI
+          <input type="file" name="dni_foto_frente" id="inp-dni-frente"
+                 accept="image/*" capture="environment" autocomplete="off"
+                 style="display:none;" onchange="previsualizarDNI(this,'prev-dni-frente')">
+        </label>
+        <div id="prev-dni-frente" style="margin-top:.5rem;display:none;">
+          <img id="img-dni-frente" style="max-width:100%;border-radius:8px;border:1px solid #ccc;" alt="Frente DNI">
+        </div>
+        <div id="dni-frente-label" style="font-size:.75rem;margin-top:.2rem;color:#aaa;"></div>
+      </div>
+
+      <!-- SELFIE CON DNI -->
+      <div class="form-group">
+        <label class="form-label">Selfie sosteniendo tu DNI *</label>
+        <small style="display:block;color:#555;margin-bottom:.4rem;line-height:1.4;">
+          Sacate una foto sosteniendo tu DNI abierto en la página con tu foto.
+        </small>
+        <label style="background:#2E86C1;color:#fff;padding:.45rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;display:inline-block;">
+          📷 Sacar selfie con tu DNI
+          <input type="file" name="dni_foto_selfie" id="inp-dni-selfie"
+                 accept="image/*" capture="user" autocomplete="off"
+                 style="display:none;" onchange="previsualizarDNI(this,'prev-dni-selfie')">
+        </label>
+        <div id="prev-dni-selfie" style="margin-top:.5rem;display:none;">
+          <img id="img-dni-selfie" style="max-width:160px;height:160px;object-fit:cover;border-radius:50%;border:2px solid #2E86C1;" alt="Selfie DNI">
+        </div>
+        <div id="dni-selfie-label" style="font-size:.75rem;margin-top:.2rem;color:#aaa;"></div>
+      </div>
+
+      <div style="background:#eaf4fb;border:1px solid #AED6F1;border-radius:8px;padding:.65rem;font-size:.78rem;color:#1A5276;margin-bottom:.75rem;line-height:1.5;">
+        🔒 Tus fotos del DNI son confidenciales y solo las ve el equipo de AMPARO para verificar tu identidad. Una vez verificado, no se comparten con nadie.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contraseña *</label>
+        <div class="pwd-wrap">
+          <input type="password" name="password" id="pwd" class="form-input" required
+                 oninput="checkStrength(this.value)" autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePwd('pwd', this)">👁</button>
+        </div>
+        <div class="strength-bar" id="strength-bar"><div class="strength-fill" id="strength-fill"></div></div>
+        <div class="strength-label" id="strength-label" style="color:#aaa;">Ingresá una contraseña</div>
+        <span class="form-hint">Mínimo 8 caracteres, 1 mayúscula, 1 carácter especial (ej: # $ @ ! _)</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Confirmar contraseña *</label>
+        <div class="pwd-wrap">
+          <input type="password" name="confirmar_password" id="pwd2" class="form-input" required
+                 oninput="checkMatch()" autocomplete="new-password">
+          <button type="button" class="pwd-toggle" onclick="togglePwd('pwd2', this)">👁</button>
+        </div>
+        <div class="strength-label" id="match-label" style="color:#aaa;font-size:.75rem;margin-top:.2rem;"></div>
+      </div>
+
+      <button type="button" class="btn btn-verde" onclick="irPaso2()">Siguiente →</button>
+      <a href="{{ url_for('auth.login') }}?app=prestador" class="btn btn-outline">Ya tengo cuenta</a>
+    </div>
+
+    <!-- ═══ PASO 2 ═══════════════════════════════════════════════════════ -->
+    <div id="step2" class="form-card" style="display:none;">
+      <div class="step-title">2. Datos profesionales</div>
+
+      <div class="form-group">
+        <label class="form-label">Categoría *</label>
+        <select name="categoria_id" id="reg-cat-select" class="form-input" required
+                onchange="actualizarRangoTarifa()">
+          <option value="">Seleccioná una categoría...</option>
+          {% for cat in categorias %}
+            <option value="{{ cat.id }}"
+                    data-min="{{ cat.tarifa_minima or 0 }}"
+                    data-max="{{ cat.tarifa_maxima or 0 }}"
+                    {{ 'selected' if request.form.get('categoria_id') == cat.id|string }}>
+              {{ cat.nombre }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">💲 Mi tarifa por hora *</label>
+        <div style="display:flex;align-items:center;gap:.5rem;">
+          <span style="font-size:.95rem;color:#555;">$</span>
+          <input type="number" name="tarifa_hora_reg" id="reg-tarifa" class="form-input"
+                 step="0.01" min="0" placeholder="0.00"
+                 value="{{ request.form.get('tarifa_hora_reg', '') }}"
+                 style="max-width:140px;">
+        </div>
+        <div id="rango-tarifa-hint" style="font-size:.78rem;color:#2e7d32;margin-top:.35rem;display:none;"></div>
+      </div>
+
+      <!-- GPS WIDGET -->
+      <div class="form-group">
+        <label class="form-label">📍 Tu ubicación de trabajo</label>
+        <small style="display:block;color:#555;margin-bottom:.5rem;line-height:1.4;">
+          Los solicitantes te encontrarán según la cercanía. Podés actualizar esto después.
+        </small>
+        <input type="hidden" name="latitud"       id="gps-lat"       value="{{ request.form.get('latitud','') }}">
+        <input type="hidden" name="longitud"      id="gps-lon"       value="{{ request.form.get('longitud','') }}">
+        <input type="hidden" name="codigo_postal" id="gps-cp"        value="{{ request.form.get('codigo_postal','') }}">
+        <input type="hidden" name="localidad"     id="gps-localidad" value="{{ request.form.get('localidad','') }}">
+        <input type="hidden" name="provincia"     id="gps-provincia" value="{{ request.form.get('provincia','') }}">
+
+        <div id="gps-display" style="display:none;background:#d4efdf;border:1px solid #82c495;border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem;font-size:.85rem;color:#1a5e2e;">
+          ✓ <span id="gps-text"></span>
+          <button type="button" onclick="limpiarUbicacion()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;">✕</button>
+        </div>
+        <button type="button" onclick="detectarUbicacion()" id="btn-gps"
+                style="width:100%;padding:.55rem;border-radius:20px;border:1.5px solid var(--verde);background:#fff;color:var(--verde);font-size:.88rem;font-weight:600;cursor:pointer;margin-bottom:.5rem;">
+          📍 Detectar mi ubicación automáticamente
+        </button>
+        <div style="display:flex;gap:.5rem;align-items:center;">
+          <input type="text" id="cp-manual" class="form-input" maxlength="8" inputmode="numeric"
+                 placeholder="O ingresá tu código postal (ej: 1414)" style="flex:1;">
+          <button type="button" onclick="buscarPorCP()"
+                  style="padding:.55rem .9rem;border-radius:8px;border:1.5px solid var(--verde);background:#fff;color:var(--verde);font-size:.85rem;cursor:pointer;white-space:nowrap;">
+            Buscar
+          </button>
+        </div>
+        <span class="form-hint">Si no podés usar GPS, ingresá tu código postal y hacé clic en Buscar.</span>
+      </div>
+
+      <!-- RADIO DE COBERTURA -->
+      <div class="form-group">
+        <label class="form-label">Radio de cobertura: <span id="radio-valor">{{ request.form.get('radio_cobertura_km', '10') }}</span> km</label>
+        <input type="range" name="radio_cobertura_km" id="radio-slider"
+               min="1" max="50" value="{{ request.form.get('radio_cobertura_km', '10') }}"
+               oninput="document.getElementById('radio-valor').textContent=this.value"
+               style="width:100%;accent-color:var(--verde);">
+        <span class="form-hint">Distancia máxima que estás dispuesto a desplazarte.</span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Años de experiencia *</label>
+        <input type="number" name="experiencia_anios" class="form-input" min="0" max="60"
+               style="max-width:100px;" required
+               value="{{ request.form.get('experiencia_anios', '0') }}">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Descripción personal *</label>
+        <textarea name="descripcion" class="form-input" required
+                  placeholder="Contá tu experiencia y por qué los solicitantes deberían elegirte...">{{ request.form.get('descripcion', '') }}</textarea>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Foto de perfil *</label>
+        <span class="form-hint" style="margin-bottom:.6rem;display:block;">Los solicitantes verán esta foto. Usá una foto clara de tu rostro.</span>
+
+        <!-- Vista previa circular -->
+        <div class="foto-preview-wrap" style="text-align:center;margin-bottom:.85rem;">
+          <div id="foto-placeholder" style="width:100px;height:100px;border-radius:50%;background:#d4efdf;border:3px dashed #1E8449;display:flex;align-items:center;justify-content:center;font-size:2.5rem;margin:0 auto;cursor:pointer;" onclick="document.getElementById('foto-galeria').click()">📷</div>
+          <img id="foto-preview" src="" alt="Vista previa"
+               style="display:none;width:100px;height:100px;border-radius:50%;object-fit:cover;border:3px solid #1E8449;margin:0 auto;display:none;cursor:pointer;"
+               onclick="document.getElementById('foto-galeria').click()">
+          <div id="foto-ok" style="display:none;font-size:.78rem;color:#1E8449;margin-top:.3rem;">✓ Foto seleccionada</div>
+          <div id="foto-error" style="display:none;font-size:.78rem;color:#c0392b;margin-top:.3rem;">La foto de perfil es obligatoria</div>
+        </div>
+
+        <!-- Botones -->
+        <div style="display:flex;gap:.5rem;margin-bottom:.5rem;">
+          <button type="button" onclick="abrirCamara()"
+                  style="flex:1;padding:.6rem;border-radius:20px;border:1.5px solid #1E8449;background:#fff;color:#1E8449;font-size:.88rem;font-weight:600;cursor:pointer;">
+            📷 Tomar foto
+          </button>
+          <button type="button" onclick="document.getElementById('foto-galeria').click()"
+                  style="flex:1;padding:.6rem;border-radius:20px;border:1.5px solid #1E8449;background:#fff;color:#1E8449;font-size:.88rem;font-weight:600;cursor:pointer;">
+            🖼️ Galería
+          </button>
+        </div>
+
+        <!-- Input cámara (sin name, solo dispara la captura) -->
+        <input type="file" id="foto-camara"
+               accept="image/*" capture="user"
+               onchange="procesarFoto(this)" style="display:none;">
+        <!-- Input galería (sin name, solo dispara el selector) -->
+        <input type="file" id="foto-galeria"
+               accept="image/jpeg,image/png,image/webp"
+               onchange="procesarFotoGaleria(this)" style="display:none;">
+        <!-- Único input con name que se envía al servidor -->
+        <input type="file" name="foto" id="foto-final" style="display:none;" autocomplete="off">
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Disponibilidad horaria * <span style="font-weight:400;color:#888;">(al menos una)</span></label>
+        <div class="disp-grid">
+          <table class="disp-table">
+            <thead>
+              <tr>
+                <th style="text-align:left;">Día</th>
+                {% for fk, fn, h_ini, h_fin in franjas %}
+                <th>{{ fn }}</th>
+                {% endfor %}
+              </tr>
+            </thead>
+            <tbody>
+              {% for dia in dias %}
+              <tr>
+                <td>{{ dia[:3] }}</td>
+                {% for fk, fn, h_ini, h_fin in franjas %}
+                <td>
+                  <label class="disp-check">
+                    <input type="checkbox" name="disp_{{ dia }}_{{ fk }}"
+                           {{ 'checked' if request.form.get('disp_' + dia + '_' + fk) }}>
+                    <span class="disp-box"></span>
+                  </label>
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-verde">Registrarme ✓</button>
+      <button type="button" class="btn btn-outline" onclick="irPaso1()">← Volver al paso 1</button>
+    </div>
+
+  </form>
+
+  <div class="login-link">
+    ¿Ya tenés cuenta? <a href="{{ url_for('auth.login') }}?app=prestador">Iniciá sesión</a>
+  </div>
+
+</div>
+
+<script>
+let pwdStrength = 0;
+
+function checkStrength(val) {
+  let s = 0;
+  if (val.length >= 8) s++;
+  if (/[A-Z]/.test(val)) s++;
+  if (/[^a-zA-Z0-9]/.test(val)) s++;
+  pwdStrength = s;
+
+  const bar   = document.getElementById('strength-bar');
+  const fill  = document.getElementById('strength-fill');
+  const label = document.getElementById('strength-label');
+
+  bar.className = 'strength-bar strength-' + (val.length === 0 ? 0 : Math.max(1, s));
+  if (val.length === 0) {
+    fill.style.width = '0';
+    label.textContent = 'Ingresá una contraseña';
+    label.style.color = '#aaa';
+  } else if (s < 2) {
+    fill.style.cssText = 'width:33%;background:#c0392b';
+    label.textContent = 'Débil — agregá mayúscula y carácter especial';
+    label.style.color = '#c0392b';
+  } else if (s === 2) {
+    fill.style.cssText = 'width:66%;background:#e67e22';
+    label.textContent = 'Media — falta un requisito';
+    label.style.color = '#e67e22';
+  } else {
+    fill.style.cssText = 'width:100%;background:#1E8449';
+    label.textContent = 'Fuerte ✓';
+    label.style.color = '#1E8449';
+  }
+  checkMatch();
+}
+
+function checkMatch() {
+  const p1  = document.getElementById('pwd').value;
+  const p2  = document.getElementById('pwd2').value;
+  const lbl = document.getElementById('match-label');
+  if (!p2) { lbl.textContent = ''; return; }
+  if (p1 === p2) { lbl.textContent = 'Las contraseñas coinciden ✓'; lbl.style.color = '#1E8449'; }
+  else           { lbl.textContent = 'Las contraseñas no coinciden'; lbl.style.color = '#c0392b'; }
+}
+
+function togglePwd(id, btn) {
+  const f = document.getElementById(id);
+  f.type = f.type === 'password' ? 'text' : 'password';
+}
+
+function checkDNI(val) {
+  const lbl = document.getElementById('dni-label');
+  if (!val) { lbl.textContent = ''; return; }
+  if (/^\d{7,8}$/.test(val)) {
+    lbl.textContent = 'DNI válido ✓'; lbl.style.color = '#1E8449';
+  } else {
+    lbl.textContent = 'Ingresá un número de DNI válido (7 u 8 dígitos)'; lbl.style.color = '#c0392b';
+  }
+}
+
+function previsualizarDNI(input, contenedorId) {
+  const cont = document.getElementById(contenedorId);
+  const imgId = contenedorId === 'prev-dni-frente' ? 'img-dni-frente' : 'img-dni-selfie';
+  const lbl   = contenedorId === 'prev-dni-frente' ? 'dni-frente-label' : 'dni-selfie-label';
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById(imgId).src = e.target.result;
+      cont.style.display = 'block';
+      document.getElementById(lbl).textContent = '✓ Foto seleccionada';
+      document.getElementById(lbl).style.color = '#1E8449';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+
+function actualizarRangoTarifa() {
+  const sel = document.getElementById('reg-cat-select');
+  const opt = sel.options[sel.selectedIndex];
+  const hint = document.getElementById('rango-tarifa-hint');
+  if (!opt || !opt.value) { hint.style.display = 'none'; return; }
+  const min = parseFloat(opt.dataset.min) || 0;
+  const max = parseFloat(opt.dataset.max) || 0;
+  if (min > 0 || max > 0) {
+    hint.textContent = 'Para ' + opt.text + ' el rango es: $ ' + min.toLocaleString('es-AR') + ' — $ ' + max.toLocaleString('es-AR') + ' por hora';
+    hint.style.display = 'block';
+  } else {
+    hint.style.display = 'none';
+  }
+}
+
+// Ejecutar al cargar si hay categoría pre-seleccionada
+window.addEventListener('DOMContentLoaded', actualizarRangoTarifa);
+
+function irPaso2() {
+  const nombre   = document.querySelector('[name=nombre]').value.trim();
+  const apellido = document.querySelector('[name=apellido]').value.trim();
+  const email    = document.querySelector('[name=email]').value.trim();
+  const telefono = document.getElementById('telefono').value.trim();
+  const dni      = document.getElementById('numero_dni').value.trim();
+  const pwd      = document.getElementById('pwd').value;
+  const pwd2     = document.getElementById('pwd2').value;
+
+  if (!nombre || !apellido) { alert('Nombre y apellido son obligatorios.'); return; }
+  if (!email || !email.includes('@')) { alert('Ingresá un email válido.'); return; }
+  if (!telefono) { alert('El teléfono es obligatorio.'); return; }
+  if (!dni || !/^\d{7,8}$/.test(dni)) { alert('Ingresá un número de DNI válido (7 u 8 dígitos).'); return; }
+  // Las fotos del DNI son opcionales al registrarse; se pueden subir después desde el perfil
+  if (pwdStrength < 3) { alert('La contraseña es débil. Debe tener al menos 8 caracteres, 1 mayúscula y 1 carácter especial (ej: # $ @ ! _).'); return; }
+  if (pwd !== pwd2) { alert('Las contraseñas no coinciden.'); return; }
+
+  document.getElementById('paso-actual').value = '2';
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  document.getElementById('dot1').classList.remove('active');
+  document.getElementById('dot1').classList.add('done');
+  document.getElementById('dot2').classList.add('active');
+  document.getElementById('line1').classList.add('done');
+  window.scrollTo(0, 0);
+}
+
+function irPaso1() {
+  document.getElementById('paso-actual').value = '1';
+  document.getElementById('step2').style.display = 'none';
+  document.getElementById('step1').style.display = 'block';
+  document.getElementById('dot2').classList.remove('active');
+  document.getElementById('dot1').classList.remove('done');
+  document.getElementById('dot1').classList.add('active');
+  document.getElementById('line1').classList.remove('done');
+  window.scrollTo(0, 0);
+}
+
+let fotoSeleccionada = false;
+
+function mostrarPreview(dataUrl) {
+  const prev = document.getElementById('foto-preview');
+  const ph   = document.getElementById('foto-placeholder');
+  prev.src = dataUrl;
+  prev.style.display = 'block';
+  ph.style.display   = 'none';
+  document.getElementById('foto-ok').style.display    = 'block';
+  document.getElementById('foto-error').style.display = 'none';
+  fotoSeleccionada = true;
+}
+
+function procesarFoto(input) {
+  if (!input.files || !input.files[0]) return;
+  // Copiar el file al input final del form
+  transferirArchivo(input.files[0]);
+  const reader = new FileReader();
+  reader.onload = e => mostrarPreview(e.target.result);
+  reader.readAsDataURL(input.files[0]);
+}
+
+function procesarFotoGaleria(input) {
+  if (!input.files || !input.files[0]) return;
+  const file = input.files[0];
+  if (file.size > 5 * 1024 * 1024) {
+    alert('La foto no puede superar 5 MB. Elegí otra imagen.');
+    return;
+  }
+  transferirArchivo(file);
+  const reader = new FileReader();
+  reader.onload = e => mostrarPreview(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function transferirArchivo(file) {
+  // Crear un DataTransfer para asignar el file al input[name=foto] del form
+  const dt = new DataTransfer();
+  dt.items.add(file);
+  document.getElementById('foto-final').files = dt.files;
+  // También asignar al input[name=foto] del form (foto-camara ya tiene name=foto)
+}
+
+function abrirCamara() {
+  document.getElementById('foto-camara').click();
+}
+
+// Validar foto antes de hacer submit
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  if (!fotoSeleccionada) {
+    e.preventDefault();
+    document.getElementById('foto-error').style.display = 'block';
+    document.getElementById('foto-error').scrollIntoView({behavior:'smooth', block:'center'});
+  }
+});
+
+// Si hubo errores del servidor, mostrar paso 2 directamente
+{% if request.method == 'POST' and get_flashed_messages() %}
+  irPaso2();
+{% endif %}
+
+// ── GPS ──────────────────────────────────────────────────────────────
+function detectarUbicacion() {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización.'); return; }
+  const btn = document.getElementById('btn-gps');
+  btn.textContent = '⏳ Detectando...'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      document.getElementById('gps-lat').value = lat;
+      document.getElementById('gps-lon').value = lon;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
+        .then(r => r.json()).then(data => {
+          const a = data.address || {};
+          const cp = a.postcode || '';
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-cp').value = cp;
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        }).catch(() => mostrarUbicacion('', '', ''));
+      btn.textContent = '📍 Detectar mi ubicación automáticamente'; btn.disabled = false;
+    },
+    function() { btn.textContent = '📍 Detectar mi ubicación automáticamente'; btn.disabled = false; alert('No se pudo obtener tu ubicación. Usá el código postal.'); },
+    { timeout: 10000 }
+  );
+}
+
+function buscarPorCP() {
+  const cp = document.getElementById('cp-manual').value.trim();
+  if (!cp) { alert('Ingresá un código postal.'); return; }
+  fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(cp)}&country=AR&format=json&limit=1&accept-language=es`)
+    .then(r => r.json()).then(data => {
+      if (!data.length) { alert('No se encontró ese código postal en Argentina.'); return; }
+      const r = data[0];
+      document.getElementById('gps-lat').value = r.lat;
+      document.getElementById('gps-lon').value = r.lon;
+      document.getElementById('gps-cp').value = cp;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${r.lat}&lon=${r.lon}&format=json&accept-language=es`)
+        .then(r2 => r2.json()).then(data2 => {
+          const a = data2.address || {};
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        });
+    }).catch(() => alert('Error al buscar el código postal.'));
+}
+
+function mostrarUbicacion(loc, cp, prov) {
+  const parts = [loc, cp, prov].filter(Boolean);
+  document.getElementById('gps-text').textContent = parts.join(', ') || 'Ubicación guardada';
+  document.getElementById('gps-display').style.display = 'block';
+}
+
+function limpiarUbicacion() {
+  ['gps-lat','gps-lon','gps-cp','gps-localidad','gps-provincia'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('gps-display').style.display = 'none';
+  document.getElementById('cp-manual').value = '';
+}
+
+window.addEventListener('DOMContentLoaded', function() {
+  const lat = document.getElementById('gps-lat').value;
+  const cp  = document.getElementById('gps-cp').value;
+  if (lat || cp) {
+    mostrarUbicacion(
+      document.getElementById('gps-localidad').value,
+      cp,
+      document.getElementById('gps-provincia').value
+    );
+  }
+});
+
+// Limpiar fotos y previews cuando la página viene del caché del navegador (botón Atrás)
+window.addEventListener('pageshow', function(event) {
+  if (event.persisted) {
+    document.querySelectorAll('input[type="file"]').forEach(function(inp) { inp.value = ''; });
+    var prev = document.getElementById('foto-preview');
+    var ph   = document.getElementById('foto-placeholder');
+    if (prev) { prev.src = ''; prev.style.display = 'none'; }
+    if (ph)   { ph.style.display = 'flex'; }
+    var pf = document.getElementById('prev-dni-frente');
+    var ps = document.getElementById('prev-dni-selfie');
+    if (pf) pf.style.display = 'none';
+    if (ps) ps.style.display = 'none';
+  }
+});
+</script>
+
+<!-- Barra fija: acceso al login -->
+<div class="login-bar">
+  <span class="login-bar__text">¿Ya tenés cuenta?</span>
+  <a href="{{ url_for('auth.login') }}?app=prestador" class="login-bar__btn">Ingresar acá →</a>
+</div>
+
+</body>
+</html>

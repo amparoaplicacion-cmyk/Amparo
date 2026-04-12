@@ -1,0 +1,143 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Configuración del Sistema{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <span>Configuración</span>
+  </nav>
+  <h1 class="page-title">⚙️ Configuración del Sistema</h1>
+  <p class="page-subtitle">Administrá los parámetros globales de la plataforma.</p>
+</div>
+
+<div class="config-grid">
+
+  <a href="{{ url_for('admin.configuracion_passwords') }}" class="config-card">
+    <div class="config-card__icon">🔒</div>
+    <div class="config-card__body">
+      <h3>Reglas de Contraseña</h3>
+      <p>Vigencia, longitud mínima e intentos fallidos antes del bloqueo.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_smtp') }}" class="config-card">
+    <div class="config-card__icon">📤</div>
+    <div class="config-card__body">
+      <h3>Correo SMTP</h3>
+      <p>Servidor, usuario, contraseña y prueba de envío de correos automáticos.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_mails') }}" class="config-card">
+    <div class="config-card__icon">📧</div>
+    <div class="config-card__body">
+      <h3>Textos de Mails</h3>
+      <p>Asunto y cuerpo de los mails automáticos que envía el sistema.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_empresa') }}" class="config-card">
+    <div class="config-card__icon">🏢</div>
+    <div class="config-card__body">
+      <h3>Datos de la Empresa</h3>
+      <p>Nombre, contacto, logo y datos que aparecen en mails y reportes.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_zonas') }}" class="config-card">
+    <div class="config-card__icon">📍</div>
+    <div class="config-card__body">
+      <h3>Zonas Geográficas</h3>
+      <p>Alta, edición y activación de las zonas de cobertura del servicio.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_notificaciones') }}" class="config-card">
+    <div class="config-card__icon">🔔</div>
+    <div class="config-card__body">
+      <h3>Notificaciones Push</h3>
+      <p>Elegí qué eventos disparan notificaciones a prestadores y solicitantes.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_pagos_mp') }}" class="config-card">
+    <div class="config-card__icon">💳</div>
+    <div class="config-card__body">
+      <h3>Integración de Pagos</h3>
+      <p>Credenciales de Mercado Pago y modo sandbox / producción.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_tarifas') }}" class="config-card">
+    <div class="config-card__icon">💲</div>
+    <div class="config-card__body">
+      <h3>Rangos de Tarifa</h3>
+      <p>Rango mínimo y máximo de tarifa por hora por categoría. Cada prestador fija su tarifa dentro de este rango.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_comisiones') }}" class="config-card">
+    <div class="config-card__icon">💲</div>
+    <div class="config-card__body">
+      <h3>Comisiones</h3>
+      <p>Porcentaje de comisión, distribución entre solicitante y prestador, y penalidades por cancelación.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.configuracion_mantenimiento') }}" class="config-card">
+    <div class="config-card__icon">🗄️</div>
+    <div class="config-card__body">
+      <h3>Mantenimiento y Backups</h3>
+      <p>Estado del sistema, tamaño de la base de datos y gestión de backups.</p>
+    </div>
+  </a>
+
+</div>
+
+<style>
+.page-header { margin-bottom: 2rem; }
+.page-subtitle { color: #666; margin-top: .25rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+.config-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow .18s, transform .18s;
+}
+.config-card:hover {
+  box-shadow: 0 4px 18px rgba(26,82,118,.13);
+  transform: translateY(-2px);
+}
+.config-card__icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.config-card__body h3 {
+  margin: 0 0 .35rem;
+  font-size: 1rem;
+  color: #1A5276;
+}
+.config-card__body p {
+  margin: 0;
+  font-size: .875rem;
+  color: #555;
+  line-height: 1.4;
+}
+</style>
+{% endblock %}

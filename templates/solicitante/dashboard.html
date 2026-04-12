@@ -1,0 +1,230 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'buscar' %}
+{% block titulo %}Buscar Prestadores{% endblock %}
+
+{% block content %}
+<div class="greeting">
+  <div class="greeting__hello">Hola, <strong>{{ nombre }}</strong> 👋</div>
+</div>
+
+<!-- RECORDATORIO CALIFICACIONES PENDIENTES -->
+{% if sin_calificar %}
+<div style="background:#FEF9E7;border:2px solid #F39C12;border-radius:12px;padding:1rem;margin-bottom:.75rem;">
+  <p style="font-weight:700;color:#E67E22;margin:0 0 .6rem;font-size:.95rem;">⭐ Tenés servicios sin calificar</p>
+  {% for sc in sin_calificar %}
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:.35rem 0;border-top:1px solid #fde68a;">
+    <span style="font-size:.88rem;color:#555;">{{ sc.prestador_nombre }} — {{ sc.fecha_servicio }}</span>
+    <a href="{{ url_for('solicitante.calificar_servicio', sid=sc.id) }}"
+       style="background:#7D3C98;color:#fff;padding:.35rem .8rem;border-radius:20px;text-decoration:none;font-size:.82rem;font-weight:700;white-space:nowrap;">
+      ⭐ Calificar
+    </a>
+  </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- BUSCADOR PRINCIPAL -->
+{% if not tiene_ubicacion %}
+<div style="background:#fff3cd;border:1px solid #ffc107;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:.85rem;color:#856404;">
+  📍 <strong>Configurá tu ubicación</strong> en <a href="{{ url_for('solicitante.mi_cuenta_editar') }}" style="color:#856404;font-weight:700;">Mi cuenta</a> para ver prestadores cercanos a vos.
+</div>
+{% endif %}
+
+<form method="get" action="{{ url_for('solicitante.dashboard') }}" id="search-form">
+  <input type="hidden" name="buscar" value="1">
+  <div class="search-box">
+    <div class="search-box__title">¿Qué servicio necesitás?</div>
+
+    <div class="search-row">
+      <select name="categoria_id" class="input-select">
+        <option value="">Todas las categorías</option>
+        {% for cat in categorias %}
+          <option value="{{ cat.id }}" {{ 'selected' if categoria_id == cat.id|string }}>{{ cat.nombre }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    {% if tiene_ubicacion %}
+    <div class="search-row">
+      <select name="radio_km" class="input-select">
+        <option value="5"  {{ 'selected' if radio_km == 5  }}>📍 Hasta 5 km</option>
+        <option value="10" {{ 'selected' if radio_km == 10 }}>📍 Hasta 10 km</option>
+        <option value="20" {{ 'selected' if radio_km == 20 }}>📍 Hasta 20 km</option>
+        <option value="30" {{ 'selected' if radio_km == 30 }}>📍 Hasta 30 km</option>
+        <option value="50" {{ 'selected' if radio_km == 50 }}>📍 Hasta 50 km</option>
+      </select>
+    </div>
+    {% endif %}
+
+    <button type="button" class="filter-toggle" onclick="toggleFiltros()">⚙️ Filtrar</button>
+
+    <div class="filter-panel" id="filter-panel">
+      <label>Turno</label>
+      <select name="turno">
+        <option value="" {{ 'selected' if not turno }}>Cualquier turno</option>
+        <option value="manana"  {{ 'selected' if turno == 'manana' }}>☀️ Mañana (8–12)</option>
+        <option value="tarde"   {{ 'selected' if turno == 'tarde' }}>🌤️ Tarde (12–18)</option>
+        <option value="noche"   {{ 'selected' if turno == 'noche' }}>🌙 Noche (18–22)</option>
+      </select>
+
+      <label>Calificación mínima</label>
+      <select name="min_cal">
+        <option value="" {{ 'selected' if not min_cal }}>Cualquier calificación</option>
+        <option value="3" {{ 'selected' if min_cal == '3' }}>3★ o más</option>
+        <option value="4" {{ 'selected' if min_cal == '4' }}>4★ o más</option>
+        <option value="5" {{ 'selected' if min_cal == '5' }}>5★</option>
+      </select>
+
+      <label>Ordenar por</label>
+      <select name="orden">
+        <option value="distancia"    {{ 'selected' if orden == 'distancia' }}>📍 Más cercano</option>
+        <option value="calificacion" {{ 'selected' if orden == 'calificacion' }}>Mejor calificado</option>
+      </select>
+    </div>
+
+    <button type="submit" class="btn-search" style="margin-top:.75rem;">🔍 Buscar</button>
+  </div>
+</form>
+
+<!-- RESULTADOS -->
+{% if buscar == '1' %}
+  {% if prestadores %}
+    <div class="results-header">
+      <span class="results-title">Resultados</span>
+      <span class="results-count">{{ prestadores|length }} encontrado{{ 's' if prestadores|length != 1 }}</span>
+    </div>
+
+    {% for p in prestadores %}
+    <div class="prestador-card">
+      <div class="prestador-card__top">
+        {% if p.foto_url %}
+          <img src="{{ p.foto_url }}" alt="{{ p.nombre_completo }}" class="prestador-avatar">
+        {% else %}
+          <div class="prestador-avatar--placeholder">👤</div>
+        {% endif %}
+        <div class="prestador-card__info">
+          <div class="prestador-card__name">{{ p.nombre_completo }}</div>
+          {% if p.dni_verificado == 'VERIFICADO' and p.antecedentes_ok == 'VERIFICADO' and p.certificados_ok == 'VERIFICADO' %}
+          <div style="font-size:.72rem;color:#1E8449;font-weight:600;margin-bottom:.2rem;">✅ Verificado</div>
+          {% endif %}
+          <div class="prestador-card__cat">{{ p.categoria_nombre or '—' }}</div>
+          <div class="prestador-card__zona">
+            {% if p.distancia_km is not none %}
+              📍 {{ p.distancia_km }} km
+              {% if p.localidad %} · {{ p.localidad }}{% endif %}
+            {% elif p.localidad %}
+              📍 {{ p.localidad }}{% if p.provincia %}, {{ p.provincia }}{% endif %}
+            {% else %}
+              📍 —
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="prestador-card__stars">
+        <span class="stars">{{ stars_fn(p.puntaje) }}</span>
+        <span>{{ '%.1f'|format(p.puntaje) }}</span>
+        <span class="stars-count">({{ p.resenas_count }} reseña{{ 's' if p.resenas_count != 1 }})</span>
+        <span style="margin-left:auto;font-size:.82rem;color:#7D3C98;font-weight:600;">
+          {% if p.tarifa_hora and p.tarifa_hora > 0 %}
+            💲 $ {{ '%.0f'|format(p.tarifa_hora) }}/h
+          {% else %}
+            💲 Consultar precio
+          {% endif %}
+        </span>
+      </div>
+
+      {% if p.dias_disponibles %}
+      <div class="disp-chips">
+        {% for dia in p.dias_disponibles %}
+          <span class="disp-chip">{{ dia[:3] }}</span>
+        {% endfor %}
+      </div>
+      {% endif %}
+
+      <a href="{{ url_for('solicitante.prestador_perfil', pid=p.id) }}" class="btn btn-primary btn-full">Ver perfil</a>
+    </div>
+    {% endfor %}
+
+  {% else %}
+    <div class="empty-state">
+      <div class="empty-state__icon">🔍</div>
+      <p>No encontramos prestadores en el radio seleccionado.<br>Probá ampliar el radio o cambiar de categoría.</p>
+      {% if not tiene_ubicacion %}
+      <p style="margin-top:.5rem;font-size:.85rem;">
+        <a href="{{ url_for('solicitante.mi_cuenta_editar') }}">Configurá tu ubicación</a> para ver resultados cercanos.
+      </p>
+      {% endif %}
+    </div>
+  {% endif %}
+
+  <!-- KPIs debajo de resultados -->
+  <div style="margin-top:1.5rem;">
+    <div class="kpi-grid">
+      <div class="kpi-tile">
+        <div class="kpi-tile__icon">📋</div>
+        <div class="kpi-tile__value">{{ pendientes_resp }}</div>
+        <div class="kpi-tile__label">Solicitudes pendientes</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="kpi-tile__icon">✅</div>
+        <div class="kpi-tile__value">{{ activos }}</div>
+        <div class="kpi-tile__label">Contrataciones activas</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="kpi-tile__icon">📅</div>
+        <div class="kpi-tile__value" style="font-size:1rem;">
+          {{ proximo.fecha_servicio if proximo else '—' }}
+        </div>
+        <div class="kpi-tile__label">Próximo servicio</div>
+      </div>
+      <div class="kpi-tile">
+        <div class="kpi-tile__icon">⚠️</div>
+        <div class="kpi-tile__value {{ 'kpi-tile__value--warn' if reclamos_abiertos }}">{{ reclamos_abiertos }}</div>
+        <div class="kpi-tile__label">Reclamos abiertos</div>
+      </div>
+    </div>
+  </div>
+
+{% else %}
+  <!-- Vista inicial: indicadores arriba -->
+  <div class="kpi-grid">
+    <div class="kpi-tile">
+      <div class="kpi-tile__icon">📋</div>
+      <div class="kpi-tile__value">{{ pendientes_resp }}</div>
+      <div class="kpi-tile__label">Solicitudes pendientes</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="kpi-tile__icon">✅</div>
+      <div class="kpi-tile__value">{{ activos }}</div>
+      <div class="kpi-tile__label">Contrataciones activas</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="kpi-tile__icon">📅</div>
+      <div class="kpi-tile__value" style="font-size:1rem;">
+        {{ proximo.fecha_servicio if proximo else '—' }}
+      </div>
+      <div class="kpi-tile__label">Próximo servicio</div>
+    </div>
+    <div class="kpi-tile">
+      <div class="kpi-tile__icon">⚠️</div>
+      <div class="kpi-tile__value">{{ reclamos_abiertos }}</div>
+      <div class="kpi-tile__label">Reclamos abiertos</div>
+    </div>
+  </div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleFiltros() {
+  const panel = document.getElementById('filter-panel');
+  panel.classList.toggle('open');
+}
+// Si había filtros activos, mostrar el panel abierto
+{% if turno or min_cal or (orden and orden != 'distancia') %}
+document.getElementById('filter-panel').classList.add('open');
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,101 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Datos de la Empresa{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Datos de la Empresa</span>
+  </nav>
+  <h1 class="page-title">🏢 Datos de la Empresa</h1>
+</div>
+
+<div class="card-form">
+  <form method="POST" action="{{ url_for('admin.configuracion_empresa') }}"
+        enctype="multipart/form-data">
+
+    <div class="form-group">
+      <label for="empresa_nombre">Nombre de la empresa</label>
+      <input type="text" id="empresa_nombre" name="empresa_nombre"
+             value="{{ config.empresa_nombre }}" class="form-control">
+    </div>
+
+    <div class="form-group">
+      <label for="empresa_email">Email de contacto</label>
+      <input type="email" id="empresa_email" name="empresa_email"
+             value="{{ config.empresa_email }}" class="form-control">
+    </div>
+
+    <div class="form-group">
+      <label for="empresa_telefono">Teléfono</label>
+      <input type="text" id="empresa_telefono" name="empresa_telefono"
+             value="{{ config.empresa_telefono }}" class="form-control">
+    </div>
+
+    <div class="form-group">
+      <label for="empresa_direccion">Dirección</label>
+      <input type="text" id="empresa_direccion" name="empresa_direccion"
+             value="{{ config.empresa_direccion }}" class="form-control">
+    </div>
+
+    <div class="form-group">
+      <label for="empresa_web">Sitio web</label>
+      <input type="text" id="empresa_web" name="empresa_web"
+             value="{{ config.empresa_web }}" class="form-control"
+             placeholder="https://...">
+    </div>
+
+    <div class="form-group">
+      <label>Logo de la empresa</label>
+      {% if config.empresa_logo_url %}
+      <div class="logo-preview">
+        <img src="{{ config.empresa_logo_url }}" alt="Logo actual" class="logo-img">
+        <span class="logo-label">Logo actual</span>
+      </div>
+      {% endif %}
+      <input type="file" name="logo" accept=".jpg,.jpeg,.png,.webp,.gif,.svg"
+             class="form-control-file">
+      <small class="form-hint">Formatos: JPG, PNG, WEBP, GIF, SVG. Se guarda en static/img/.</small>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('admin.configuracion') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar cambios</button>
+    </div>
+  </form>
+</div>
+
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.card-form {
+  background: #fff; border: 1px solid #dde3ea;
+  border-radius: 10px; padding: 2rem; max-width: 560px;
+}
+.form-group { margin-bottom: 1.25rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: .4rem; color: #222; }
+.form-control {
+  width: 100%; padding: .55rem .75rem;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: .95rem; box-sizing: border-box;
+}
+.form-control:focus { outline: none; border-color: #1A5276; box-shadow: 0 0 0 3px rgba(26,82,118,.15); }
+.form-control-file { margin-top: .5rem; font-size: .9rem; }
+.form-hint { font-size: .8rem; color: #888; margin-top: .25rem; display: block; }
+
+.logo-preview { display: flex; align-items: center; gap: 1rem; margin-bottom: .75rem; }
+.logo-img { max-height: 60px; max-width: 160px; border: 1px solid #dde3ea; border-radius: 6px; padding: 4px; }
+.logo-label { font-size: .8rem; color: #666; }
+
+.form-actions { display: flex; gap: .75rem; justify-content: flex-end; margin-top: 1.5rem; }
+.btn { padding: .55rem 1.4rem; border-radius: 6px; font-size: .95rem; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1A5276; color: #fff; }
+.btn-primary:hover { background: #154360; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-secondary:hover { background: #e0e0e0; }
+</style>
+{% endblock %}

@@ -1,0 +1,236 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'buscar' %}
+{% block titulo %}Nueva Solicitud{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <a href="{{ url_for('solicitante.prestador_perfil', pid=prestador.id) }}" class="btn-back">← Volver</a>
+  <h1>Nueva solicitud</h1>
+</div>
+
+<form method="post" id="solicitud-form">
+  <div class="solicitud-form">
+
+    <!-- Prestador seleccionado (no editable) -->
+    <div class="prestador-mini">
+      {% if prestador.foto_url %}
+        <img src="{{ prestador.foto_url }}" alt="{{ prestador.nombre_completo }}"
+             style="width:48px;height:48px;border-radius:50%;object-fit:cover;border:2px solid #7D3C98;">
+      {% else %}
+        <div style="width:48px;height:48px;border-radius:50%;background:#f3e8fb;border:2px solid #7D3C98;display:flex;align-items:center;justify-content:center;font-size:1.4rem;">👤</div>
+      {% endif %}
+      <div>
+        <div class="prestador-mini__name">{{ prestador.nombre_completo }}</div>
+        <div class="prestador-mini__cat">{{ prestador.categoria_nombre or '—' }}</div>
+      </div>
+    </div>
+
+    <!-- Tipo de servicio -->
+    <div class="form-group">
+      <label class="form-label">Tipo de servicio</label>
+      <select name="categoria_id" class="input-select" id="cat-select" onchange="actualizarPresupuesto()">
+        {% for cat in categorias %}
+          <option value="{{ cat.id }}"
+                  {{ 'selected' if cat.id == prestador.categoria_id }}>
+            {{ cat.nombre }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Fecha -->
+    <div class="form-group">
+      <label class="form-label">Fecha del servicio</label>
+      <input type="date" name="fecha_servicio" id="inp-fecha" class="input-text"
+             min="{{ hoy }}" required onchange="actualizarResumen()">
+    </div>
+
+    <!-- Horario -->
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Hora inicio</label>
+        <input type="time" name="hora_inicio" id="inp-ini" class="input-text" required onchange="actualizarPresupuesto()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Hora fin</label>
+        <input type="time" name="hora_fin" id="inp-fin" class="input-text" required onchange="actualizarPresupuesto()">
+      </div>
+    </div>
+
+    <!-- Mensaje -->
+    <div class="form-group">
+      <label class="form-label">Mensaje para el prestador <span style="color:#888;font-weight:400;">(opcional)</span></label>
+      <textarea name="mensaje" class="input-textarea"
+                placeholder="Contale algo sobre lo que necesitás..."></textarea>
+    </div>
+
+    <!-- Cuadro de presupuesto -->
+    <div id="presupuesto-box" style="display:none;background:#F5EEF8;border:1.5px solid #7D3C98;border-radius:12px;padding:1rem;margin-bottom:.75rem;">
+      <div style="font-weight:700;font-size:.95rem;color:#5b2c6f;margin-bottom:.75rem;">💰 Presupuesto estimado</div>
+
+      <div id="sin-tarifa" style="display:none;font-size:.88rem;color:#7D3C98;line-height:1.5;">
+        ⚠️ El precio de este servicio está siendo definido. El prestador te informará el monto al aceptar la solicitud.
+      </div>
+
+      <div id="con-tarifa">
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.25rem 0;border-bottom:1px solid #e0c8f0;">
+          <span style="color:#666;">Duración del servicio</span>
+          <strong id="pres-horas">—</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.25rem 0;border-bottom:1px solid #e0c8f0;">
+          <span style="color:#666;">Tarifa por hora</span>
+          <strong id="pres-tarifa">—</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.85rem;padding:.25rem 0;border-bottom:1px solid #e0c8f0;">
+          <span style="color:#666;">Subtotal servicio</span>
+          <strong id="pres-subtotal">—</strong>
+        </div>
+        <div id="pres-comision-row" style="display:flex;justify-content:space-between;font-size:.85rem;padding:.25rem 0;border-bottom:1px solid #e0c8f0;">
+          <span style="color:#999;" id="pres-comision-label">Servicio de AMPARO</span>
+          <strong id="pres-comision" style="color:#999;">—</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:1rem;padding:.5rem 0 0;margin-top:.25rem;">
+          <span style="font-weight:700;color:#5b2c6f;">TOTAL A PAGAR</span>
+          <strong id="pres-total" style="font-size:1.15rem;color:#1E8449;">—</strong>
+        </div>
+      </div>
+
+      <p style="font-size:.75rem;color:#888;margin-top:.75rem;line-height:1.4;">
+        Este es un presupuesto estimado. El monto final puede variar si el servicio se extiende o reduce.
+      </p>
+    </div>
+
+    <!-- Resumen compacto -->
+    <div id="resumen-mini" style="display:none;background:#fff;border:1px solid #e5e9ed;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:.85rem;">
+      <div style="font-weight:700;color:#444;margin-bottom:.4rem;">📋 Resumen de tu solicitud</div>
+      <div style="display:flex;justify-content:space-between;padding:.15rem 0;">
+        <span style="color:#666;">Prestador</span><strong>{{ prestador.nombre_completo }}</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:.15rem 0;">
+        <span style="color:#666;">Fecha</span><strong id="res-fecha">—</strong>
+      </div>
+      <div style="display:flex;justify-content:space-between;padding:.15rem 0;">
+        <span style="color:#666;">Horario</span><strong id="res-horario">—</strong>
+      </div>
+    </div>
+
+    <!-- Checkbox de confirmación -->
+    <div id="checkbox-wrap" style="display:none;background:#f7f9fb;border:1px solid #e5e9ed;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;">
+      <label style="display:flex;gap:.75rem;align-items:flex-start;cursor:pointer;font-size:.88rem;color:#333;line-height:1.4;">
+        <input type="checkbox" id="chk-confirmar" onchange="toggleBoton()"
+               style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:#7D3C98;">
+        Entiendo que al confirmar autorizo el cobro del monto total al prestador aceptar la solicitud.
+      </label>
+    </div>
+
+    <button type="submit" id="btn-confirmar"
+            class="btn btn-primary btn-full"
+            style="padding:.85rem;font-size:1rem;margin-top:.5rem;opacity:.45;pointer-events:none;"
+            disabled>
+      Confirmar solicitud
+    </button>
+    <a href="{{ url_for('solicitante.prestador_perfil', pid=prestador.id) }}"
+       class="btn btn-secondary btn-full" style="text-align:center;">
+      Cancelar
+    </a>
+
+  </div>
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function fmt(n) {
+  return '$ ' + Math.round(n).toLocaleString('es-AR');
+}
+
+function actualizarResumen() {
+  const fecha = document.getElementById('inp-fecha').value;
+  const hIni  = document.getElementById('inp-ini').value;
+  const hFin  = document.getElementById('inp-fin').value;
+  const mini  = document.getElementById('resumen-mini');
+
+  if (fecha || hIni || hFin) {
+    mini.style.display = 'block';
+    document.getElementById('res-fecha').textContent = fecha || '—';
+    if (hIni && hFin) {
+      document.getElementById('res-horario').textContent = hIni + ' a ' + hFin;
+    }
+  }
+}
+
+function actualizarPresupuesto() {
+  actualizarResumen();
+  const hIni  = document.getElementById('inp-ini').value;
+  const hFin  = document.getElementById('inp-fin').value;
+  const box   = document.getElementById('presupuesto-box');
+  const chkWrap = document.getElementById('checkbox-wrap');
+
+  if (!hIni || !hFin) {
+    box.style.display = 'none';
+    chkWrap.style.display = 'none';
+    bloquearBoton();
+    return;
+  }
+
+  fetch(`/solicitante/calcular_presupuesto?prestador_id={{ prestador.id }}&hora_inicio=${hIni}&hora_fin=${hFin}`)
+    .then(r => r.json())
+    .then(data => {
+      if (data.error) {
+        box.style.display = 'none';
+        chkWrap.style.display = 'none';
+        bloquearBoton();
+        return;
+      }
+      box.style.display = 'block';
+      chkWrap.style.display = 'block';
+
+      const h = data.horas;
+      const horasLabel = (h % 1 === 0 ? h : h.toFixed(1).replace('.', ',')) + ' h';
+
+      if (data.sin_tarifa) {
+        document.getElementById('sin-tarifa').style.display = 'block';
+        document.getElementById('con-tarifa').style.display = 'none';
+      } else {
+        document.getElementById('sin-tarifa').style.display = 'none';
+        document.getElementById('con-tarifa').style.display = 'block';
+        document.getElementById('pres-horas').textContent    = horasLabel;
+        document.getElementById('pres-tarifa').textContent   = fmt(data.tarifa_hora) + '/h';
+        document.getElementById('pres-subtotal').textContent = fmt(data.monto_servicio);
+        var comisionRow = document.getElementById('pres-comision-row');
+        if (data.comision_monto > 0) {
+          document.getElementById('pres-comision-label').textContent = 'Servicio de AMPARO (' + data.comision_label + ')';
+          document.getElementById('pres-comision').textContent = fmt(data.comision_monto);
+          comisionRow.style.display = 'flex';
+        } else {
+          comisionRow.style.display = 'none';
+        }
+        document.getElementById('pres-total').textContent    = fmt(data.monto_total);
+      }
+      document.getElementById('chk-confirmar').checked = false;
+      bloquearBoton();
+    })
+    .catch(() => {
+      box.style.display = 'none';
+      chkWrap.style.display = 'none';
+      bloquearBoton();
+    });
+}
+
+function toggleBoton() {
+  const chk = document.getElementById('chk-confirmar').checked;
+  const btn = document.getElementById('btn-confirmar');
+  btn.disabled = !chk;
+  btn.style.opacity = chk ? '1' : '.45';
+  btn.style.pointerEvents = chk ? 'auto' : 'none';
+}
+
+function bloquearBoton() {
+  const btn = document.getElementById('btn-confirmar');
+  btn.disabled = true;
+  btn.style.opacity = '.45';
+  btn.style.pointerEvents = 'none';
+  document.getElementById('chk-confirmar').checked = false;
+}
+</script>
+{% endblock %}

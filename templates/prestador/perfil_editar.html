@@ -1,0 +1,402 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Editar perfil{% endblock %}
+
+{% block content %}
+{% set active_tab = 'perfil' %}
+
+<div class="page-title-bar">
+  <a href="{{ url_for('prestador.perfil') }}" class="btn-back">← Volver</a>
+  <h1>Editar perfil</h1>
+</div>
+
+<form method="POST" action="{{ url_for('prestador.perfil_editar') }}"
+      enctype="multipart/form-data" class="edit-form">
+
+  <!-- FOTO -->
+  <div class="form-group">
+    <label class="form-label">Foto de perfil</label>
+    {% if prestador.foto_url %}
+    <img src="{{ prestador.foto_url }}" class="foto-preview" alt="Foto actual">
+    {% endif %}
+    <input type="file" name="foto" accept=".jpg,.jpeg,.png,.webp" class="input-file">
+    <small class="form-hint">JPG, PNG, WEBP. Tamaño recomendado: cuadrada.</small>
+  </div>
+
+  <!-- DATOS NO EDITABLES (solo lectura) -->
+  <div class="form-group">
+    <label class="form-label">Nombre (no editable)</label>
+    <input type="text" value="{{ prestador.nombre }} {{ prestador.apellido }}"
+           class="input-text input-readonly" disabled>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Email (no editable)</label>
+    <input type="text" value="{{ prestador.email }}"
+           class="input-text input-readonly" disabled>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Categoría (no editable)</label>
+    <input type="text" value="{{ prestador.categoria_nombre or 'No asignada' }}"
+           class="input-text input-readonly" disabled>
+  </div>
+
+  <!-- ── FOTOS DNI ── -->
+  <div style="border-top:2px solid #e5e9ed;margin:1.5rem 0 1rem;"></div>
+  <div class="form-group">
+    <label class="form-label" style="font-size:1rem;">🪪 Verificación de identidad</label>
+    <small style="display:block;color:#555;margin-bottom:.75rem;line-height:1.5;">
+      Estas fotos son requeridas para que el equipo de AMPARO verifique tu DNI. Solo las ve el equipo interno.
+    </small>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Foto del DNI (frente)</label>
+    {% if prestador.dni_foto_frente_url %}
+    <div style="margin-bottom:.5rem;">
+      <img src="{{ prestador.dni_foto_frente_url }}" style="max-width:100%;border-radius:8px;border:1px solid #ccc;" alt="Frente DNI">
+      <div style="font-size:.78rem;color:#1E8449;margin-top:.25rem;">✓ Foto subida</div>
+    </div>
+    {% endif %}
+    <label style="background:#2E86C1;color:#fff;padding:.45rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;display:inline-block;">
+      📷 {{ 'Reemplazar foto' if prestador.dni_foto_frente_url else 'Subir foto del DNI' }}
+      <input type="file" name="dni_foto_frente" id="inp-dni-frente-edit"
+             accept="image/*" capture="environment"
+             style="display:none;" onchange="previsualizarDniEdit(this,'prev-frente-edit','img-frente-edit')">
+    </label>
+    <div id="prev-frente-edit" style="margin-top:.5rem;display:none;">
+      <img id="img-frente-edit" style="max-width:100%;border-radius:8px;border:1px solid #ccc;" alt="Nueva foto frente">
+    </div>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Selfie sosteniendo tu DNI</label>
+    <small style="display:block;color:#555;margin-bottom:.4rem;">
+      Sosteniendo tu DNI abierto en la página con tu foto.
+    </small>
+    {% if prestador.dni_foto_selfie_url %}
+    <div style="margin-bottom:.5rem;">
+      <img src="{{ prestador.dni_foto_selfie_url }}" style="width:140px;height:140px;object-fit:cover;border-radius:50%;border:2px solid #2E86C1;" alt="Selfie DNI">
+      <div style="font-size:.78rem;color:#1E8449;margin-top:.25rem;">✓ Selfie subida</div>
+    </div>
+    {% endif %}
+    <label style="background:#2E86C1;color:#fff;padding:.45rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;display:inline-block;">
+      📷 {{ 'Reemplazar selfie' if prestador.dni_foto_selfie_url else 'Sacar selfie con DNI' }}
+      <input type="file" name="dni_foto_selfie" id="inp-dni-selfie-edit"
+             accept="image/*" capture="user"
+             style="display:none;" onchange="previsualizarDniEdit(this,'prev-selfie-edit','img-selfie-edit')">
+    </label>
+    <div id="prev-selfie-edit" style="margin-top:.5rem;display:none;">
+      <img id="img-selfie-edit" style="width:140px;height:140px;object-fit:cover;border-radius:50%;border:2px solid #2E86C1;" alt="Nueva selfie">
+    </div>
+  </div>
+
+  <!-- DESCRIPCIÓN -->
+  <div class="form-group">
+    <label class="form-label" for="descripcion">Descripción personal</label>
+    <textarea id="descripcion" name="descripcion" rows="4" class="input-textarea"
+              placeholder="Contá tu experiencia, especialidades y por qué los solicitantes te deberían elegir...">{{ prestador.descripcion or '' }}</textarea>
+  </div>
+
+  <!-- EXPERIENCIA -->
+  <div class="form-group">
+    <label class="form-label" for="experiencia_anios">Años de experiencia</label>
+    <input type="number" id="experiencia_anios" name="experiencia_anios"
+           value="{{ prestador.experiencia_anios or 0 }}"
+           min="0" max="50" class="input-text input-short">
+  </div>
+
+  <!-- TARIFA -->
+  <div class="form-group">
+    <label class="form-label" for="tarifa_hora">💲 Mi tarifa por hora</label>
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      <span style="font-size:.95rem;color:#555;">$</span>
+      <input type="number" id="tarifa_hora" name="tarifa_hora"
+             value="{{ '%.2f'|format(prestador.tarifa_hora or 0) }}"
+             step="0.01" min="0" class="input-text input-short">
+    </div>
+    {% if prestador.tarifa_minima or prestador.tarifa_maxima %}
+    <small class="form-hint">
+      Rango para {{ prestador.categoria_nombre }}: $ {{ '%.2f'|format(prestador.tarifa_minima or 0) }} — $ {{ '%.2f'|format(prestador.tarifa_maxima or 0) }} por hora
+    </small>
+    {% endif %}
+  </div>
+
+  <!-- GPS / UBICACIÓN -->
+  <div style="border-top:2px solid #e5e9ed;margin:1.5rem 0 1rem;"></div>
+  <div class="form-group">
+    <label class="form-label" style="font-size:1rem;">📍 Ubicación y radio de cobertura</label>
+    {% if prestador.localidad or prestador.codigo_postal %}
+    <div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:8px;padding:.6rem .85rem;margin-bottom:.6rem;font-size:.85rem;color:#1a5e2e;">
+      ✓ Ubicación actual: <strong>{{ [prestador.localidad, prestador.codigo_postal, prestador.provincia]|select|join(', ') }}</strong>
+    </div>
+    {% endif %}
+
+    <input type="hidden" name="latitud"       id="gps-lat"       value="{{ prestador.latitud or '' }}">
+    <input type="hidden" name="longitud"      id="gps-lon"       value="{{ prestador.longitud or '' }}">
+    <input type="hidden" name="codigo_postal" id="gps-cp"        value="{{ prestador.codigo_postal or '' }}">
+    <input type="hidden" name="localidad"     id="gps-localidad" value="{{ prestador.localidad or '' }}">
+    <input type="hidden" name="provincia"     id="gps-provincia" value="{{ prestador.provincia or '' }}">
+
+    <div id="gps-display" style="display:none;background:#d4efdf;border:1px solid #82c495;border-radius:8px;padding:.6rem .85rem;margin-bottom:.5rem;font-size:.85rem;color:#1a5e2e;">
+      ✓ Nueva ubicación: <span id="gps-text"></span>
+      <button type="button" onclick="limpiarUbicacion()" style="float:right;background:none;border:none;color:#c0392b;cursor:pointer;font-size:.8rem;">✕</button>
+    </div>
+
+    <button type="button" onclick="detectarUbicacion()" id="btn-gps"
+            style="width:100%;padding:.55rem;border-radius:20px;border:1.5px solid var(--verde);background:#fff;color:var(--verde);font-size:.88rem;font-weight:600;cursor:pointer;margin-bottom:.5rem;">
+      📍 Actualizar ubicación con GPS
+    </button>
+    <div style="display:flex;gap:.5rem;align-items:center;">
+      <input type="text" id="cp-manual" class="input-text" maxlength="8" inputmode="numeric"
+             placeholder="O ingresá tu código postal (ej: 1414)" style="flex:1;">
+      <button type="button" onclick="buscarPorCP()"
+              style="padding:.55rem .9rem;border-radius:8px;border:1.5px solid #aaa;background:#fff;color:#555;font-size:.85rem;cursor:pointer;white-space:nowrap;">
+        Buscar
+      </button>
+    </div>
+    <small class="form-hint">Si no podés usar GPS, ingresá tu código postal y hacé clic en Buscar.</small>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Radio de cobertura: <span id="radio-valor">{{ prestador.radio_cobertura_km or 10 }}</span> km</label>
+    <input type="range" name="radio_cobertura_km" id="radio-slider"
+           min="1" max="50" value="{{ prestador.radio_cobertura_km or 10 }}"
+           oninput="document.getElementById('radio-valor').textContent=this.value"
+           style="width:100%;accent-color:var(--verde);">
+    <small class="form-hint">Distancia máxima que estás dispuesto a desplazarte para prestar el servicio.</small>
+  </div>
+
+  <!-- DISPONIBILIDAD -->
+  <div class="form-group">
+    <label class="form-label">Disponibilidad horaria</label>
+    <div class="disp-grid">
+      <div class="disp-grid__header">
+        <span></span>
+        {% for _, franja_label, _, _ in franjas %}
+        <span class="disp-grid__franja">{{ franja_label }}</span>
+        {% endfor %}
+      </div>
+      {% for dia in dias %}
+      <div class="disp-grid__row">
+        <span class="disp-grid__dia">{{ dia }}</span>
+        {% for franja_key, _, _, _ in franjas %}
+        <label class="disp-check">
+          <input type="checkbox" name="disp_{{ dia }}_{{ franja_key }}"
+                 {% if disp_marcada.get(dia + '_' + franja_key) %}checked{% endif %}>
+          <span class="disp-check__box"></span>
+        </label>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- ── DATOS DE COBRO ── -->
+  <div style="border-top:2px solid #e5e9ed;margin:1.5rem 0 1rem;"></div>
+  <div class="form-group">
+    <label class="form-label" style="font-size:1rem;">💰 Datos de cobro</label>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Método preferido</label>
+    <select name="metodo_cobro" class="input-select" onchange="toggleCobro(this.value)">
+      <option value="mercadopago" {{ 'selected' if (prestador.metodo_cobro or 'mercadopago') == 'mercadopago' }}>💳 Mercado Pago</option>
+      <option value="transferencia" {{ 'selected' if prestador.metodo_cobro == 'transferencia' }}>🏦 Transferencia bancaria</option>
+    </select>
+  </div>
+
+  <div id="cobro-mp" style="{{ 'display:none' if prestador.metodo_cobro == 'transferencia' else '' }}">
+    <div class="form-group">
+      <label class="form-label">Email de Mercado Pago <span style="font-weight:400;color:#888;">(podés ingresar uno o ambos)</span></label>
+      <input type="email" name="email_mp" class="input-text"
+             value="{{ prestador.email_mp or '' }}" placeholder="tu@email.com">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alias de Mercado Pago <span style="font-weight:400;color:#888;">(podés ingresar uno o ambos)</span></label>
+      <input type="text" name="alias_mp" class="input-text"
+             value="{{ prestador.alias_mp or '' }}" placeholder="tu.alias.mp" id="alias_mp_mp">
+    </div>
+  </div>
+
+  <div id="cobro-transferencia" style="{{ '' if prestador.metodo_cobro == 'transferencia' else 'display:none' }}">
+    <div class="form-group">
+      <label class="form-label">CBU (22 dígitos) <span style="font-weight:400;color:#888;">(podés ingresar uno o ambos)</span></label>
+      <input type="text" name="cbu" class="input-text" maxlength="22" inputmode="numeric"
+             value="{{ prestador.cbu or '' }}" placeholder="0000000000000000000000"
+             oninput="checkCBU(this.value)">
+      <div id="cbu-label" style="font-size:.75rem;margin-top:.2rem;color:#aaa;"></div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Alias bancario <span style="font-weight:400;color:#888;">(podés ingresar uno o ambos)</span></label>
+      <input type="text" name="alias_mp" class="input-text"
+             value="{{ prestador.alias_mp or '' }}" placeholder="mi.alias.banco" id="alias_mp_transf">
+    </div>
+  </div>
+
+  <!-- ── INFORMACIÓN FISCAL ── -->
+  <div style="border-top:2px solid #e5e9ed;margin:1.5rem 0 1rem;"></div>
+  <div class="form-group">
+    <label class="form-label" style="font-size:1rem;">📄 Información fiscal</label>
+  </div>
+
+  <div class="form-group">
+    <label class="form-label">Condición fiscal</label>
+    <select name="condicion_fiscal" class="input-select" onchange="toggleCUIT(this.value)">
+      <option value="no_informada" {{ 'selected' if (prestador.condicion_fiscal or 'no_informada') == 'no_informada' }}>No informada</option>
+      <option value="monotributista" {{ 'selected' if prestador.condicion_fiscal == 'monotributista' }}>Monotributista</option>
+      <option value="relacion_dependencia" {{ 'selected' if prestador.condicion_fiscal == 'relacion_dependencia' }}>Relación de dependencia</option>
+    </select>
+  </div>
+
+  <div id="cuit-group" style="{{ '' if prestador.condicion_fiscal == 'monotributista' else 'display:none' }}">
+    <div class="form-group">
+      <label class="form-label">CUIT <span style="font-weight:400;color:#888;">(formato XX-XXXXXXXX-X)</span></label>
+      <input type="text" name="cuit" class="input-text" maxlength="13"
+             value="{{ prestador.cuit or '' }}" placeholder="20-12345678-9"
+             oninput="checkCUIT(this.value)">
+      <div id="cuit-label" style="font-size:.75rem;margin-top:.2rem;color:#aaa;"></div>
+    </div>
+  </div>
+
+  <div style="border-top:2px solid #e5e9ed;margin:1.5rem 0 1rem;"></div>
+  <div class="form-actions">
+    <a href="{{ url_for('prestador.perfil') }}" class="btn btn-secondary-outline">Cancelar</a>
+    <button type="submit" class="btn btn-accept btn-full">Guardar cambios</button>
+  </div>
+</form>
+
+<!-- ── CV (formulario separado) ── -->
+<div style="border-top:2px solid #e5e9ed;margin:1.5rem 0 1rem;"></div>
+<div class="form-group">
+  <label class="form-label" style="font-size:1rem;">📋 Mi Curriculum Vitae</label>
+</div>
+
+{% if prestador.cv_url %}
+<div style="background:#eafaf1;border:1px solid #a9dfbf;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;font-size:.88rem;color:#1a5e2e;">
+  ✓ CV actual cargado — <a href="{{ prestador.cv_url }}" target="_blank" style="color:#1a5e2e;font-weight:600;">Ver PDF</a>
+</div>
+{% endif %}
+
+<form method="POST" action="{{ url_for('prestador.cv_subir') }}"
+      enctype="multipart/form-data" id="form-cv">
+  <input type="hidden" name="redirect_to" value="editar">
+
+  <div class="form-group">
+    <label style="background:#1E8449;color:#fff;padding:.5rem 1rem;border-radius:20px;font-size:.85rem;cursor:pointer;display:inline-block;">
+      📎 {{ 'Reemplazar CV' if prestador.cv_url else 'Subir CV desde mi celular' }}
+      <input type="file" name="cv_archivo" id="cv_archivo"
+             accept=".pdf,application/pdf"
+             style="display:none;" onchange="mostrarNombreCV(this)">
+    </label>
+    <div id="cv-nombre" style="margin-top:.4rem;font-size:.82rem;color:#555;display:none;"></div>
+    <small class="form-hint">Solo PDF. Máximo 5 MB.</small>
+  </div>
+
+  <button type="submit" id="btn-guardar-cv" class="btn btn-accept" style="display:none;">
+    Guardar CV
+  </button>
+</form>
+
+<script>
+function mostrarNombreCV(input) {
+  var d = document.getElementById('cv-nombre');
+  var b = document.getElementById('btn-guardar-cv');
+  if (input.files && input.files[0]) {
+    d.textContent = '📄 ' + input.files[0].name;
+    d.style.display = 'block';
+    b.style.display = 'inline-block';
+  }
+}
+</script>
+
+<script>
+// ── GPS ──────────────────────────────────────────────────────────────
+function detectarUbicacion() {
+  if (!navigator.geolocation) { alert('Tu navegador no soporta geolocalización.'); return; }
+  const btn = document.getElementById('btn-gps');
+  btn.textContent = '⏳ Detectando...'; btn.disabled = true;
+  navigator.geolocation.getCurrentPosition(
+    function(pos) {
+      const lat = pos.coords.latitude, lon = pos.coords.longitude;
+      document.getElementById('gps-lat').value = lat;
+      document.getElementById('gps-lon').value = lon;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&accept-language=es`)
+        .then(r => r.json()).then(data => {
+          const a = data.address || {};
+          const cp = a.postcode || '';
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-cp').value = cp;
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        }).catch(() => mostrarUbicacion('', '', ''));
+      btn.textContent = '📍 Actualizar ubicación con GPS'; btn.disabled = false;
+    },
+    function() { btn.textContent = '📍 Actualizar ubicación con GPS'; btn.disabled = false; alert('No se pudo obtener tu ubicación. Usá el código postal.'); },
+    { timeout: 10000 }
+  );
+}
+function buscarPorCP() {
+  const cp = document.getElementById('cp-manual').value.trim();
+  if (!cp) { alert('Ingresá un código postal.'); return; }
+  fetch(`https://nominatim.openstreetmap.org/search?postalcode=${encodeURIComponent(cp)}&country=AR&format=json&limit=1&accept-language=es`)
+    .then(r => r.json()).then(data => {
+      if (!data.length) { alert('No se encontró ese código postal en Argentina.'); return; }
+      const r = data[0];
+      document.getElementById('gps-lat').value = r.lat;
+      document.getElementById('gps-lon').value = r.lon;
+      document.getElementById('gps-cp').value = cp;
+      fetch(`https://nominatim.openstreetmap.org/reverse?lat=${r.lat}&lon=${r.lon}&format=json&accept-language=es`)
+        .then(r2 => r2.json()).then(data2 => {
+          const a = data2.address || {};
+          const loc = a.suburb || a.neighbourhood || a.city_district || a.town || a.city || '';
+          const prov = a.state || '';
+          document.getElementById('gps-localidad').value = loc;
+          document.getElementById('gps-provincia').value = prov;
+          mostrarUbicacion(loc, cp, prov);
+        });
+    }).catch(() => alert('Error al buscar el código postal.'));
+}
+function mostrarUbicacion(loc, cp, prov) {
+  const parts = [loc, cp, prov].filter(Boolean);
+  document.getElementById('gps-text').textContent = parts.join(', ') || 'Ubicación guardada';
+  document.getElementById('gps-display').style.display = 'block';
+}
+function limpiarUbicacion() {
+  ['gps-lat','gps-lon','gps-cp','gps-localidad','gps-provincia'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('gps-display').style.display = 'none';
+  document.getElementById('cp-manual').value = '';
+}
+function previsualizarDniEdit(input, contId, imgId) {
+  if (input.files && input.files[0]) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      document.getElementById(imgId).src = e.target.result;
+      document.getElementById(contId).style.display = 'block';
+    };
+    reader.readAsDataURL(input.files[0]);
+  }
+}
+function toggleCobro(val) {
+  document.getElementById('cobro-mp').style.display           = (val === 'mercadopago')    ? '' : 'none';
+  document.getElementById('cobro-transferencia').style.display = (val === 'transferencia')  ? '' : 'none';
+}
+function toggleCUIT(val) {
+  document.getElementById('cuit-group').style.display = (val === 'monotributista') ? '' : 'none';
+}
+function checkCBU(val) {
+  const lbl = document.getElementById('cbu-label');
+  if (!val) { lbl.textContent = ''; return; }
+  if (/^\d{22}$/.test(val)) { lbl.textContent = 'CBU válido ✓'; lbl.style.color = '#1E8449'; }
+  else { lbl.textContent = 'Debe tener exactamente 22 dígitos'; lbl.style.color = '#c0392b'; }
+}
+function checkCUIT(val) {
+  const lbl = document.getElementById('cuit-label');
+  if (!val) { lbl.textContent = ''; return; }
+  if (/^\d{2}-\d{8}-\d$/.test(val)) { lbl.textContent = 'CUIT válido ✓'; lbl.style.color = '#1E8449'; }
+  else { lbl.textContent = 'Formato: XX-XXXXXXXX-X'; lbl.style.color = '#c0392b'; }
+}
+</script>
+{% endblock %}

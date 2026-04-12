@@ -1,0 +1,108 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Mis Cobros{% endblock %}
+
+{% block content %}
+{% set active_tab = 'cobros' %}
+
+<div class="page-title-bar">
+  <h1>💰 Mis Cobros</h1>
+</div>
+
+<!-- RESUMEN -->
+<div class="cobros-resumen">
+  <div class="cobros-resumen__item">
+    <div class="cobros-resumen__label">Pendiente de acreditación</div>
+    <div class="cobros-resumen__value">${{ "%.2f"|format(total_pendiente) }}</div>
+  </div>
+  <div class="cobros-resumen__item">
+    <div class="cobros-resumen__label">Cobrado este mes</div>
+    <div class="cobros-resumen__value cobros-resumen__value--green">${{ "%.2f"|format(total_mes) }}</div>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <a href="{{ url_for('prestador.cobros', tab='pendientes') }}"
+     class="tab {{ 'tab-active' if tab == 'pendientes' }}">Pendientes</a>
+  <a href="{{ url_for('prestador.cobros', tab='historial') }}"
+     class="tab {{ 'tab-active' if tab == 'historial' }}">Historial</a>
+</div>
+
+<!-- TAB: PENDIENTES -->
+{% if tab == 'pendientes' %}
+  {% if rows %}
+    {% for p in rows %}
+    <div class="cobro-card">
+      <div class="cobro-card__header">
+        <strong>
+          {% if p.tipo_pago == 'penalidad' %}Compensación por cancelación
+          {% else %}Servicio del {{ p.fecha_servicio }}{% endif %}
+        </strong>
+        <span class="badge badge-pending-pay">Pendiente</span>
+      </div>
+      <div class="cobro-card__row">👤 {{ p.solicitante_nombre }} · 📅 {{ p.fecha_servicio }}</div>
+      <div class="cobro-card__amounts">
+        <div class="amount-row">
+          <span>Monto del servicio</span>
+          <span>${{ "%.2f"|format(p.monto_bruto) }}</span>
+        </div>
+        {% if (p.comision_prestador or 0) > 0 %}
+        <div class="amount-row amount-row--commission">
+          <span>Comisión AMPARO</span>
+          <span>-${{ "%.2f"|format(p.comision_prestador) }}</span>
+        </div>
+        {% endif %}
+        <div class="amount-row amount-row--net">
+          <span>Monto a recibir</span>
+          <strong>${{ "%.2f"|format(p.monto_neto) }}</strong>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  {% else %}
+    <div class="empty-state"><p>No tenés cobros pendientes.</p></div>
+  {% endif %}
+
+<!-- TAB: HISTORIAL -->
+{% else %}
+  {% if rows %}
+    {% for p in rows %}
+    <div class="cobro-row">
+      <div class="cobro-row__main">
+        <strong>
+          {% if p.tipo_pago == 'penalidad' %}Compensación por cancelación
+          {% else %}Servicio del {{ p.fecha_servicio }}{% endif %}
+        </strong>
+        <span class="badge badge-done">Acreditado</span>
+      </div>
+      <div class="cobro-row__sub">👤 {{ p.solicitante_nombre }} · 📅 {{ p.fecha_servicio }}</div>
+      {% if p.fecha_liquidacion %}
+      <div class="cobro-row__sub">✅ Acreditado: {{ p.fecha_liquidacion[:10] }}</div>
+      {% endif %}
+      <div class="cobro-row__amount">${{ "%.2f"|format(p.monto_neto) }}</div>
+    </div>
+    {% endfor %}
+
+    <!-- Total -->
+    <div class="total-bar">
+      Total del período: <strong>${{ "%.2f"|format(rows | sum(attribute='monto_neto')) }}</strong>
+    </div>
+
+    <!-- Paginado -->
+    {% if total_pages > 1 %}
+    <div class="pagination">
+      {% if page > 1 %}
+      <a href="{{ url_for('prestador.cobros', tab='historial', page=page-1) }}" class="pag-btn">‹ Anterior</a>
+      {% endif %}
+      <span class="pag-info">{{ page }} / {{ total_pages }}</span>
+      {% if page < total_pages %}
+      <a href="{{ url_for('prestador.cobros', tab='historial', page=page+1) }}" class="pag-btn">Siguiente ›</a>
+      {% endif %}
+    </div>
+    {% endif %}
+  {% else %}
+    <div class="empty-state"><p>No hay cobros acreditados aún.</p></div>
+  {% endif %}
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,79 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Reportes y Estadísticas{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <span>Reportes</span>
+  </nav>
+  <h1 class="page-title">📊 Reportes y Estadísticas</h1>
+  <p class="page-subtitle">Analizá el rendimiento de la plataforma por período.</p>
+</div>
+
+<div class="config-grid">
+
+  <a href="{{ url_for('admin.reporte_usuarios') }}" class="config-card">
+    <div class="config-card__icon">👥</div>
+    <div class="config-card__body">
+      <h3>Usuarios activos</h3>
+      <p>Evolución mensual de nuevos registros por tipo: admin, prestador y solicitante.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.reporte_transacciones') }}" class="config-card">
+    <div class="config-card__icon">💰</div>
+    <div class="config-card__body">
+      <h3>Transacciones</h3>
+      <p>Montos, comisiones y distribución por método de pago en el período.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.reporte_zonas') }}" class="config-card">
+    <div class="config-card__icon">📍</div>
+    <div class="config-card__body">
+      <h3>Zonas con más demanda</h3>
+      <p>Ranking de zonas por solicitudes, contrataciones y monto facturado.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.reporte_categorias') }}" class="config-card">
+    <div class="config-card__icon">📋</div>
+    <div class="config-card__body">
+      <h3>Categorías más contratadas</h3>
+      <p>Servicios y facturación por categoría, con calificación promedio.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.reporte_prestadores') }}" class="config-card">
+    <div class="config-card__icon">⭐</div>
+    <div class="config-card__body">
+      <h3>Prestadores mejor calificados</h3>
+      <p>Ranking de prestadores por puntaje, reseñas y servicios en el período.</p>
+    </div>
+  </a>
+
+  <a href="{{ url_for('admin.reporte_tiempos') }}" class="config-card">
+    <div class="config-card__icon">⏱️</div>
+    <div class="config-card__body">
+      <h3>Tiempos de contratación</h3>
+      <p>Tiempo promedio entre solicitud, aceptación e inicio del servicio.</p>
+    </div>
+  </a>
+
+</div>
+
+<style>
+.page-header { margin-bottom: 2rem; }
+.page-subtitle { color: #666; margin-top: .25rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+.config-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.25rem; }
+.config-card { display: flex; align-items: flex-start; gap: 1rem; background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 1.5rem; text-decoration: none; color: inherit; transition: box-shadow .18s, transform .18s; }
+.config-card:hover { box-shadow: 0 4px 18px rgba(26,82,118,.13); transform: translateY(-2px); }
+.config-card__icon { font-size: 2rem; line-height: 1; flex-shrink: 0; }
+.config-card__body h3 { margin: 0 0 .35rem; font-size: 1rem; color: #1A5276; }
+.config-card__body p { margin: 0; font-size: .875rem; color: #555; line-height: 1.4; }
+</style>
+{% endblock %}

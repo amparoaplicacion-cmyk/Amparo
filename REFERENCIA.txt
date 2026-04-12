@@ -1,0 +1,267 @@
+================================================================
+  AMPARO — Módulo de Autenticación
+  Referencia técnica y de uso
+================================================================
+
+
+----------------------------------------------------------------
+1. PUESTA EN MARCHA
+----------------------------------------------------------------
+
+  Paso 1 — Instalar dependencias
+    pip install -r requirements.txt
+
+  Paso 2 — Copiar y configurar variables de entorno
+    Renombrá el archivo .env.example a .env
+    Editá los valores de SMTP y SECRET_KEY
+
+  Paso 3 — Inicializar la base de datos
+    python init_db.py
+
+  Paso 4 — Correr la aplicación
+    python app.py
+
+  La app queda disponible en: http://localhost:5000
+
+
+----------------------------------------------------------------
+2. USUARIOS DE PRUEBA
+----------------------------------------------------------------
+
+  Tipo          Email                     Password
+  ------------  ------------------------  ----------
+  admin         admin@amparo.com          Admin123!
+  prestador     prestador@amparo.com      Prest123!
+  familia       familia@amparo.com        Famil123!
+
+
+----------------------------------------------------------------
+3. ARCHIVOS DEL PROYECTO
+----------------------------------------------------------------
+
+  app.py                       App principal de Flask.
+                               Registra el blueprint de auth.
+                               Define rutas de dashboard por tipo.
+
+  auth.py                      Toda la lógica de autenticación.
+                               Login, logout, cambio de contraseña,
+                               desbloqueo por token, desbloqueo admin.
+
+  database.py                  Conexión a SQLite (amparo.db).
+
+  init_db.py                   Crea las tablas en la base de datos
+                               e inserta los usuarios de prueba.
+
+  templates/login.html         Pantalla de inicio de sesión.
+  templates/cambiar_password.html  Cambio de contraseña (forzado y voluntario).
+  templates/bloqueada.html     Pantalla de cuenta bloqueada.
+  templates/dashboard.html     Panel de bienvenida (placeholder por tipo).
+
+  static/style.css             Estilos globales.
+                               Paleta: azul oscuro #1B3A5C + blanco #FFFFFF.
+
+  requirements.txt             Dependencias: Flask y Werkzeug.
+  .env.example                 Plantilla de variables de entorno.
+
+
+----------------------------------------------------------------
+4. REGLAS DE CONTRASEÑA
+----------------------------------------------------------------
+
+  - Mínimo 8 caracteres
+  - Al menos 1 letra mayúscula
+  - Al menos 1 carácter especial: ! @ # $ % ^ & *
+  - Vigencia: 90 días. Al vencer, se redirige al cambio obligatorio.
+  - No se puede reutilizar la contraseña actual.
+
+
+----------------------------------------------------------------
+5. ESTADOS DE CUENTA
+----------------------------------------------------------------
+
+  ACTIVA      Estado normal. Permite el inicio de sesión.
+
+  BLOQUEADA   Se activa al tercer intento fallido.
+              El usuario recibe un email con enlace de desbloqueo.
+              El enlace es válido por 24 horas.
+              También puede ser desbloqueada manualmente por un admin.
+
+  VENCIDA     La contraseña superó los 90 días de vigencia.
+              Se detecta en el momento del login.
+              El usuario es redirigido a cambiar su contraseña.
+              Al cambiarla, la cuenta vuelve a ACTIVA.
+
+  INACTIVA    Deshabilitada manualmente por el administrador.
+              No permite el inicio de sesión.
+
+
+----------------------------------------------------------------
+6. FLUJO DE AUTENTICACIÓN
+----------------------------------------------------------------
+
+  LOGIN
+    |
+    +-- Usuario no existe          --> Mensaje de error
+    |
+    +-- Estado INACTIVA            --> Mensaje de error
+    |
+    +-- Estado BLOQUEADA           --> Pantalla /bloqueada
+    |
+    +-- Contraseña incorrecta
+    |     |
+    |     +-- Intentos < 3        --> Advertencia (intentos restantes)
+    |     |
+    |     +-- Intentos = 3        --> Cuenta BLOQUEADA
+    |                                  + Email con token de desbloqueo
+    |                                  + Pantalla /bloqueada
+    |
+    +-- Contraseña correcta
+          |
+          +-- Password vencida    --> Cuenta VENCIDA
+          |   (> 90 días)             + Redirige a /cambiar_password
+          |
+          +-- Todo OK             --> Sesión iniciada
+                                      Redirige según tipo:
+                                        admin     → /admin
+                                        prestador → /prestador
+                                        familia   → /familia
+
+
+  DESBLOQUEO POR EMAIL
+    El usuario recibe un link: /desbloquear/<token>
+    Si el token es válido y no expiró → cuenta ACTIVA → login
+
+  DESBLOQUEO MANUAL (admin)
+    GET /admin/desbloquear/<id_usuario>
+    Requiere sesión activa de tipo 'admin'.
+
+
+----------------------------------------------------------------
+7. RUTAS DISPONIBLES
+----------------------------------------------------------------
+
+  GET  /                           Redirige según tipo de usuario
+  GET  /login                      Pantalla de inicio de sesión
+  POST /login                      Procesa el formulario de login
+  GET  /logout                     Cierra la sesión
+  GET  /cambiar_password           Formulario de cambio de contraseña
+  POST /cambiar_password           Procesa el cambio de contraseña
+  GET  /bloqueada                  Pantalla de cuenta bloqueada
+  GET  /desbloquear/<token>        Desbloqueo automático por email
+  GET  /admin/desbloquear/<id>     Desbloqueo manual por administrador
+  GET  /admin                      Dashboard administrador
+  GET  /prestador                  Dashboard prestador
+  GET  /familia                    Dashboard familia
+
+
+----------------------------------------------------------------
+8. VARIABLES DE ENTORNO (.env)
+----------------------------------------------------------------
+
+  SECRET_KEY     Clave secreta de Flask. Cambiar en producción.
+  BASE_URL       URL pública de la app (para links en emails).
+                 Ejemplo: https://amparo.midominio.com
+  SMTP_HOST      Servidor SMTP. Por defecto: smtp.gmail.com
+  SMTP_PORT      Puerto SMTP. Por defecto: 587
+  SMTP_USER      Dirección de email remitente.
+  SMTP_PASS      Contraseña de aplicación del email.
+
+  NOTA: Si SMTP_USER o SMTP_PASS están vacíos, el link de
+  desbloqueo se imprime en la consola (útil en desarrollo).
+
+
+----------------------------------------------------------------
+9. BASE DE DATOS (amparo.db)
+----------------------------------------------------------------
+
+  Tabla: usuarios
+
+  id                    INTEGER  Clave primaria autoincremental
+  nombre                TEXT     Nombre del usuario
+  email                 TEXT     Email único (se usa para login)
+  password_hash         TEXT     Hash de la contraseña (werkzeug)
+  tipo                  TEXT     'admin' | 'prestador' | 'familia'
+  estado                TEXT     'ACTIVA' | 'BLOQUEADA' | 'VENCIDA' | 'INACTIVA'
+  intentos_fallidos     INTEGER  Contador de intentos fallidos (máx. 3)
+  fecha_creacion        TEXT     Fecha/hora de creación del registro
+  fecha_cambio_password TEXT     Última vez que se cambió la contraseña
+  token_desbloqueo      TEXT     Token generado al bloquear la cuenta
+  token_expira          TEXT     Fecha/hora de expiración del token
+
+
+----------------------------------------------------------------
+10. NOTAS DE SEGURIDAD PARA PRODUCCIÓN
+----------------------------------------------------------------
+
+  - Cambiar SECRET_KEY por un valor largo y aleatorio.
+  - Agregar en app.py:
+      app.config['SESSION_COOKIE_SECURE'] = True
+      app.config['SESSION_COOKIE_HTTPONLY'] = True
+      app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+  - Usar HTTPS obligatoriamente.
+  - No exponer el modo debug=True.
+  - Usar una contraseña de aplicación de Gmail (no la contraseña
+    real de la cuenta) para el SMTP.
+
+
+================================================================
+  Plataforma AMPARO — Documento generado el 18/03/2026
+================================================================
+
+
+================================================================
+  COMANDOS DEL DÍA A DÍA
+  (Copiar y pegar en la terminal de VS Code)
+================================================================
+
+  IMPORTANTE: Todos los comandos se ejecutan desde la terminal
+  de VS Code, NO con el botón Run (flecha) del editor.
+  La terminal se abre con: Ctrl + Ñ
+
+
+----------------------------------------------------------------
+CADA VEZ QUE QUIERAS VER CORRER LA APP
+----------------------------------------------------------------
+
+  Paso 1 — Abrir la terminal en VS Code (Ctrl + Ñ)
+            Asegurarse de estar en la carpeta del proyecto:
+            PS D:\Proyecto Amparo\Amparo>
+
+  Paso 2 — Correr la app:
+            & '.venv\Scripts\python.exe' app.py
+
+  Paso 3 — Abrir el navegador en:
+          http://127.0.0.1:5000/login
+
+
+  Para detener la app: Ctrl + C en la terminal
+
+
+----------------------------------------------------------------
+SI NECESITÁS REINSTALAR LAS DEPENDENCIAS
+(solo si borrás el .venv o cambiás de computadora)
+----------------------------------------------------------------
+
+  & '.venv\Scripts\pip.exe' install -r requirements.txt
+
+       
+ 
+----------------------------------------------------------------
+SI NECESITÁS RECREAR LA BASE DE DATOS
+(solo si borrás amparo.db o empezás de cero)
+----------------------------------------------------------------
+
+  & '.venv\Scripts\python.exe' init_db.py
+
+
+----------------------------------------------------------------
+USUARIOS DE PRUEBA
+----------------------------------------------------------------
+
+  Tipo          Email                     Password
+  ------------  ------------------------  ----------
+  admin         admin@amparo.com          Admin123!
+  prestador     prestador@amparo.com      Prest123!
+  familia       familia@amparo.com        Famil123!
+
+================================================================

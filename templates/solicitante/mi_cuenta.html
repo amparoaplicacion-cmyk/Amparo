@@ -1,0 +1,274 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'cuenta' %}
+{% block titulo %}Mi Cuenta{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <h1>Mi Cuenta</h1>
+</div>
+
+<!-- Mis datos -->
+<div class="cuenta-section">
+  <div class="cuenta-section__title">👤 Mis datos</div>
+  <div class="cuenta-row">
+    <span>Nombre y apellido</span>
+    <strong>{{ datos.nombre }} {{ datos.apellido }}</strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Email</span>
+    <strong>{{ datos.email }}</strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Teléfono</span>
+    <strong>{{ datos.telefono | fmt_tel }}</strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Dirección</span>
+    <strong>{{ datos.direccion or '—' }}</strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Localidad</span>
+    <strong>
+      {% if datos.localidad %}
+        {{ datos.localidad }}{% if datos.provincia %}, {{ datos.provincia }}{% endif %}
+      {% else %}
+        —
+      {% endif %}
+    </strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Código postal</span>
+    <strong>{{ datos.codigo_postal or '—' }}</strong>
+  </div>
+</div>
+
+<!-- Datos de la persona a cuidar -->
+<div class="cuenta-section" style="border-left:3px solid #e67e22;">
+  <div class="cuenta-section__title">👤 Datos de la persona a cuidar</div>
+  <div class="confid-warning">
+    🔒 Información confidencial — solo la ven el equipo de AMPARO y el prestador asignado al servicio.
+  </div>
+  <div class="cuenta-row">
+    <span>Nombre</span>
+    <strong>{{ datos.familiar_nombre or '—' }}</strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Edad</span>
+    <strong>{{ datos.familiar_edad or '—' }}</strong>
+  </div>
+  <div class="cuenta-row">
+    <span>Condición de salud</span>
+    <strong>{{ datos.familiar_condicion or '—' }}</strong>
+  </div>
+  {% if datos.familiar_necesidades %}
+  <div class="cuenta-row" style="flex-direction:column;gap:.3rem;">
+    <span>Necesidades especiales</span>
+    <p style="font-size:.85rem;">{{ datos.familiar_necesidades }}</p>
+  </div>
+  {% else %}
+  <div class="cuenta-row">
+    <span>Necesidades especiales</span>
+    <strong>—</strong>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Métodos de pago -->
+<div class="cuenta-section">
+  <div class="cuenta-section__title">💳 Método de pago</div>
+  {% if datos.metodo_pago_descripcion %}
+  <div class="metodo-pago-row" style="display:flex;align-items:center;gap:.75rem;padding:.75rem;background:#f9f5fd;border:1.5px solid #c3a0e8;border-radius:10px;margin-bottom:.75rem;">
+    <span style="font-size:1.3rem;">{% if datos.metodo_pago == 'tarjeta' %}💳{% else %}📱{% endif %}</span>
+    <div>
+      <div style="font-size:.9rem;font-weight:600;color:#3d1c6e;">{{ datos.metodo_pago_descripcion }}</div>
+      <div style="font-size:.75rem;color:#888;">Método de pago activo</div>
+    </div>
+  </div>
+  {% else %}
+  <p style="font-size:.85rem;color:#888;margin-bottom:.75rem;">No tenés un método de pago registrado.</p>
+  {% endif %}
+  <button type="button" class="btn btn-outline btn-full"
+          onclick="document.getElementById('modal-metodo-pago').style.display='flex'">
+    {% if datos.metodo_pago_descripcion %}🔄 Cambiar método de pago{% else %}+ Agregar método de pago{% endif %}
+  </button>
+</div>
+
+<!-- Modal: cambiar método de pago -->
+<div id="modal-metodo-pago"
+     style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;align-items:flex-end;justify-content:center;">
+  <div style="background:#fff;border-radius:18px 18px 0 0;padding:1.5rem;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1.25rem;">
+      <strong style="font-size:1rem;">💳 Cambiar método de pago</strong>
+      <button type="button" onclick="cerrarModalPago()"
+              style="background:none;border:none;font-size:1.3rem;cursor:pointer;color:#888;">✕</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('solicitante.mi_cuenta_metodo_pago') }}" id="form-metodo-pago">
+
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem;">
+        <label style="display:flex;align-items:center;gap:.6rem;background:#f7f3fb;border:1.5px solid #e5e9ed;border-radius:8px;padding:.65rem .85rem;cursor:pointer;" id="mc-lbl-mp">
+          <input type="radio" name="metodo_pago" value="mercadopago" id="mc-radio-mp"
+                 onchange="mcTogglePago()"
+                 {% if datos.metodo_pago == 'mercadopago' %}checked{% endif %}
+                 style="accent-color:#7D3C98;width:16px;height:16px;flex-shrink:0;">
+          <span style="font-size:.88rem;color:#444;"><strong>Mercado Pago</strong>
+            <span style="display:block;font-size:.78rem;color:#888;">Pagás desde tu cuenta MP al finalizar cada servicio.</span>
+          </span>
+        </label>
+
+        <label style="display:flex;align-items:center;gap:.6rem;background:#f7f3fb;border:1.5px solid #e5e9ed;border-radius:8px;padding:.65rem .85rem;cursor:pointer;" id="mc-lbl-card">
+          <input type="radio" name="metodo_pago" value="tarjeta" id="mc-radio-card"
+                 onchange="mcTogglePago()"
+                 {% if datos.metodo_pago == 'tarjeta' %}checked{% endif %}
+                 style="accent-color:#7D3C98;width:16px;height:16px;flex-shrink:0;">
+          <span style="font-size:.88rem;color:#444;"><strong>Tarjeta de crédito o débito</strong>
+            <span style="display:block;font-size:.78rem;color:#888;">Guardamos tu tarjeta de forma segura vía Mercado Pago.</span>
+          </span>
+        </label>
+      </div>
+
+      <div id="mc-panel-mp" style="display:none;background:#f9f5fd;border:1.5px solid #c3a0e8;border-radius:10px;padding:.85rem;margin-bottom:.75rem;">
+        <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Email de Mercado Pago *</label>
+        <input type="email" id="mc-email-mp" name="email_mp" class="form-input"
+               placeholder="tu-cuenta@gmail.com" maxlength="120"
+               style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+        <span style="font-size:.75rem;color:#888;display:block;margin-top:.25rem;">Ingresá el email de tu cuenta de Mercado Pago.</span>
+      </div>
+
+      <div id="mc-panel-card" style="display:none;background:#f9f5fd;border:1.5px solid #c3a0e8;border-radius:10px;padding:.85rem;margin-bottom:.75rem;">
+        <div style="margin-bottom:.75rem;">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Número de tarjeta *</label>
+          <input type="text" id="mc-card-number" maxlength="19" placeholder="0000 0000 0000 0000" inputmode="numeric"
+                 oninput="mcFormatCard(this)"
+                 style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+        </div>
+        <div style="margin-bottom:.75rem;">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Nombre en la tarjeta *</label>
+          <input type="text" id="mc-card-name" maxlength="60" placeholder="Como figura en la tarjeta"
+                 style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;text-transform:uppercase;box-sizing:border-box;"
+                 oninput="this.value=this.value.toUpperCase()">
+        </div>
+        <div style="display:flex;gap:.6rem;margin-bottom:.75rem;">
+          <div style="flex:1;">
+            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Mes *</label>
+            <input type="text" id="mc-exp-month" maxlength="2" placeholder="MM" inputmode="numeric"
+                   style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Año *</label>
+            <input type="text" id="mc-exp-year" maxlength="2" placeholder="AA" inputmode="numeric"
+                   style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+          </div>
+          <div style="flex:1;">
+            <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">CVV *</label>
+            <input type="text" id="mc-cvv" maxlength="4" placeholder="123" inputmode="numeric"
+                   style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+          </div>
+        </div>
+        <span style="font-size:.78rem;color:#7D3C98;">🔒 Datos encriptados. AMPARO nunca almacena el número completo.</span>
+      </div>
+
+      <input type="hidden" id="mc-card-token"     name="card_token">
+      <input type="hidden" id="mc-card-last-four" name="card_last_four">
+      <input type="hidden" id="mc-card-type"      name="card_type">
+
+      <div id="mc-pago-error" style="display:none;background:#fde8e8;color:#c0392b;border-radius:8px;padding:.65rem .85rem;font-size:.85rem;margin-bottom:.75rem;"></div>
+
+      <button type="button" id="mc-btn-guardar"
+              style="display:block;width:100%;padding:.85rem;border-radius:25px;font-size:1rem;font-weight:700;background:#7D3C98;color:#fff;border:none;cursor:pointer;"
+              onclick="mcGuardarMetodo()">
+        Guardar método de pago
+      </button>
+    </form>
+  </div>
+</div>
+
+<input type="hidden" id="mc-mp-public-key" value="{{ mp_public_key|default('') }}">
+<script src="https://sdk.mercadopago.com/js/v2"></script>
+<script>
+function cerrarModalPago() {
+  document.getElementById('modal-metodo-pago').style.display = 'none';
+  document.getElementById('mc-pago-error').style.display = 'none';
+}
+
+function mcTogglePago() {
+  var modo = document.querySelector('input[name=metodo_pago]:checked');
+  document.getElementById('mc-panel-mp').style.display   = (modo && modo.value === 'mercadopago') ? 'block' : 'none';
+  document.getElementById('mc-panel-card').style.display = (modo && modo.value === 'tarjeta')     ? 'block' : 'none';
+  document.getElementById('mc-pago-error').style.display = 'none';
+}
+
+function mcFormatCard(el) {
+  var v = el.value.replace(/\D/g, '').slice(0, 16);
+  el.value = v.match(/.{1,4}/g)?.join(' ') || v;
+}
+
+async function mcGuardarMetodo() {
+  var metodoEl = document.querySelector('input[name=metodo_pago]:checked');
+  if (!metodoEl) { mcError('Seleccioná un método de pago.'); return; }
+
+  if (metodoEl.value === 'mercadopago') {
+    var emailMp = document.getElementById('mc-email-mp').value.trim();
+    if (!emailMp || !emailMp.includes('@')) { mcError('Ingresá un email válido de Mercado Pago.'); return; }
+    document.getElementById('form-metodo-pago').submit();
+
+  } else if (metodoEl.value === 'tarjeta') {
+    var num  = document.getElementById('mc-card-number').value.replace(/\s/g, '');
+    var name = document.getElementById('mc-card-name').value.trim();
+    var mm   = document.getElementById('mc-exp-month').value.trim();
+    var aa   = document.getElementById('mc-exp-year').value.trim();
+    var cvv  = document.getElementById('mc-cvv').value.trim();
+
+    if (num.length < 13) { mcError('Ingresá un número de tarjeta válido.'); return; }
+    if (!name)           { mcError('Ingresá el nombre como figura en la tarjeta.'); return; }
+    if (!mm || !aa)      { mcError('Ingresá la fecha de vencimiento.'); return; }
+    if (!cvv)            { mcError('Ingresá el código de seguridad.'); return; }
+
+    var mpPublicKey = document.getElementById('mc-mp-public-key').value;
+    if (!mpPublicKey) { mcError('El sistema de pagos no está configurado. Contactá al administrador.'); return; }
+
+    var btn = document.getElementById('mc-btn-guardar');
+    btn.disabled = true; btn.textContent = '⏳ Verificando tarjeta...';
+
+    try {
+      var mp = new MercadoPago(mpPublicKey);
+      var token = await mp.createCardToken({
+        cardNumber:          num,
+        cardholderName:      name,
+        cardExpirationMonth: mm.padStart(2, '0'),
+        cardExpirationYear:  aa,
+        securityCode:        cvv
+      });
+      document.getElementById('mc-card-token').value     = token.id;
+      document.getElementById('mc-card-last-four').value = token.last_four_digits;
+      document.getElementById('mc-card-type').value      = token.payment_method_id;
+      document.getElementById('form-metodo-pago').submit();
+    } catch (err) {
+      btn.disabled = false; btn.textContent = 'Guardar método de pago';
+      mcError('Datos de tarjeta incorrectos. Verificalos e intentá de nuevo.');
+    }
+  }
+}
+
+function mcError(msg) {
+  var el = document.getElementById('mc-pago-error');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+// Inicializar paneles según selección actual
+window.addEventListener('DOMContentLoaded', function() { mcTogglePago(); });
+</script>
+
+<!-- Botón editar -->
+<a href="{{ url_for('solicitante.mi_cuenta_editar') }}"
+   class="btn btn-primary btn-full" style="padding:.85rem;font-size:1rem;margin-top:.25rem;">
+  Editar mis datos
+</a>
+
+<a href="{{ url_for('auth.logout') }}"
+   class="btn btn-outline btn-full"
+   style="margin-top:.75rem;padding:.75rem;font-size:.95rem;color:#c0392b;border-color:#c0392b;text-align:center;">
+  Cerrar aplicación
+</a>
+
+{% endblock %}

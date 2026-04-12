@@ -1,0 +1,213 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Configuración SMTP{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Correo SMTP</span>
+  </nav>
+  <h1 class="page-title">📧 Configuración de Correo (SMTP)</h1>
+  <p class="page-subtitle">
+    Configurá el servidor desde el cual AMPARO envía correos automáticos.
+    Usá una cuenta de Gmail con <strong>contraseña de aplicación</strong>
+    (generada en <code>myaccount.google.com/apppasswords</code>).
+  </p>
+</div>
+
+<!-- Estado actual -->
+<div class="card" style="margin-bottom:1.25rem; padding:1rem 1.5rem;">
+  {% if config['mail_usuario'] and config['mail_password'] %}
+  <div style="display:flex; align-items:center; gap:.6rem; color:#1E8449; font-size:.95rem;">
+    <span style="font-size:1.3rem;">✅</span>
+    <span>SMTP configurado. Los correos se envían desde <strong>{{ config['mail_usuario'] }}</strong>.</span>
+  </div>
+  {% else %}
+  <div style="display:flex; align-items:center; gap:.6rem; color:#e67e22; font-size:.95rem;">
+    <span style="font-size:1.3rem;">⚠️</span>
+    <span>SMTP <strong>no configurado</strong>. Los correos automáticos no se están enviando.</span>
+  </div>
+  {% endif %}
+</div>
+
+<div class="config-section">
+
+  <!-- Formulario de configuración -->
+  <form method="POST" action="{{ url_for('admin.configuracion_smtp') }}">
+    <div class="config-block">
+      <h3 class="config-block__title">Datos del servidor</h3>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Servidor SMTP</label>
+          <input type="text" name="mail_servidor" class="form-control"
+                 value="{{ config['mail_servidor'] or 'smtp.gmail.com' }}"
+                 placeholder="smtp.gmail.com">
+        </div>
+        <div class="form-group form-group--sm">
+          <label class="form-label">Puerto</label>
+          <input type="number" name="mail_puerto" class="form-control"
+                 value="{{ config['mail_puerto'] or '587' }}"
+                 placeholder="587" min="1" max="65535">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">
+          <input type="checkbox" name="mail_tls" value="1"
+                 {{ 'checked' if config['mail_tls'] != '0' }}>
+          Usar TLS (recomendado para Gmail con puerto 587)
+        </label>
+      </div>
+    </div>
+
+    <div class="config-block">
+      <h3 class="config-block__title">Cuenta de envío</h3>
+
+      <div class="form-group">
+        <label class="form-label">Email remitente <span class="required">*</span></label>
+        <input type="email" name="mail_usuario" class="form-control"
+               value="{{ config['mail_usuario'] }}"
+               placeholder="amparo.aplicacion@gmail.com">
+        <div class="form-hint">La dirección de Gmail que envía los correos.</div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Contraseña de aplicación</label>
+        <input type="password" name="mail_password" class="form-control"
+               placeholder="{{ '••••••••••••••••' if config['mail_password'] else 'Ingresá la contraseña de 16 caracteres' }}"
+               autocomplete="new-password">
+        {% if config['mail_password'] %}
+        <div class="form-hint" style="color:#1E8449;">✓ Contraseña guardada. Dejá este campo vacío para no cambiarla.</div>
+        {% else %}
+        <div class="form-hint">
+          Generala en
+          <a href="https://myaccount.google.com/apppasswords" target="_blank" rel="noopener">
+            myaccount.google.com/apppasswords
+          </a>
+          (16 caracteres, sin espacios).
+        </div>
+        {% endif %}
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Nombre del remitente</label>
+        <input type="text" name="mail_remitente" class="form-control"
+               value="{{ config['mail_remitente'] }}"
+               placeholder="AMPARO <amparo.aplicacion@gmail.com>">
+        <div class="form-hint">Nombre que ve el destinatario en el campo "De:".</div>
+      </div>
+
+      <div class="form-group" id="brevo-api-key-group" style="display:none;">
+        <label class="form-label">API Key de Brevo</label>
+        <input type="password" name="brevo_api_key" class="form-control"
+               placeholder="{{ '••••••••••••••••' if config['brevo_api_key'] else 'Ingresá tu API Key de Brevo' }}"
+               autocomplete="new-password">
+        {% if config['brevo_api_key'] %}
+        <div class="form-hint" style="color:#1E8449;">✓ API Key guardada. Dejá este campo vacío para no cambiarla.</div>
+        {% else %}
+        <div class="form-hint">
+          Encontrala en
+          <a href="https://app.brevo.com/settings/keys/api" target="_blank" rel="noopener">
+            app.brevo.com → SMTP &amp; API → API Keys
+          </a>.
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a href="{{ url_for('admin.configuracion') }}" class="btn btn-secondary">Cancelar</a>
+      <button type="submit" class="btn btn-primary">Guardar configuración</button>
+    </div>
+  </form>
+
+  <!-- Correo de prueba -->
+  <div class="config-block" style="margin-top:1.5rem; border-color:#d5e8d4; background:#f9fef9;">
+    <h3 class="config-block__title" style="color:#1E8449;">Verificar que funciona</h3>
+    <p style="font-size:.9rem; color:#555; margin:0 0 1rem;">
+      Enviá un correo de prueba a tu email (<strong>{{ session.get('email', '') }}</strong>)
+      para confirmar que la configuración es correcta.
+    </p>
+    {% if config['mail_usuario'] and config['mail_password'] %}
+    {% set email_admin = session.get('email', '') %}
+    <form method="POST" action="{{ url_for('admin.configuracion_smtp_prueba') }}"
+          onsubmit="return confirm('¿Enviar un correo de prueba a {{ email_admin }}?')">
+      <button type="submit" class="btn btn-success">📨 Enviar correo de prueba</button>
+    </form>
+    {% else %}
+    <div style="font-size:.875rem; color:#e67e22;">
+      Completá y guardá los datos de la cuenta antes de enviar el correo de prueba.
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.page-subtitle { color: #555; font-size: .9rem; margin-top: .35rem; line-height:1.5; }
+.page-subtitle code { background: #f0f4f8; padding: 1px 5px; border-radius: 4px; font-size: .82rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.config-section { display: flex; flex-direction: column; gap: 1.25rem; }
+
+.config-block {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+.config-block__title {
+  margin: 0 0 1.1rem;
+  font-size: 1rem;
+  color: #1A5276;
+  border-bottom: 1px solid #eef2f7;
+  padding-bottom: .6rem;
+}
+
+.form-row { display: flex; gap: 1rem; flex-wrap: wrap; }
+.form-group { margin-bottom: 1rem; flex: 1; min-width: 200px; }
+.form-group--sm { flex: 0 0 110px; min-width: 80px; }
+.form-label { display: block; font-weight: 600; margin-bottom: .35rem; font-size: .9rem; }
+.form-hint { font-size: .78rem; color: #888; margin-top: .3rem; }
+.form-hint a { color: #1A5276; }
+.required { color: #e74c3c; }
+
+.form-control {
+  width: 100%; padding: .55rem .75rem;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: .9rem; box-sizing: border-box;
+}
+.form-control:focus { outline: none; border-color: #1A5276; box-shadow: 0 0 0 3px rgba(26,82,118,.15); }
+
+.form-actions {
+  display: flex; gap: .75rem; justify-content: flex-end;
+  padding: 1rem 0 .5rem;
+}
+
+.btn { padding: .55rem 1.4rem; border-radius: 6px; font-size: .95rem; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1A5276; color: #fff; }
+.btn-primary:hover { background: #154360; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-secondary:hover { background: #e0e0e0; }
+.btn-success { background: #1E8449; color: #fff; }
+.btn-success:hover { background: #196f3d; }
+</style>
+
+<script>
+(function() {
+  var servidorInput = document.querySelector('input[name="mail_servidor"]');
+  var brevoGroup    = document.getElementById('brevo-api-key-group');
+  function toggleBrevo() {
+    brevoGroup.style.display =
+      (servidorInput.value.trim() === 'smtp-relay.brevo.com') ? '' : 'none';
+  }
+  servidorInput.addEventListener('input', toggleBrevo);
+  toggleBrevo();
+})();
+</script>
+{% endblock %}

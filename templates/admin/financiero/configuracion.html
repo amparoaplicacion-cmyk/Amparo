@@ -1,0 +1,78 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Configuración Financiera{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <span>Configuración Financiera</span>
+  </nav>
+  <h1 class="page-title">⚙️ Configuración Financiera</h1>
+</div>
+
+<div style="background:#fff;border:1px solid #dde3ea;border-radius:10px;
+            padding:1.75rem 2rem;max-width:560px;">
+  <form method="POST" action="{{ url_for('financiero.configuracion') }}">
+
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-weight:600;margin-bottom:.4rem;font-size:.9rem;">
+        Email para recibir el resumen diario
+      </label>
+      <input type="email" name="admin_financiero_email"
+             value="{{ cfg.get('admin_financiero_email', '') }}"
+             style="width:100%;padding:.55rem .75rem;border:1px solid #ccc;
+                    border-radius:6px;font-size:.9rem;box-sizing:border-box;"
+             placeholder="correo@ejemplo.com">
+      <small style="color:#888;">Se enviará el Excel con los movimientos del día.</small>
+    </div>
+
+    <div style="margin-bottom:1.25rem;">
+      <label style="display:block;font-weight:600;margin-bottom:.4rem;font-size:.9rem;">
+        Hora del cierre automático
+      </label>
+      <input type="time" name="cierre_diario_hora"
+             value="{{ cfg.get('cierre_diario_hora', '00:00') }}"
+             style="padding:.55rem .75rem;border:1px solid #ccc;
+                    border-radius:6px;font-size:.9rem;">
+      <small style="color:#888;margin-left:.5rem;">
+        Actualmente el cierre se genera al iniciar sesión el día siguiente.
+      </small>
+    </div>
+
+    <div style="margin-bottom:1.75rem;">
+      <label style="display:block;font-weight:600;margin-bottom:.4rem;font-size:.9rem;">
+        Retención de archivos (años)
+      </label>
+      <input type="number" name="movimientos_backup_anios"
+             value="{{ anios_ret }}" min="1" max="50"
+             style="width:100px;padding:.55rem .75rem;border:1px solid #ccc;
+                    border-radius:6px;font-size:.9rem;">
+      <small style="color:#888;margin-left:.5rem;">
+        ({{ cfg.get('movimientos_backup_dias', '3650') }} días)
+      </small>
+    </div>
+
+    <div style="display:flex;gap:.75rem;">
+      <button type="submit"
+              style="padding:.55rem 1.4rem;background:#1A5276;color:#fff;
+                     border:none;border-radius:6px;font-size:.95rem;cursor:pointer;">
+        Guardar
+      </button>
+      <a href="{{ url_for('financiero.movimientos') }}"
+         style="padding:.55rem 1.4rem;background:#f0f0f0;color:#333;
+                border-radius:6px;font-size:.95rem;text-decoration:none;">
+        Cancelar
+      </a>
+    </div>
+
+  </form>
+</div>
+
+<style>
+.breadcrumb { font-size:.85rem;color:#888;margin-bottom:.5rem; }
+.breadcrumb a { color:#1A5276;text-decoration:none; }
+.page-header { margin-bottom:1.75rem; }
+input:focus { outline:none;border-color:#1A5276 !important;
+              box-shadow:0 0 0 3px rgba(26,82,118,.15); }
+</style>
+{% endblock %}

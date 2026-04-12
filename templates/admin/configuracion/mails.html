@@ -1,0 +1,227 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Textos de Mails{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.configuracion') }}">Configuración</a> &rsaquo;
+    <span>Textos de Mails</span>
+  </nav>
+  <h1 class="page-title">📧 Textos de Mails Automáticos</h1>
+  <p class="page-subtitle">
+    Las variables disponibles se muestran debajo de cada correo.
+  </p>
+</div>
+
+<form method="POST" action="{{ url_for('admin.configuracion_mails') }}" id="form-mails">
+<div class="mails-list">
+
+  {% for clave_base, label, variables in mail_claves %}
+  <div class="mail-block" id="block-{{ clave_base }}">
+    <div class="mail-block__header">
+      <h3>{{ label }}</h3>
+      <button type="button" class="btn-preview"
+              onclick="mostrarPreview('{{ clave_base }}')">
+        👁 Vista previa
+      </button>
+    </div>
+
+    <div class="form-group">
+      <label>Asunto</label>
+      <input type="text" name="mail_{{ clave_base }}_asunto"
+             id="asunto-{{ clave_base }}"
+             value="{{ config['mail_' ~ clave_base ~ '_asunto'] }}"
+             class="form-control" placeholder="Asunto del mail...">
+    </div>
+
+    <div class="form-group">
+      <label>Cuerpo del mensaje</label>
+      <textarea name="mail_{{ clave_base }}_cuerpo"
+                id="cuerpo-{{ clave_base }}"
+                rows="6" class="form-control"
+                placeholder="Cuerpo del mail...">{{ config['mail_' ~ clave_base ~ '_cuerpo'] }}</textarea>
+      <div class="mail-vars">
+        <span class="mail-vars__label">Variables disponibles:</span>
+        {% for var in variables.split() %}
+          <code class="mail-var" onclick="insertarVariable('cuerpo-{{ clave_base }}', '{{ var }}')">{{ var }}</code>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+
+</div>
+
+<div class="form-actions sticky-actions">
+  <a href="{{ url_for('admin.configuracion') }}" class="btn btn-secondary">Cancelar</a>
+  <button type="submit" class="btn btn-primary">Guardar todos los mails</button>
+</div>
+</form>
+
+<!-- Modal de vista previa -->
+<div id="preview-modal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <div class="modal-header">
+      <strong>Vista previa del mail</strong>
+      <button onclick="cerrarPreview()" class="modal-close">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="preview-field"><span class="preview-label">Asunto:</span>
+        <span id="modal-asunto"></span></div>
+      <hr>
+      <div id="modal-cuerpo" class="preview-cuerpo"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+const EJEMPLO = {
+  nombre:             'Juan Pérez',
+  email:              'juan@ejemplo.com',
+  fecha:              '20/03/2026',
+  motivo:             'Documentación incompleta',
+  password_temporal:  'Tmp#9x4K',
+  link_app:           'http://amparo.com',
+  link_desbloqueo:    'http://amparo.com/desbloquear/TOKEN',
+  horas:              '24',
+  contrasena_temporal:'Tmp#9x4K',
+  dias_restantes:     '10',
+  fecha_vencimiento:  '30/03/2026',
+  motivo_rechazo:     'Documentación incompleta',
+  prestador_nombre:   'María García',
+  fecha_servicio:     '25/03/2026',
+  hora_inicio:        '09:00',
+  hora_fin:           '13:00',
+  monto_servicio:     '$ 8.000',
+  comision:           '$ 1.200',
+  total_pagado:       '$ 9.200',
+  monto_neto:         '$ 6.800',
+  metodo_cobro:       'CBU 123456789',
+  fecha_liquidacion:  '26/03/2026',
+  monto_penalidad:    '$ 920',
+  tipo_contacto:      'Consulta',
+  asunto_mensaje:     'Dudas sobre el servicio',
+  respuesta_admin:    'Gracias por escribirnos. Hemos revisado tu consulta...'
+};
+
+function reemplazar(texto) {
+  let r = texto;
+  for (const [k, v] of Object.entries(EJEMPLO)) {
+    r = r.replace(new RegExp('\\{' + k + '\\}', 'g'), v);
+  }
+  return r;
+}
+
+function insertarVariable(idTextarea, variable) {
+  const el = document.getElementById(idTextarea);
+  if (!el) return;
+  const ini = el.selectionStart;
+  const fin = el.selectionEnd;
+  el.value = el.value.slice(0, ini) + variable + el.value.slice(fin);
+  el.selectionStart = el.selectionEnd = ini + variable.length;
+  el.focus();
+}
+
+function mostrarPreview(clave) {
+  const asunto = reemplazar(document.getElementById('asunto-' + clave).value);
+  const cuerpo = reemplazar(document.getElementById('cuerpo-' + clave).value);
+  document.getElementById('modal-asunto').textContent = asunto || '(sin asunto)';
+  document.getElementById('modal-cuerpo').innerHTML = cuerpo.replace(/\n/g, '<br>') || '(sin cuerpo)';
+  document.getElementById('preview-modal').style.display = 'flex';
+}
+
+function cerrarPreview() {
+  document.getElementById('preview-modal').style.display = 'none';
+}
+
+document.getElementById('preview-modal').addEventListener('click', function(e) {
+  if (e.target === this) cerrarPreview();
+});
+</script>
+
+<style>
+.page-header { margin-bottom: 1.75rem; }
+.page-subtitle { color: #555; font-size: .9rem; margin-top: .3rem; }
+.page-subtitle code { background: #f0f4f8; padding: 1px 5px; border-radius: 4px; font-size: .85rem; }
+.breadcrumb { font-size: .85rem; color: #888; margin-bottom: .5rem; }
+.breadcrumb a { color: #1A5276; text-decoration: none; }
+.breadcrumb a:hover { text-decoration: underline; }
+
+.mails-list { display: flex; flex-direction: column; gap: 1.5rem; }
+
+.mail-block {
+  background: #fff;
+  border: 1px solid #dde3ea;
+  border-radius: 10px;
+  padding: 1.5rem;
+}
+.mail-block__header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 1rem;
+}
+.mail-block__header h3 { margin: 0; font-size: 1rem; color: #1A5276; }
+
+.btn-preview {
+  background: #e8f4fd; color: #1A5276;
+  border: 1px solid #aed6f1; border-radius: 5px;
+  padding: .3rem .8rem; font-size: .85rem; cursor: pointer;
+}
+.btn-preview:hover { background: #d6eaf8; }
+
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-weight: 600; margin-bottom: .35rem; font-size: .9rem; }
+.mail-vars { margin-top: .45rem; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.mail-vars__label { font-size: .78rem; color: #888; margin-right: .2rem; }
+.mail-var {
+  background: #eef4fb; color: #1A5276;
+  border: 1px solid #aed6f1; border-radius: 4px;
+  padding: 1px 6px; font-size: .78rem;
+  cursor: pointer; font-family: monospace;
+}
+.mail-var:hover { background: #d6eaf8; }
+.form-control {
+  width: 100%; padding: .55rem .75rem;
+  border: 1px solid #ccc; border-radius: 6px;
+  font-size: .9rem; box-sizing: border-box; font-family: inherit;
+}
+.form-control:focus { outline: none; border-color: #1A5276; box-shadow: 0 0 0 3px rgba(26,82,118,.15); }
+textarea.form-control { resize: vertical; }
+
+.sticky-actions {
+  position: sticky; bottom: 0;
+  background: #f7f9fb; padding: 1rem;
+  border-top: 1px solid #dde3ea;
+  display: flex; gap: .75rem; justify-content: flex-end;
+  margin-top: 1.5rem; z-index: 10;
+}
+.btn { padding: .55rem 1.4rem; border-radius: 6px; font-size: .95rem; cursor: pointer; border: none; text-decoration: none; display: inline-block; }
+.btn-primary { background: #1A5276; color: #fff; }
+.btn-primary:hover { background: #154360; }
+.btn-secondary { background: #f0f0f0; color: #333; }
+.btn-secondary:hover { background: #e0e0e0; }
+
+/* Modal */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-box {
+  background: #fff; border-radius: 10px;
+  width: 90%; max-width: 580px; max-height: 80vh;
+  display: flex; flex-direction: column; overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0,0,0,.2);
+}
+.modal-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 1rem 1.25rem; border-bottom: 1px solid #eee;
+  font-size: 1rem;
+}
+.modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: #666; }
+.modal-body { padding: 1.25rem; overflow-y: auto; }
+.preview-label { font-weight: 600; margin-right: .5rem; color: #1A5276; }
+.preview-field { margin-bottom: .75rem; }
+.preview-cuerpo { margin-top: .75rem; font-size: .9rem; line-height: 1.6; white-space: pre-wrap; }
+hr { border: none; border-top: 1px solid #eee; margin: .75rem 0; }
+</style>
+{% endblock %}

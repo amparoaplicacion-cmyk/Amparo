@@ -1,0 +1,16 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}{{ titulo }}{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">{{ titulo }}</h1>
+
+<div class="construccion-wrap">
+  <div class="construccion-emoji">🚧</div>
+  <h2>Sección en construcción</h2>
+  <p>Esta funcionalidad estará disponible próximamente.</p>
+  <a href="{{ url_for('admin.dashboard') }}" class="btn-volver">← Volver al panel</a>
+</div>
+
+{% endblock %}

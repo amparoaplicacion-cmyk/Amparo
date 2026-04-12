@@ -1,0 +1,194 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Configuración de Comisiones{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Configuración de Comisiones</h1>
+  <a href="{{ url_for('admin.pagos') }}" class="btn btn-secondary">Volver a pagos</a>
+</div>
+
+<!-- ADVERTENCIA -->
+<div style="background:#FEF9E7; border-left:4px solid #F39C12; color:#7D6608;
+            padding:12px 16px; border-radius:4px; margin-bottom:20px; font-size:14px;">
+  ⚠️ <strong>Atención:</strong> Este cambio afecta todos los nuevos servicios.
+  Los servicios ya registrados conservan su comisión original.
+</div>
+
+<!-- FORMULARIO -->
+<div class="card" style="margin-bottom:24px; max-width:520px;">
+  <form method="POST" action="{{ url_for('admin.pagos_comisiones_legacy') }}" id="form-comision">
+
+    <div class="form-group" style="margin-bottom:20px;">
+      <label class="form-label" style="font-weight:600; margin-bottom:10px;">Tipo de comisión</label>
+
+      <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px;
+                    cursor:pointer; font-size:15px;">
+        <input type="radio" name="comision_tipo" value="porcentaje" id="radio-pct"
+               {{ 'checked' if comision_tipo == 'porcentaje' }}
+               onchange="toggleCampos()">
+        Porcentaje sobre el monto total
+      </label>
+
+      <div id="campo-pct" style="{{ '' if comision_tipo == 'porcentaje' else 'display:none;' }} margin-left:24px;">
+        <label class="form-label">Porcentaje (%)</label>
+        <input type="number" name="comision_pct" id="input-pct" class="form-input"
+               min="1" max="50" step="0.5"
+               value="{{ comision_pct }}" style="max-width:120px;">
+        <small style="color:#7F8C8D; display:block; margin-top:4px;">Entre 1% y 50%</small>
+      </div>
+
+      <label style="display:flex; align-items:center; gap:8px; margin-bottom:12px;
+                    cursor:pointer; font-size:15px;">
+        <input type="radio" name="comision_tipo" value="monto_fijo" id="radio-fijo"
+               {{ 'checked' if comision_tipo == 'monto_fijo' }}
+               onchange="toggleCampos()">
+        Monto fijo por transacción
+      </label>
+
+      <div id="campo-fijo" style="{{ '' if comision_tipo == 'monto_fijo' else 'display:none;' }} margin-left:24px;">
+        <label class="form-label">Monto fijo ($)</label>
+        <input type="number" name="comision_fijo" id="input-fijo" class="form-input"
+               min="0" step="1"
+               value="{{ comision_fijo }}" style="max-width:140px;">
+      </div>
+    </div>
+
+    <!-- DISTRIBUCIÓN DE LA COMISIÓN -->
+    <div class="form-group" style="margin-bottom:20px; border-top:1px solid #EAECEE; padding-top:20px;">
+      <label class="form-label" style="font-weight:600; margin-bottom:10px;">Distribución de la comisión</label>
+      <p style="font-size:13px; color:#5D6D7E; margin-bottom:12px;">
+        Definí qué porcentaje de la comisión total paga cada parte.
+        Los dos valores deben sumar 100%.
+      </p>
+
+      <!-- Botones rápidos -->
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+        <button type="button" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;"
+                onclick="setDistribucion(100, 0)">100% solicitante</button>
+        <button type="button" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;"
+                onclick="setDistribucion(50, 50)">50% / 50%</button>
+        <button type="button" class="btn btn-secondary" style="font-size:12px; padding:4px 10px;"
+                onclick="setDistribucion(0, 100)">100% prestador</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; max-width:360px;">
+        <div>
+          <label class="form-label" style="font-size:13px;">Paga el solicitante</label>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <input type="number" name="comision_sol_pct" id="inp-sol" class="form-input"
+                   min="0" max="100" step="1"
+                   value="{{ comision_sol_pct|int }}" style="max-width:80px;"
+                   oninput="sincronizar('sol')">
+            <span style="color:#5D6D7E;">%</span>
+          </div>
+        </div>
+        <div>
+          <label class="form-label" style="font-size:13px;">Paga el prestador</label>
+          <div style="display:flex; align-items:center; gap:4px;">
+            <input type="number" name="comision_pres_pct" id="inp-pres" class="form-input"
+                   min="0" max="100" step="1"
+                   value="{{ comision_pres_pct|int }}" style="max-width:80px;"
+                   oninput="sincronizar('pres')">
+            <span style="color:#5D6D7E;">%</span>
+          </div>
+        </div>
+      </div>
+
+      <div id="dist-error" style="display:none; color:#E74C3C; font-size:13px; margin-top:8px;">
+        Los porcentajes deben sumar 100%.
+      </div>
+      <div id="dist-ok" style="color:#27AE60; font-size:13px; margin-top:8px;">
+        ✓ Suma: <span id="dist-suma">{{ (comision_sol_pct + comision_pres_pct)|int }}</span>%
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button type="submit" id="btn-guardar" class="btn btn-primary"
+              onclick="return confirm('¿Confirmar el cambio de comisión? Afectará todos los nuevos servicios.')">
+        Guardar configuración
+      </button>
+    </div>
+
+  </form>
+</div>
+
+<!-- HISTORIAL -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:14px 16px; border-bottom:1px solid #EAECEE; font-weight:600; color:#1A5276;">
+    Últimos cambios de comisión
+  </div>
+  {% if historial %}
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Anterior</th>
+        <th>Nuevo</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for h in historial %}
+      <tr>
+        <td>{{ h['fecha'][:16] }}</td>
+        <td style="color:#E74C3C;">
+          {% if h['tipo_ant'] == 'monto_fijo' %}
+            Fijo ${{ '%.0f'|format(h['fijo_ant']) }}
+          {% else %}
+            {{ '%.1f'|format(h['pct_ant']) }}%
+          {% endif %}
+        </td>
+        <td style="color:#27AE60; font-weight:600;">
+          {% if h['tipo_nuevo'] == 'monto_fijo' %}
+            Fijo ${{ '%.0f'|format(h['fijo_nuevo']) }}
+          {% else %}
+            {{ '%.1f'|format(h['pct_nuevo']) }}%
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty" style="padding:24px;">
+    Aún no hay cambios registrados.
+  </div>
+  {% endif %}
+</div>
+
+<script>
+function toggleCampos() {
+  var esPct = document.getElementById('radio-pct').checked;
+  document.getElementById('campo-pct').style.display  = esPct ? 'block' : 'none';
+  document.getElementById('campo-fijo').style.display = esPct ? 'none'  : 'block';
+  document.getElementById('input-pct').required  = esPct;
+  document.getElementById('input-fijo').required = !esPct;
+}
+toggleCampos();
+
+function setDistribucion(sol, pres) {
+  document.getElementById('inp-sol').value  = sol;
+  document.getElementById('inp-pres').value = pres;
+  validarDistribucion();
+}
+
+function sincronizar(quien) {
+  validarDistribucion();
+}
+
+function validarDistribucion() {
+  var sol  = parseFloat(document.getElementById('inp-sol').value)  || 0;
+  var pres = parseFloat(document.getElementById('inp-pres').value) || 0;
+  var suma = Math.round((sol + pres) * 100) / 100;
+  document.getElementById('dist-suma').textContent = suma;
+  var ok = Math.abs(suma - 100) < 0.01 && sol >= 0 && pres >= 0;
+  document.getElementById('dist-error').style.display = ok ? 'none' : 'block';
+  document.getElementById('dist-ok').style.display    = ok ? 'block' : 'none';
+  document.getElementById('btn-guardar').disabled = !ok;
+}
+
+validarDistribucion();
+</script>
+
+{% endblock %}

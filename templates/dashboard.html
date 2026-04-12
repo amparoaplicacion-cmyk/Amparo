@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMPARO — {{ titulo }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body class="dashboard-body">
+
+  <nav class="dashboard-nav">
+    <span class="dashboard-nav__brand">AMPARO</span>
+    <div class="dashboard-nav__user">
+      <span>{{ nombre }}</span>
+      <a href="{{ url_for('auth.cambiar_password') }}">Cambiar contraseña</a>
+      <a href="{{ url_for('auth.logout') }}">Cerrar sesión</a>
+    </div>
+  </nav>
+
+  <div class="dashboard-content">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert alert-{{ category }}" style="margin-bottom:24px;">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <h2>{{ titulo }}</h2>
+    <p>Bienvenido/a, <strong>{{ nombre }}</strong>. Esta sección está en construcción.</p>
+  </div>
+
+</body>
+</html>

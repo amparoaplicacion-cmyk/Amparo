@@ -1,0 +1,278 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Mi Perfil{% endblock %}
+
+{% block content %}
+{% set active_tab = 'perfil' %}
+
+<!-- FOTO Y NOMBRE -->
+<div class="profile-hero">
+  {% if prestador.foto_url %}
+  <img src="{{ prestador.foto_url }}" class="profile-avatar" alt="Foto">
+  {% else %}
+  <div class="profile-avatar profile-avatar--placeholder">👤</div>
+  {% endif %}
+  <h1 class="profile-name">{{ prestador.nombre }} {{ prestador.apellido }}</h1>
+  <div class="profile-cat">{{ prestador.categoria_nombre or 'Sin categoría asignada' }}</div>
+  <span class="profile-estado
+    {{ 'estado-aprobado' if prestador.estado_perfil == 'APROBADO' else
+       ('estado-revision' if prestador.estado_perfil == 'EN_REVISION' else
+        ('estado-rechazado' if prestador.estado_perfil == 'RECHAZADO' else 'estado-suspendido')) }}">
+    {{ prestador.estado_perfil.replace('_', ' ') }}
+  </span>
+</div>
+
+<!-- VERIFICACIÓN DE DOCUMENTOS -->
+<div class="profile-section">
+  <h2 class="profile-section__title">Verificación de documentos</h2>
+
+  {% macro doc_badge(estado) %}
+    {% if estado == 'VERIFICADO' %}<span class="doc-ok">✓ Verificado</span>
+    {% elif estado == 'RECHAZADO' %}<span class="doc-bad">✗ Rechazado</span>
+    {% else %}<span class="doc-pend">⏳ Pendiente</span>{% endif %}
+  {% endmacro %}
+
+  <!-- DNI -->
+  <div class="doc-row">
+    <span>DNI</span>
+    <div style="display:flex;align-items:center;gap:.5rem;">
+      {% if prestador.numero_dni %}
+      <span style="font-size:.82rem;color:#555;">Nº {{ prestador.numero_dni }}</span>
+      {% endif %}
+      {{ doc_badge(prestador.dni_verificado) }}
+    </div>
+  </div>
+
+  <!-- ANTECEDENTES -->
+  <div class="doc-row"><span>Antecedentes</span>{{ doc_badge(prestador.antecedentes_ok) }}</div>
+  {% if prestador.antecedentes_ok != 'VERIFICADO' %}
+  <div style="background:#D6EAF8;border:1px solid #AED6F1;border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.82rem;color:#1A5276;line-height:1.5;">
+    <strong>📋 ¿Cómo obtener tu certificado de antecedentes?</strong><br><br>
+    El Certificado de Antecedentes Penales (CAP) se tramita online en el Registro Nacional de Reincidencia. Tiene distintas modalidades y costos:<br><br>
+    <div style="margin:.2rem 0 .6rem .2rem;display:flex;flex-direction:column;gap:.2rem;">
+      <span>⚡ <strong>Exprés (1 hora)</strong> → $8.500</span>
+      <span>🕓 <strong>6 horas</strong> → $4.800</span>
+      <span>📅 <strong>24 horas</strong> → $2.400</span>
+      <span>🗓️ <strong>5 días hábiles</strong> → $1.000</span>
+    </div>
+    Al solicitarlo, indicá que te lo remitan a:<br>
+    <strong>antecedentes@amparo.com</strong> con tu nombre completo en el asunto.<br><br>
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;">
+      <a href="https://www.argentina.gob.ar/justicia/reincidencia/antecedentespenales"
+         target="_blank" rel="noopener"
+         style="background:#2E86C1;color:#fff;padding:.4rem .8rem;border-radius:20px;font-size:.8rem;text-decoration:none;">
+        🌐 Ir al sitio oficial
+      </a>
+      <button type="button" onclick="copiarEmail('antecedentes@amparo.com','btn-ant')"
+              id="btn-ant"
+              style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:.4rem .8rem;border-radius:20px;font-size:.8rem;cursor:pointer;">
+        📋 Copiar email
+      </button>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- CERTIFICADOS -->
+  <div class="doc-row"><span>Certificaciones</span>{{ doc_badge(prestador.certificados_ok) }}</div>
+  {% if prestador.certificados_ok != 'VERIFICADO' %}
+  <form method="POST" action="{{ url_for('prestador.certificado_subir') }}"
+        enctype="multipart/form-data" style="margin-bottom:.5rem;">
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;">
+      <label style="background:#1E8449;color:#fff;padding:.45rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;display:inline-block;">
+        📎 Subir certificado
+        <input type="file" name="certificado" accept=".pdf,.jpg,.jpeg,.png"
+               style="display:none;" onchange="this.form.submit()">
+      </label>
+      <span style="font-size:.78rem;color:#888;">PDF, JPG, PNG — máx. 10MB</span>
+    </div>
+  </form>
+  {% if prestador.certificado_url %}
+  <div style="font-size:.82rem;background:#f4faf6;border:1px solid #d4efdf;border-radius:8px;padding:.6rem;margin-bottom:.5rem;">
+    📄 <a href="{{ prestador.certificado_url }}" target="_blank" style="color:#1E8449;">Ver certificado subido</a>
+  </div>
+  {% endif %}
+  <div style="background:#D6EAF8;border:1px solid #AED6F1;border-radius:8px;padding:.75rem;margin-bottom:.75rem;font-size:.82rem;color:#1A5276;line-height:1.5;">
+    <strong>📧 También podés enviar tus certificados por email a:</strong><br>
+    <strong>certificados@amparo.com</strong><br>
+    Asunto: "Certificados - [tu nombre completo]"<br>
+    El equipo de AMPARO los adjuntará a tu perfil dentro de las 48 horas hábiles.<br><br>
+    <button type="button" onclick="copiarEmail('certificados@amparo.com','btn-cert')"
+            id="btn-cert"
+            style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:.4rem .8rem;border-radius:20px;font-size:.8rem;cursor:pointer;">
+      📋 Copiar email
+    </button>
+  </div>
+  {% endif %}
+
+  {% if prestador.motivo_rechazo %}
+  <div class="rechazo-msg">⚠️ {{ prestador.motivo_rechazo }}</div>
+  {% endif %}
+</div>
+
+<script>
+function copiarEmail(email, btnId) {
+  navigator.clipboard.writeText(email).then(() => {
+    const btn = document.getElementById(btnId);
+    const orig = btn.textContent;
+    btn.textContent = '¡Copiado!';
+    btn.style.color = '#1E8449';
+    setTimeout(() => { btn.textContent = orig; btn.style.color = ''; }, 2000);
+  });
+}
+</script>
+
+<!-- INFORMACIÓN PERSONAL -->
+<div class="profile-section">
+  <h2 class="profile-section__title">Información personal</h2>
+  {% if prestador.descripcion %}
+  <p class="profile-desc">{{ prestador.descripcion }}</p>
+  {% endif %}
+  <div class="info-row">
+    <span>💲 Mi tarifa</span>
+    <strong>
+      {% if prestador.tarifa_hora and prestador.tarifa_hora > 0 %}
+        $ {{ '%.2f'|format(prestador.tarifa_hora) }} / hora
+      {% else %}
+        <span style="color:#888;font-weight:400;">No definida</span>
+      {% endif %}
+    </strong>
+  </div>
+  <div class="info-row"><span>Experiencia</span><strong>{{ prestador.experiencia_anios }} años</strong></div>
+  <div class="info-row"><span>Zona o Barrio</span><strong>{{ prestador.zona_nombre or 'No especificada' }}</strong></div>
+  {% if prestador.localidad or prestador.provincia %}
+  <div class="info-row"><span>📍 Localidad</span><strong>{{ [prestador.localidad, prestador.provincia]|select|join(', ') }}</strong></div>
+  {% endif %}
+  {% if prestador.codigo_postal %}
+  <div class="info-row"><span>Código postal</span><strong>{{ prestador.codigo_postal }}</strong></div>
+  {% endif %}
+  {% if prestador.telefono %}
+  <div class="info-row"><span>Teléfono</span><strong>{{ prestador.telefono | fmt_tel }}</strong></div>
+  {% endif %}
+
+  {% if disponibilidad %}
+  <div class="disp-title">Disponibilidad</div>
+  <div class="disp-list">
+    {% for d in disponibilidad %}
+    <span class="disp-chip">{{ d.dia_semana }} {{ d.hora_inicio }}–{{ d.hora_fin }}</span>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+
+<!-- DATOS DE COBRO -->
+<div class="profile-section">
+  <h2 class="profile-section__title">💰 Mis datos de cobro</h2>
+  {% if prestador.metodo_cobro == 'transferencia' %}
+  <div class="info-row"><span>Método</span><strong>🏦 Transferencia bancaria</strong></div>
+  <div class="info-row"><span>CBU</span><strong>{{ prestador.cbu or '—' }}</strong></div>
+  <div class="info-row"><span>Alias bancario</span><strong>{{ prestador.alias_mp or '—' }}</strong></div>
+  {% else %}
+  <div class="info-row"><span>Método</span><strong>💳 Mercado Pago</strong></div>
+  <div class="info-row"><span>Email MP</span><strong>{{ prestador.email_mp or '—' }}</strong></div>
+  <div class="info-row"><span>Alias MP</span><strong>{{ prestador.alias_mp or '—' }}</strong></div>
+  {% endif %}
+  {% if not prestador.cbu and not prestador.email_mp and not prestador.alias_mp %}
+  <div style="background:#fde8e8;border:1px solid #f5c6cb;border-radius:8px;padding:.65rem;font-size:.8rem;color:#c0392b;margin-top:.5rem;">
+    ⚠️ Aún no cargaste ningún dato de cobro. <a href="{{ url_for('prestador.perfil_editar') }}" style="color:#c0392b;font-weight:700;">Completalos en Editar perfil</a>.
+  </div>
+  {% else %}
+  <div style="background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:.65rem;font-size:.8rem;color:#795548;margin-top:.5rem;">
+    ⚠️ Verificá que estos datos sean correctos. Los pagos se realizan al CBU o Mercado Pago que ingresaste.
+  </div>
+  {% endif %}
+</div>
+
+<!-- INFORMACIÓN FISCAL -->
+<div class="profile-section">
+  <h2 class="profile-section__title">📄 Información fiscal</h2>
+  {% if prestador.factura_requerida %}
+  <div style="background:#fef3e2;border:1px solid #f5a623;border-radius:8px;padding:.75rem;font-size:.83rem;color:#7d4e00;line-height:1.5;margin-bottom:.75rem;">
+    <strong>⚠️ Tu facturación mensual supera el límite establecido.</strong><br>
+    Debés emitir factura electrónica. Si necesitás inscribirte como monotributista, podés hacerlo en:<br><br>
+    <a href="https://www.afip.gob.ar/monotributo/"
+       target="_blank" rel="noopener"
+       style="background:#e67e22;color:#fff;padding:.4rem .85rem;border-radius:20px;font-size:.8rem;text-decoration:none;display:inline-block;">
+      🌐 Ir a AFIP
+    </a>
+  </div>
+  {% else %}
+  <div style="background:#f0faf4;border:1px solid #a3d9b1;border-radius:8px;padding:.65rem;font-size:.83rem;color:#1a6632;margin-bottom:.75rem;">
+    ✓ Tu facturación está dentro del límite. No se requiere factura por el momento.
+  </div>
+  {% endif %}
+  {% set cond_labels = {'monotributista': 'Monotributista', 'relacion_dependencia': 'Relación de dependencia', 'no_informada': 'No informada'} %}
+  <div class="info-row"><span>Condición fiscal</span><strong>{{ cond_labels.get(prestador.condicion_fiscal or 'no_informada', 'No informada') }}</strong></div>
+  {% if prestador.cuit %}
+  <div class="info-row"><span>CUIT</span><strong>{{ prestador.cuit }}</strong></div>
+  {% endif %}
+</div>
+
+<!-- CURRICULUM VITAE -->
+<div class="profile-section">
+  <h2 class="profile-section__title">📋 Mi Curriculum Vitae</h2>
+  {% if prestador.cv_url %}
+  <div style="font-size:.84rem;background:#f4faf6;border:1px solid #d4efdf;border-radius:8px;padding:.6rem;margin-bottom:.6rem;">
+    📄 <a href="{{ prestador.cv_url }}" target="_blank" style="color:#1E8449;font-weight:600;">Ver CV subido</a>
+    <span style="color:#888;font-size:.78rem;"> · Podés reemplazarlo subiendo uno nuevo</span>
+  </div>
+  {% endif %}
+  <form method="POST" action="{{ url_for('prestador.cv_subir') }}"
+        enctype="multipart/form-data" style="margin-bottom:.6rem;">
+    <label style="background:#555;color:#fff;padding:.45rem .9rem;border-radius:20px;font-size:.82rem;cursor:pointer;display:inline-block;">
+      📎 {{ 'Reemplazar CV' if prestador.cv_url else 'Subir CV' }}
+      <input type="file" name="cv" accept=".pdf" style="display:none;" onchange="this.form.submit()">
+    </label>
+    <span style="font-size:.78rem;color:#888;margin-left:.4rem;">Solo PDF — máx. 5MB</span>
+  </form>
+  <div style="background:#D6EAF8;border:1px solid #AED6F1;border-radius:8px;padding:.75rem;font-size:.82rem;color:#1A5276;line-height:1.5;">
+    <strong>📧 También podés enviar tu CV por email a:</strong><br>
+    <strong>cv@amparo.com</strong><br>
+    Asunto: "CV - [tu nombre completo]"<br>
+    Lo adjuntaremos a tu perfil dentro de las 48 horas hábiles.<br><br>
+    <button type="button" onclick="copiarEmail('cv@amparo.com','btn-cv')"
+            id="btn-cv"
+            style="background:#f0f0f0;color:#333;border:1px solid #ccc;padding:.4rem .8rem;border-radius:20px;font-size:.8rem;cursor:pointer;">
+      📋 Copiar email
+    </button>
+  </div>
+</div>
+
+<!-- REPUTACIÓN -->
+<div class="profile-section">
+  <h2 class="profile-section__title">Mi reputación</h2>
+  <div class="rep-row">
+    <div class="rep-stars">
+      {% for i in range(5) %}{{ '★' if i < puntaje | int else '☆' }}{% endfor %}
+    </div>
+    <div class="rep-num">{{ puntaje }}/5</div>
+  </div>
+  <div class="rep-meta">{{ servicios_count }} servicios realizados · {{ resenas_count }} reseñas</div>
+
+  {% for r in resenas %}
+  <div class="review-item">
+    <div class="review-item__header">
+      <span class="review-stars">{% for i in range(r.puntaje) %}★{% endfor %}</span>
+      <span class="review-solicitante">{{ r.solicitante_nombre }}</span>
+      <span class="review-fecha">{{ r.fecha[:10] }}</span>
+    </div>
+    {% if r.comentario %}
+    <div class="review-comment">"{{ r.comentario }}"</div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+
+<!-- BOTÓN EDITAR -->
+<div class="profile-actions">
+  <a href="{{ url_for('prestador.perfil_editar') }}" class="btn btn-edit-profile">Editar perfil</a>
+</div>
+
+<!-- CERRAR SESIÓN -->
+<a href="{{ url_for('auth.logout') }}"
+   onclick="return confirm('¿Cerrar la aplicación?')"
+   style="display:block;width:100%;margin-top:.75rem;padding:.75rem;font-size:.95rem;
+          color:#c0392b;border:1.5px solid #c0392b;border-radius:25px;
+          background:#fff;text-align:center;text-decoration:none;font-weight:600;">
+  Cerrar aplicación
+</a>
+
+{% endblock %}

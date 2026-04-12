@@ -1,0 +1,45 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Conflictos{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1 class="page-title">⚠️ Conflictos activos</h1>
+</div>
+
+{% if rows %}
+<div class="table-card">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Fecha servicio</th>
+        <th>Prestador</th>
+        <th>Solicitante</th>
+        <th>Motivo reportado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for s in rows %}
+      <tr>
+        <td>{{ s.id }}</td>
+        <td>{{ s.fecha_servicio }}<br><small>{{ s.hora_inicio }}–{{ s.hora_fin }}</small></td>
+        <td>{{ s.prestador_nombre }}</td>
+        <td>{{ s.solicitante_nombre }}</td>
+        <td style="max-width:250px;font-size:.85rem;color:#c0392b;">{{ s.motivo_conflicto or '—' }}</td>
+        <td>
+          <a href="{{ url_for('admin.conflicto_detalle', sid=s.id) }}" class="btn btn-primary btn-sm">
+            Resolver →
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">
+  <p>✅ No hay conflictos activos.</p>
+</div>
+{% endif %}
+{% endblock %}

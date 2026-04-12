@@ -1,0 +1,148 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'servicios' %}
+{% block titulo %}Completar pago{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <a href="{{ url_for('solicitante.contratacion_detalle', sid=s.id) }}" class="btn-back">← Volver</a>
+  <h1>💳 Completar pago</h1>
+</div>
+
+{% set es_penalidad = (pago.tipo_pago == 'penalidad') %}
+
+{# Calcular duración #}
+{% set hi = s.hora_inicio.split(':') %}
+{% set hf = s.hora_fin.split(':') %}
+{% set mins = (hf[0]|int * 60 + hf[1]|int) - (hi[0]|int * 60 + hi[1]|int) %}
+{% set horas_dur = (mins / 60)|round(1) %}
+
+<!-- Resumen del servicio -->
+<div style="background:{% if es_penalidad %}#fff3e0{% else %}#fff{% endif %};
+            border:{% if es_penalidad %}2px solid #e67e22{% else %}2px solid #7D3C98{% endif %};
+            border-radius:14px;padding:1.5rem;margin-bottom:1.25rem;">
+
+  {% if es_penalidad %}
+  <div style="color:#7d3c00;font-size:.88rem;font-weight:600;margin-bottom:.75rem;">
+    ⚠️ Pago de penalidad por cancelación
+  </div>
+  {% else %}
+  <div style="font-size:.82rem;font-weight:700;color:#7D3C98;letter-spacing:.04em;margin-bottom:.5rem;">
+    💳 RESUMEN DEL SERVICIO
+  </div>
+  {% endif %}
+
+  <div style="font-size:.85rem;color:#555;margin-bottom:.15rem;">Prestador</div>
+  <div style="font-size:1rem;font-weight:700;margin-bottom:.75rem;">{{ s.prestador_nombre }}</div>
+
+  {% if not es_penalidad %}
+  <div style="display:flex;flex-direction:column;gap:.2rem;font-size:.88rem;color:#555;margin-bottom:.75rem;">
+    <div>📅 Fecha: <strong>{{ s.fecha_servicio }}</strong></div>
+    <div>🕐 Horario: <strong>{{ s.hora_inicio }} a {{ s.hora_fin }}</strong></div>
+    <div>⏱ Duración: <strong>{{ horas_dur }} hs</strong></div>
+  </div>
+  {% endif %}
+
+  <div style="background:{% if es_penalidad %}#fff{% else %}#f9f5ff{% endif %};
+              border-radius:10px;padding:1rem;margin-bottom:.75rem;">
+    <div style="display:flex;justify-content:space-between;padding:.35rem 0;
+                border-bottom:1px solid #eee;font-size:.88rem;">
+      <span style="color:#555;">{% if es_penalidad %}Penalidad{% else %}Subtotal servicio{% endif %}</span>
+      <span>$ {{ '%.2f'|format(pago.monto_bruto) }}</span>
+    </div>
+    {% if not es_penalidad and (pago.comision_solicitante or 0) > 0 %}
+    <div style="display:flex;justify-content:space-between;padding:.35rem 0;
+                border-bottom:1px solid #eee;font-size:.88rem;">
+      <span style="color:#555;">Servicio de AMPARO</span>
+      <span style="color:#888;">$ {{ '%.2f'|format(pago.comision_solicitante or 0) }}</span>
+    </div>
+    {% endif %}
+    <div style="display:flex;justify-content:space-between;padding:.5rem 0;">
+      <span style="font-weight:700;">TOTAL A PAGAR</span>
+      <strong style="color:#27ae60;font-size:1.35rem;">$ {{ '%.2f'|format((pago.monto_bruto or 0) + (pago.comision_solicitante or 0)) }}</strong>
+    </div>
+  </div>
+</div>
+
+<form method="POST" action="{{ url_for('solicitante.contratacion_pagar_procesar', sid=s.id) }}"
+      id="form-pago">
+
+  <!-- Método de pago -->
+  <div style="background:#fff;border:1px solid #e0d0f0;border-radius:12px;padding:1.25rem;margin-bottom:1.25rem;">
+    <div style="font-weight:600;margin-bottom:.75rem;color:#555;">¿Cómo querés pagar?</div>
+    <label style="display:flex;align-items:center;gap:.75rem;padding:.6rem 0;cursor:pointer;">
+      <input type="radio" name="metodo" value="mercadopago" checked style="accent-color:#7D3C98;">
+      <span style="font-size:.95rem;">💳 Mercado Pago / Tarjeta de crédito o débito</span>
+    </label>
+  </div>
+
+  {% if not es_penalidad %}
+  <!-- Checkbox de confirmación obligatorio -->
+  <label id="check-label"
+         style="display:flex;align-items:flex-start;gap:.75rem;background:#f9f5ff;
+                border:1.5px solid #c3a0e8;border-radius:12px;padding:1rem;margin-bottom:1.25rem;cursor:pointer;">
+    <input type="checkbox" id="check-confirm" name="confirmo"
+           style="margin-top:.15rem;accent-color:#7D3C98;width:18px;height:18px;flex-shrink:0;"
+           onchange="togglePagar()">
+    <span style="font-size:.88rem;color:#444;line-height:1.45;">
+      Confirmo que el servicio se realizó correctamente y autorizo el pago de
+      <strong>$ {{ '%.2f'|format((pago.monto_bruto or 0) + (pago.comision_solicitante or 0)) }}</strong>
+    </span>
+  </label>
+  {% endif %}
+
+  <!-- Botón pagar -->
+  <button type="submit" id="btn-pagar"
+          {% if not es_penalidad %}disabled{% endif %}
+          style="width:100%;background:{% if es_penalidad %}#27ae60{% else %}#27ae60{% endif %};
+                 color:#fff;font-size:1.1rem;padding:1rem;border-radius:25px;
+                 font-weight:700;border:none;cursor:pointer;
+                 opacity:{% if es_penalidad %}1{% else %}.45{% endif %};
+                 transition:opacity .2s;">
+    Pagar ahora → $ {{ '%.2f'|format((pago.monto_bruto or 0) + (pago.comision_solicitante or 0)) }}
+  </button>
+
+</form>
+
+{% if modo_prueba %}
+<!-- Botón de simulación (sandbox / sin credenciales) -->
+<form method="POST" action="{{ url_for('solicitante.contratacion_pagar_procesar', sid=s.id) }}"
+      id="form-simular">
+  <input type="hidden" name="metodo" value="simulado">
+  {% if not es_penalidad %}
+  <button type="button" id="btn-simular"
+          disabled
+          onclick="document.getElementById('form-simular').submit()"
+          style="width:100%;margin-top:.75rem;background:#f39c12;color:#fff;font-size:.95rem;
+                 padding:.85rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;
+                 opacity:.45;transition:opacity .2s;">
+    🧪 Simular pago (modo prueba)
+  </button>
+  {% else %}
+  <button type="submit"
+          style="width:100%;margin-top:.75rem;background:#f39c12;color:#fff;font-size:.95rem;
+                 padding:.85rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;">
+    🧪 Simular pago (modo prueba)
+  </button>
+  {% endif %}
+</form>
+<p style="font-size:.75rem;color:#aaa;text-align:center;margin-top:.4rem;">
+  Modo {% if tiene_mp %}sandbox{% else %}sin credenciales MP{% endif %} — no se realizan cobros reales
+</p>
+{% else %}
+<p style="font-size:.78rem;color:#aaa;text-align:center;margin-top:.75rem;">
+  Pago seguro procesado por Mercado Pago
+</p>
+{% endif %}
+{% endblock %}
+
+{% block scripts %}
+<script>
+function togglePagar() {
+  var ok  = document.getElementById('check-confirm').checked;
+  var bp  = document.getElementById('btn-pagar');
+  var bs  = document.getElementById('btn-simular');
+  if (bp) { bp.disabled = !ok; bp.style.opacity = ok ? '1' : '.45'; bp.style.cursor = ok ? 'pointer' : 'not-allowed'; }
+  if (bs) { bs.disabled = !ok; bs.style.opacity = ok ? '1' : '.45'; bs.style.cursor = ok ? 'pointer' : 'not-allowed'; }
+}
+</script>
+{% endblock %}

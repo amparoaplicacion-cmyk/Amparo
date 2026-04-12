@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>AMPARO Solicitantes — {% block titulo %}Panel{% endblock %}</title>
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#1B3A5C">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="AMPARO">
+  <link rel="apple-touch-icon" href="/static/img/icon-192.png">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/solicitante.css') }}">
+</head>
+<body>
+
+  <!-- HEADER FIJO -->
+  <header class="app-header">
+    <div class="app-header__brand" style="display:flex;align-items:center;gap:8px;">
+      <img src="/static/img/amparo_icon.svg" alt="AMPARO" height="40" style="height:40px;width:auto;">
+      <span class="brand-name">AMPARO <strong>Solicitante</strong></span>
+    </div>
+    <div style="display:flex;align-items:center;gap:.75rem;">
+      <a href="{{ url_for('solicitante.notificaciones') }}" class="notif-btn">
+        🔔
+        {% if notif_count > 0 %}
+          <span class="notif-badge">{{ notif_count if notif_count < 100 else '99+' }}</span>
+        {% endif %}
+      </a>
+      <a href="{{ url_for('auth.logout') }}"
+         onclick="return confirm('¿Cerrar sesión?')"
+         title="Cerrar sesión"
+         style="font-size:1.25rem;text-decoration:none;line-height:1;">🚪</a>
+    </div>
+  </header>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="app-main">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="flash-wrap">
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- MENÚ INFERIOR FIJO -->
+  <nav class="bottom-nav">
+    <a href="{{ url_for('solicitante.dashboard') }}"
+       class="bottom-nav__item {{ 'active' if active_tab == 'buscar' }}">
+      <span class="nav-icon">🔍</span>
+      <span class="nav-label">Buscar</span>
+    </a>
+    <a href="{{ url_for('solicitante.contrataciones') }}"
+       class="bottom-nav__item {{ 'active' if active_tab == 'servicios' }}">
+      <span class="nav-icon">📋</span>
+      <span class="nav-label">Mis Servicios</span>
+    </a>
+    <a href="{{ url_for('solicitante.pagos') }}"
+       class="bottom-nav__item {{ 'active' if active_tab == 'pagos' }}">
+      <span class="nav-icon">💳</span>
+      <span class="nav-label">Pagos</span>
+    </a>
+    <a href="{{ url_for('solicitante.mi_cuenta') }}"
+       class="bottom-nav__item {{ 'active' if active_tab == 'cuenta' }}">
+      <span class="nav-icon">👤</span>
+      <span class="nav-label">Mi Cuenta</span>
+    </a>
+    <a href="{{ url_for('solicitante.contacto') }}"
+       class="bottom-nav__item {{ 'active' if active_tab == 'contacto' }}">
+      <span class="nav-icon">💬</span>
+      <span class="nav-label">Contacto</span>
+    </a>
+  </nav>
+
+  {% block scripts %}{% endblock %}
+
+<style>
+@media (min-width: 768px) {
+  .app-main { max-width: 900px; margin: 0 auto; padding: 1.5rem 2rem; }
+  .bottom-nav { display: none; }
+  .app-header { padding: 0 2rem; }
+}
+</style>
+</body>
+</html>

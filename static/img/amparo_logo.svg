@@ -1,0 +1,34 @@
+<svg width="340" height="160" viewBox="0 0 340 160" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <style>
+      .logo-text { font-family: Georgia, serif; font-weight: 700; fill: #1A5276; }
+      .tagline { font-family: Arial, sans-serif; font-weight: 400; fill: #5D6D7E; font-size: 7.5px; letter-spacing: 1px; }
+    </style>
+  </defs>
+
+  <!-- Circulo central -->
+  <circle cx="170" cy="62" r="26" fill="#EAF4FB"/>
+
+  <!-- Cruz médica -->
+  <rect x="166" y="45" width="8" height="24" rx="2" fill="#2E86C1" opacity="0.85"/>
+  <rect x="156" y="55" width="28" height="8" rx="2" fill="#2E86C1" opacity="0.85"/>
+
+  <!-- Corazón -->
+  <path d="M170,43 C170,43 164.5,37 161,40.5 C157.5,44 163,50 170,55 C177,50 182.5,44 179,40.5 C175.5,37 170,43 170,43 Z" fill="#E74C3C" opacity="0.85"/>
+
+  <!-- Mano izquierda -->
+  <path d="M144,76 C140,69 141,60 147,58 C151,57 154,60 155,65 L157,76 Z" fill="#F0B27A"/>
+  <!-- Mano derecha -->
+  <path d="M196,76 C200,69 199,60 193,58 C189,57 186,60 185,65 L183,76 Z" fill="#F0B27A"/>
+  <!-- Base abrazo -->
+  <path d="M155,65 C160,77 180,77 185,65 L183,76 C178,88 162,88 157,76 Z" fill="#F0B27A"/>
+
+  <!-- Nombre -->
+  <text x="170" y="116" text-anchor="middle" class="logo-text" font-size="26" letter-spacing="3">AMPARO</text>
+
+  <!-- Línea -->
+  <line x1="90" y1="124" x2="250" y2="124" stroke="#2E86C1" stroke-width="0.75" opacity="0.4"/>
+
+  <!-- Tagline -->
+  <text x="170" y="138" text-anchor="middle" class="tagline">CUIDADO PROFESIONAL DE CONFIANZA</text>
+</svg>

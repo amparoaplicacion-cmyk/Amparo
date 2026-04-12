@@ -1,0 +1,105 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/reportes/_periodo.html' import selector %}
+{% block titulo %}Reporte de Zonas{% endblock %}
+
+{% block content %}
+{% set reporte_nombre = 'zonas' %}
+<div class="page-header no-print">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <a href="{{ url_for('admin.reportes') }}">Reportes</a> &rsaquo;
+    <span>Zonas con más demanda</span>
+  </nav>
+  <h1 class="page-title">📍 Zonas con más demanda — {{ label_periodo }}</h1>
+</div>
+
+{{ selector(periodo, desde, hasta, 'admin.reporte_zonas') }}
+
+<!-- GRÁFICO -->
+<div class="chart-card">
+  <h2 class="chart-title">Ranking de zonas por solicitudes</h2>
+  {% if chart_labels %}
+  <canvas id="chartZonas" height="120"></canvas>
+  {% else %}
+  <div class="empty-chart">Sin datos en el período seleccionado.</div>
+  {% endif %}
+</div>
+
+<!-- TABLA -->
+{% if tabla %}
+<div class="table-card">
+  <h2 class="chart-title">Detalle por zona</h2>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th>#</th><th>Zona o Barrio</th><th>Ciudad</th><th>Provincia</th>
+        <th class="text-center">Solicitudes</th>
+        <th class="text-center">Contrataciones</th>
+        <th class="text-center">Conversión</th>
+        <th class="text-right">Facturado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for f in tabla %}
+      <tr>
+        <td class="text-center">{{ f.pos }}</td>
+        <td><strong>{{ f.nombre }}</strong></td>
+        <td>{{ f.ciudad }}</td>
+        <td>{{ f.provincia }}</td>
+        <td class="text-center">{{ f.solicitudes }}</td>
+        <td class="text-center">{{ f.contrataciones }}</td>
+        <td class="text-center">
+          <span class="conv-badge {{ 'conv-alta' if f.conversion >= 50 else ('conv-media' if f.conversion >= 20 else 'conv-baja') }}">
+            {{ f.conversion }}%
+          </span>
+        </td>
+        <td class="text-right">${{ "%.2f"|format(f.facturado) }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="total-row">
+        <td colspan="4"><strong>TOTAL</strong></td>
+        <td class="text-center"><strong>{{ tabla | sum(attribute='solicitudes') }}</strong></td>
+        <td class="text-center"><strong>{{ tabla | sum(attribute='contrataciones') }}</strong></td>
+        <td></td>
+        <td class="text-right"><strong>${{ "%.2f"|format(tabla | sum(attribute='facturado')) }}</strong></td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+{% else %}
+<div class="empty-state">No hay datos de zonas para el período seleccionado.</div>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+{% if chart_labels %}
+new Chart(document.getElementById('chartZonas').getContext('2d'), {
+  type: 'bar',
+  data: {
+    labels: {{ chart_labels | tojson }},
+    datasets: [{
+      label: 'Solicitudes',
+      data: {{ chart_data | tojson }},
+      backgroundColor: '#1A5276', borderRadius: 4
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    plugins: { legend: { display: false }, tooltip: { mode: 'index' } },
+    scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+  }
+});
+{% endif %}
+</script>
+
+<style>
+.conv-badge { display: inline-block; padding: .15rem .5rem; border-radius: 12px; font-size: .8rem; font-weight: 600; }
+.conv-alta  { background: #d4efdf; color: #1a6b3a; }
+.conv-media { background: #fef9e7; color: #9a7d0a; }
+.conv-baja  { background: #fde8e8; color: #922b21; }
+</style>
+{% include 'admin/reportes/_estilos_comunes.html' %}
+{% endblock %}

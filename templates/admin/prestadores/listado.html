@@ -1,0 +1,202 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Gestión de Prestadores{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Gestión de Prestadores</h1>
+  <a href="{{ url_for('admin.prestador_nuevo') }}" class="btn btn-primary">+ Agregar nuevo prestador</a>
+</div>
+
+<!-- FILTROS -->
+<div class="filters-card">
+  <form method="GET" action="{{ url_for('admin.prestadores') }}">
+    <div class="filters-row">
+
+      <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" name="busqueda" class="filter-input"
+               placeholder="Nombre, apellido o email..." value="{{ busqueda }}">
+      </div>
+
+      <div class="filter-group">
+        <label>Categoría</label>
+        <select name="categoria_id" class="filter-select">
+          <option value="">Todas</option>
+          {% for cat in categorias %}
+            <option value="{{ cat['id'] }}" {{ 'selected' if categoria_id == cat['id']|string }}>
+              {{ cat['nombre'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Estado de perfil</label>
+        <select name="estado_perfil" class="filter-select">
+          <option value="">Todos</option>
+          <option value="EN_REVISION" {{ 'selected' if estado_perfil == 'EN_REVISION' }}>En Revisión</option>
+          <option value="APROBADO"    {{ 'selected' if estado_perfil == 'APROBADO'    }}>Aprobado</option>
+          <option value="RECHAZADO"   {{ 'selected' if estado_perfil == 'RECHAZADO'   }}>Rechazado</option>
+          <option value="SUSPENDIDO"  {{ 'selected' if estado_perfil == 'SUSPENDIDO'  }}>Suspendido</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Zona o Barrio</label>
+        <select name="zona_id" class="filter-select">
+          <option value="">Todas</option>
+          {% for z in zonas %}
+            <option value="{{ z['id'] }}" {{ 'selected' if zona_id == z['id']|string }}>
+              {{ z['nombre'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a href="{{ url_for('admin.prestadores') }}" class="btn btn-secondary">Limpiar</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- TABLA -->
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if prestadores %}
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Foto</th>
+        <th>Nombre y apellido</th>
+        <th>Email</th>
+        <th>Categoría</th>
+        <th>Localidad</th>
+        <th>Estado perfil</th>
+        <th style="text-align:center;">Verificación</th>
+        <th style="text-align:center;">Antecedentes</th>
+        <th>Fecha de alta</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in prestadores %}
+      <tr>
+        <td>
+          {% if p['foto_url'] %}
+            {% if p['foto_url'].startswith('/') or p['foto_url'].startswith('http') %}
+            <img src="{{ p['foto_url'] }}" class="avatar-sm" alt="Foto">
+            {% else %}
+            <img src="{{ url_for('static', filename='uploads/prestadores/' + p['foto_url']) }}"
+                 class="avatar-sm" alt="Foto">
+            {% endif %}
+          {% else %}
+            <div class="avatar-sm avatar-sm--default">👤</div>
+          {% endif %}
+        </td>
+        <td><strong>{{ p['nombre'] }} {{ p['apellido'] }}</strong></td>
+        <td>{{ p['email'] }}</td>
+        <td>{{ p['categoria_nombre'] or '—' }}</td>
+        <td>{{ p['localidad'] or '—' }}</td>
+        <td>
+          <span class="badge badge-perfil-{{ p['estado_perfil']|lower|replace('_','-') }}">
+            {{ p['estado_perfil']|replace('_', ' ') }}
+          </span>
+        </td>
+        <td style="text-align:center; white-space:nowrap;">
+          <span class="verify-icon verify-{{ p['dni_verificado']|lower }}" title="DNI">D</span>
+          <span class="verify-icon verify-{{ p['antecedentes_ok']|lower }}" title="Antecedentes">A</span>
+          <span class="verify-icon verify-{{ p['certificados_ok']|lower }}" title="Certificados">C</span>
+        </td>
+        <td style="text-align:center; white-space:nowrap;">
+          {% if p['antecedentes_ok'] != 'VERIFICADO' %}
+            <span title="Sin certificado archivado" style="color:#95A5A6; font-size:13px;">⏳ Pendiente</span>
+          {% elif not p['antecedentes_fecha_vencimiento'] %}
+            <span title="Verificado sin fecha de vencimiento" style="color:#27AE60; font-size:13px;">✅ Vigente</span>
+          {% elif p['antecedentes_fecha_vencimiento'] < hoy_iso %}
+            <span title="Vencido" style="color:#e74c3c; font-size:13px; font-weight:bold;">❌ Vencido</span>
+          {% elif p['antecedentes_fecha_vencimiento'] <= alert_iso %}
+            <span title="Vence pronto" style="color:#e67e22; font-size:13px;">⏰ Por vencer</span>
+          {% else %}
+            <span title="Vigente" style="color:#27AE60; font-size:13px;">✅ Vigente</span>
+          {% endif %}
+        </td>
+        <td>{{ p['fecha_alta'][:10] if p['fecha_alta'] else '—' }}</td>
+        <td>
+          <div class="btn-actions">
+            <a href="{{ url_for('admin.prestador_detalle', pid=p['id']) }}"
+               class="btn-sm btn-sm-view">Ver</a>
+            <a href="{{ url_for('admin.prestador_editar', pid=p['id']) }}"
+               class="btn-sm btn-sm-edit">Editar</a>
+            {% if p['estado_perfil'] == 'APROBADO' %}
+              <button type="button" class="btn-sm btn-sm-block"
+                      onclick="abrirModal(
+                        '{{ url_for('admin.prestador_suspender', pid=p['id']) }}',
+                        'Suspender a {{ p['nombre'] }} {{ p['apellido'] }}')">
+                Suspender
+              </button>
+            {% elif p['estado_perfil'] == 'SUSPENDIDO' %}
+              <form method="POST"
+                    action="{{ url_for('admin.prestador_reactivar', pid=p['id']) }}"
+                    style="display:inline"
+                    onsubmit="return confirm('¿Reactivar a {{ p['nombre'] }} {{ p['apellido'] }}?')">
+                <button type="submit" class="btn-sm btn-sm-unlock">Reactivar</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div style="padding:10px 16px; font-size:12px; color:#7F8C8D; border-top:1px solid #EAECEE;">
+    {{ prestadores|length }} prestador{{ 'es' if prestadores|length != 1 }} encontrado{{ 's' if prestadores|length != 1 }}
+  </div>
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:36px; display:block; margin-bottom:10px;">🧑‍⚕️</span>
+    No se encontraron prestadores con los filtros aplicados.
+  </div>
+  {% endif %}
+</div>
+
+<!-- MODAL DE MOTIVO -->
+<div id="modal-motivo" class="modal-overlay" style="display:none">
+  <div class="modal-box">
+    <h3 class="modal-title">Motivo</h3>
+    <p class="modal-desc" id="modal-desc-text"></p>
+    <form method="POST" id="modal-form">
+      <div class="form-group">
+        <label class="form-label">Motivo <span class="required">*</span></label>
+        <textarea name="motivo" id="modal-motivo-text" class="form-input"
+                  rows="3" placeholder="Describí el motivo..." required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-danger">Confirmar</button>
+        <button type="button" class="btn btn-secondary" onclick="cerrarModal()">Cancelar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+function abrirModal(action, desc) {
+  document.getElementById('modal-form').action = action;
+  document.getElementById('modal-desc-text').textContent = desc;
+  document.getElementById('modal-motivo-text').value = '';
+  document.getElementById('modal-motivo').style.display = 'flex';
+}
+function cerrarModal() {
+  document.getElementById('modal-motivo').style.display = 'none';
+}
+document.getElementById('modal-motivo').addEventListener('click', function(e) {
+  if (e.target === this) cerrarModal();
+});
+</script>
+
+{% endblock %}

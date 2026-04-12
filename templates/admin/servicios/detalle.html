@@ -1,0 +1,201 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Servicio #{{ s.id }}{% endblock %}
+
+{% block content %}
+<div class="page-header" style="display:flex;align-items:center;gap:1rem;">
+  <a href="{{ url_for('admin.servicios_admin') }}" class="btn btn-sm" style="background:#eee;color:#444;">← Volver</a>
+  <h1 class="page-title" style="margin:0;">Servicio #{{ s.id }}</h1>
+  {% if s.conflicto %}
+  <span class="badge" style="background:#e67e22;color:#fff;font-size:.85rem;">⚠️ Conflicto activo</span>
+  {% endif %}
+</div>
+
+<!-- BLOQUE 1: Datos del servicio -->
+<div class="table-card" style="margin-bottom:1.25rem;">
+  <div class="section-title">📅 Datos del servicio</div>
+  <table class="data-table" style="font-size:.9rem;">
+    <tbody>
+      <tr><td style="color:#888;width:40%;">Estado</td>
+        <td>
+          {% if s.estado == 'PENDIENTE' %}<span class="badge badge-pending">Pendiente</span>
+          {% elif s.estado == 'ACEPTADO' %}<span class="badge badge-accepted">Aceptado</span>
+          {% elif s.estado == 'ACTIVO' %}<span class="badge badge-active">Activo</span>
+          {% elif s.estado == 'FINALIZADO' %}<span class="badge badge-done">Finalizado</span>
+          {% elif s.estado == 'CANCELADO' %}<span class="badge badge-cancel">Cancelado</span>
+          {% else %}<span class="badge badge-reject">{{ s.estado }}</span>{% endif %}
+        </td>
+      </tr>
+      <tr><td style="color:#888;">Fecha</td><td><strong>{{ s.fecha_servicio }}</strong></td></tr>
+      <tr><td style="color:#888;">Horario</td><td>{{ s.hora_inicio }} – {{ s.hora_fin }}</td></tr>
+      <tr><td style="color:#888;">Categoría</td><td>{{ s.categoria_nombre or '—' }}</td></tr>
+      <tr><td style="color:#888;">Prestador</td><td>
+        <strong>{{ s.prestador_nombre }}</strong>
+        {% if s.prestador_telefono %}<br><small><a href="tel:{{ s.prestador_telefono }}">{{ s.prestador_telefono }}</a></small>{% endif %}
+        {% if s.prestador_email %}<br><small>{{ s.prestador_email }}</small>{% endif %}
+      </td></tr>
+      <tr><td style="color:#888;">Solicitante</td><td>
+        <strong>{{ s.solicitante_nombre }}</strong>
+        {% if s.solicitante_telefono %}<br><small><a href="tel:{{ s.solicitante_telefono }}">{{ s.solicitante_telefono }}</a></small>{% endif %}
+        {% if s.solicitante_email %}<br><small>{{ s.solicitante_email }}</small>{% endif %}
+      </td></tr>
+      {% if s.direccion %}
+      <tr><td style="color:#888;">Dirección</td><td>{{ s.direccion }}</td></tr>
+      {% endif %}
+      {% if pago %}
+      <tr><td style="color:#888;">Pago</td><td>
+        <strong>${{ "%.2f"|format(pago.monto_bruto) }}</strong>
+        <span class="badge {{ 'badge-done' if pago.estado in ('PROCESADO','COMPLETADO','LIQUIDADO') else 'badge-pending' }}" style="margin-left:.4rem;font-size:.75rem;">
+          {{ 'Pagado' if pago.estado in ('PROCESADO','COMPLETADO','LIQUIDADO') else pago.estado }}
+        </span>
+      </td></tr>
+      {% endif %}
+      {% if s.motivo_cancelacion %}
+      <tr><td style="color:#888;">Motivo cancelación</td><td style="color:#c0392b;">{{ s.motivo_cancelacion }}</td></tr>
+      {% endif %}
+      {% if s.motivo_rechazo %}
+      <tr><td style="color:#888;">Motivo rechazo</td><td style="color:#c0392b;">{{ s.motivo_rechazo }}</td></tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- BLOQUE 2: Estado GPS / confirmaciones -->
+<div class="table-card" style="margin-bottom:1.25rem;">
+  <div class="section-title">📍 Seguimiento GPS y confirmaciones</div>
+  {% if s.estado == 'CANCELADO' %}
+  <div style="background:#F2F3F4;padding:16px;border-radius:8px;color:#888;">
+    🚫 Servicio cancelado — sin seguimiento GPS
+  </div>
+  {% else %}
+  <div style="display:flex;flex-direction:column;gap:.5rem;font-size:.9rem;padding:.25rem 0;">
+    <div style="display:flex;align-items:flex-start;gap:.6rem;">
+      <span>{{ '✅' if s.prestador_confirmo_llegada else '⏳' }}</span>
+      <div>
+        <strong>Llegada del prestador</strong>
+        {% if s.prestador_confirmo_llegada %}
+          — Confirmada
+          {% if s.fecha_llegada %}<span style="color:#888;font-size:.82rem;"> · {{ s.fecha_llegada[:16] }}</span>{% endif %}
+          {% if s.distancia_llegada_metros is not none %}
+            <span style="color:#27ae60;font-size:.82rem;"> · {{ s.distancia_llegada_metros|int }} m del domicilio</span>
+          {% endif %}
+          {% if s.prestador_lat_llegada and s.solicitante_lat %}
+            <br><small style="color:#888;">
+              GPS prestador: {{ "%.5f"|format(s.prestador_lat_llegada) }}, {{ "%.5f"|format(s.prestador_lon_llegada) }}
+              · GPS solicitante: {{ "%.5f"|format(s.solicitante_lat) }}, {{ "%.5f"|format(s.solicitante_lon) }}
+            </small>
+          {% endif %}
+        {% else %}
+          <span style="color:#888;"> — Pendiente</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:.6rem;">
+      <span>{{ '✅' if s.prestador_confirmo_fin else '⏳' }}</span>
+      <div>
+        <strong>Prestador confirmó fin</strong>
+        {% if s.prestador_confirmo_fin %}
+          <span style="color:#888;font-size:.82rem;">
+            {% if s.fecha_confirmacion_prestador %} · {{ s.fecha_confirmacion_prestador[:16] }}{% endif %}
+          </span>
+        {% else %}
+          <span style="color:#888;"> — Pendiente</span>
+        {% endif %}
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;gap:.6rem;">
+      <span>{{ '✅' if s.solicitante_confirmo_fin else ('⚠️' if s.conflicto else '⏳') }}</span>
+      <div>
+        <strong>Solicitante confirmó</strong>
+        {% if s.solicitante_confirmo_fin %}
+          <span style="color:#888;font-size:.82rem;">
+            {% if s.fecha_confirmacion_solicitante %} · {{ s.fecha_confirmacion_solicitante[:16] }}{% endif %}
+          </span>
+        {% elif s.conflicto %}
+          <span style="color:#e67e22;font-weight:600;"> — Reportó conflicto</span>
+          {% if s.motivo_conflicto %}
+          <br><small style="color:#c0392b;">{{ s.motivo_conflicto }}</small>
+          {% endif %}
+        {% else %}
+          <span style="color:#888;"> — Pendiente</span>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endif %}
+</div>
+
+<!-- BLOQUE 3a: Finalización manual si solicitante no confirmó en tiempo -->
+{% if s.estado == 'ACTIVO' and s.prestador_confirmo_fin and not s.solicitante_confirmo_fin and not s.conflicto %}
+{% set ts_confirmacion = s.fecha_confirmacion_prestador %}
+<div class="table-card" style="margin-bottom:1.25rem;border:2px solid #3498db;">
+  <div class="section-title" style="color:#1a4a6b;">⏳ Esperando confirmación del solicitante</div>
+  <p style="font-size:.88rem;color:#555;margin:.25rem 0 .75rem;">
+    El prestador confirmó la finalización
+    {% if ts_confirmacion %} el {{ ts_confirmacion[:16] }}{% endif %}.
+    Si el solicitante no responde en el tiempo límite, podés finalizar el servicio manualmente.
+  </p>
+  <form method="POST" action="{{ url_for('admin.servicio_finalizar_manual', sid=s.id) }}"
+        onsubmit="return confirm('¿Finalizar el servicio manualmente y generar el cobro?');">
+    <div style="margin-bottom:.6rem;">
+      <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.3rem;">Nota (opcional)</label>
+      <textarea name="nota" rows="2"
+                style="width:100%;border:1px solid #ddd;border-radius:8px;padding:.5rem;font-size:.88rem;resize:vertical;"
+                placeholder="Razón de la finalización manual..."></textarea>
+    </div>
+    <button type="submit"
+            style="width:100%;background:#1a4a6b;color:#fff;border:none;border-radius:25px;padding:.75rem;font-size:.9rem;font-weight:700;cursor:pointer;">
+      ✅ Finalizar manualmente y generar cobro
+    </button>
+  </form>
+</div>
+{% endif %}
+
+<!-- BLOQUE 3b: Acciones admin (solo si ACTIVO con conflicto) -->
+{% if s.estado == 'ACTIVO' and s.conflicto %}
+<div class="table-card" style="margin-bottom:1.25rem;border:2px solid #e67e22;">
+  <div class="section-title" style="color:#e67e22;">⚠️ Resolver conflicto</div>
+  <form method="POST" action="{{ url_for('admin.conflicto_resolver', sid=s.id) }}"
+        onsubmit="return confirm('¿Confirmar esta acción? No se puede deshacer.');">
+    <div style="margin-bottom:.75rem;">
+      <label style="font-size:.85rem;font-weight:600;display:block;margin-bottom:.3rem;">Nota interna (opcional)</label>
+      <textarea name="nota" rows="2"
+                style="width:100%;border:1px solid #ddd;border-radius:8px;padding:.5rem;font-size:.88rem;resize:vertical;"
+                placeholder="Explicación para ambas partes..."></textarea>
+    </div>
+    <div style="display:flex;gap:.75rem;">
+      <button type="submit" name="accion" value="finalizar"
+              style="flex:1;background:#27ae60;color:#fff;border:none;border-radius:25px;padding:.75rem;font-size:.9rem;font-weight:700;cursor:pointer;">
+        ✅ Confirmar servicio realizado
+      </button>
+      <button type="submit" name="accion" value="cancelar"
+              style="flex:1;background:#c0392b;color:#fff;border:none;border-radius:25px;padding:.75rem;font-size:.9rem;font-weight:700;cursor:pointer;">
+        ✕ Marcar NO realizado
+      </button>
+    </div>
+  </form>
+</div>
+{% endif %}
+
+<!-- BLOQUE 4: Historial de notificaciones relacionadas -->
+{% if notifs %}
+<div class="table-card">
+  <div class="section-title">📜 Historial de notificaciones</div>
+  <table class="data-table" style="font-size:.85rem;">
+    <thead>
+      <tr><th>Fecha</th><th>Tipo</th><th>Título</th><th>Destinatario</th></tr>
+    </thead>
+    <tbody>
+      {% for n in notifs %}
+      <tr>
+        <td style="white-space:nowrap;">{{ n.fecha[:16] if n.fecha }}</td>
+        <td><span class="badge badge-info" style="font-size:.75rem;">{{ n.tipo }}</span></td>
+        <td>{{ n.titulo }}</td>
+        <td style="color:#888;">{{ n.destinatario }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+{% endblock %}

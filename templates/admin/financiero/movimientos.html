@@ -1,0 +1,140 @@
+{% extends 'admin/base.html' %}
+{% block titulo %}Movimientos Financieros{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <nav class="breadcrumb">
+    <a href="{{ url_for('admin.dashboard') }}">Inicio</a> &rsaquo;
+    <span>Movimientos Financieros</span>
+  </nav>
+  <h1 class="page-title">💵 Movimientos Financieros</h1>
+</div>
+
+<!-- Filtros -->
+<form method="GET" action="{{ url_for('financiero.movimientos') }}"
+      style="display:flex;gap:.75rem;align-items:flex-end;flex-wrap:wrap;margin-bottom:1.5rem;
+             background:#fff;padding:1rem 1.25rem;border:1px solid #dde3ea;border-radius:10px;">
+  <div style="display:flex;flex-direction:column;gap:.3rem;">
+    <label style="font-size:.85rem;font-weight:600;">Desde</label>
+    <input type="date" name="desde" value="{{ fecha_desde }}"
+           style="padding:.45rem .7rem;border:1px solid #ccc;border-radius:6px;font-size:.9rem;">
+  </div>
+  <div style="display:flex;flex-direction:column;gap:.3rem;">
+    <label style="font-size:.85rem;font-weight:600;">Hasta</label>
+    <input type="date" name="hasta" value="{{ fecha_hasta }}"
+           style="padding:.45rem .7rem;border:1px solid #ccc;border-radius:6px;font-size:.9rem;">
+  </div>
+  <button type="submit" class="btn btn-primary">Filtrar</button>
+  <a href="{{ url_for('financiero.movimientos') }}" class="btn btn-secondary">Limpiar</a>
+</form>
+
+<!-- Botón registrar transferencia -->
+<details style="margin-bottom:1.5rem;">
+  <summary style="cursor:pointer;font-weight:600;color:#1A5276;padding:.5rem 0;">
+    + Registrar transferencia personal
+  </summary>
+  <form method="POST" action="{{ url_for('financiero.movimientos_registrar') }}"
+        style="background:#EAF4FB;padding:1rem 1.25rem;border-radius:0 0 10px 10px;
+               display:flex;gap:.75rem;flex-wrap:wrap;align-items:flex-end;margin-top:.5rem;">
+    <div style="display:flex;flex-direction:column;gap:.3rem;">
+      <label style="font-size:.85rem;font-weight:600;">Monto $</label>
+      <input type="number" name="monto" step="0.01" min="0.01" placeholder="0.00"
+             style="padding:.45rem .7rem;border:1px solid #ccc;border-radius:6px;
+                    font-size:.9rem;width:140px;" required>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.3rem;flex:1;min-width:200px;">
+      <label style="font-size:.85rem;font-weight:600;">Descripción</label>
+      <input type="text" name="descripcion" placeholder="Motivo de la transferencia"
+             style="padding:.45rem .7rem;border:1px solid #ccc;border-radius:6px;font-size:.9rem;"
+             required>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.3rem;min-width:160px;">
+      <label style="font-size:.85rem;font-weight:600;">Referencia (opcional)</label>
+      <input type="text" name="referencia" placeholder="Nro. de transferencia"
+             style="padding:.45rem .7rem;border:1px solid #ccc;border-radius:6px;font-size:.9rem;">
+    </div>
+    <button type="submit" class="btn btn-primary">Registrar</button>
+  </form>
+</details>
+
+<!-- Tabla de movimientos -->
+{% if movs %}
+<div style="overflow-x:auto;">
+<table style="width:100%;border-collapse:collapse;background:#fff;
+              border:1px solid #dde3ea;border-radius:10px;overflow:hidden;">
+  <thead>
+    <tr style="background:#1A5276;color:#fff;">
+      <th style="padding:.75rem 1rem;text-align:left;font-size:.85rem;">Fecha y hora</th>
+      <th style="padding:.75rem 1rem;text-align:left;font-size:.85rem;">Tipo</th>
+      <th style="padding:.75rem 1rem;text-align:left;font-size:.85rem;">Descripción</th>
+      <th style="padding:.75rem 1rem;text-align:right;font-size:.85rem;">Entrada $</th>
+      <th style="padding:.75rem 1rem;text-align:right;font-size:.85rem;">Salida $</th>
+      <th style="padding:.75rem 1rem;text-align:right;font-size:.85rem;">Saldo $</th>
+      <th style="padding:.75rem 1rem;text-align:left;font-size:.85rem;">Referencia</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for m in movs %}
+    {% set colores = {
+      'COBRO':                 'background:#eafaf1;',
+      'PAGO_PRESTADOR':        'background:#fef9f0;',
+      'TRANSFERENCIA_PERSONAL':'background:#ebf5fb;',
+      'PENALIDAD':             'background:#fdf2f2;'
+    } %}
+    {% set tipo_labels = {
+      'COBRO':                  ('🟢', '#1e8449'),
+      'PAGO_PRESTADOR':         ('🟠', '#ca6f1e'),
+      'TRANSFERENCIA_PERSONAL': ('🔵', '#1a5276'),
+      'PENALIDAD':              ('🔴', '#b03a2e')
+    } %}
+    <tr style="{{ colores.get(m.tipo, '') }}border-bottom:1px solid #f0f0f0;">
+      <td style="padding:.65rem 1rem;font-size:.85rem;white-space:nowrap;">
+        {{ m.fecha[:16].replace('T', ' ') }}
+      </td>
+      <td style="padding:.65rem 1rem;font-size:.82rem;font-weight:600;
+                 color:{{ tipo_labels.get(m.tipo, ('','#333'))[1] }};">
+        {{ tipo_labels.get(m.tipo, ('',''))[0] }} {{ m.tipo }}
+      </td>
+      <td style="padding:.65rem 1rem;font-size:.85rem;">{{ m.descripcion }}</td>
+      <td style="padding:.65rem 1rem;font-size:.9rem;text-align:right;
+                 color:#1e8449;font-weight:{% if m.monto_entrada %}600{% else %}400{% endif %};">
+        {% if m.monto_entrada %}$ {{ '{:,.0f}'.format(m.monto_entrada) }}{% else %}—{% endif %}
+      </td>
+      <td style="padding:.65rem 1rem;font-size:.9rem;text-align:right;
+                 color:#b03a2e;font-weight:{% if m.monto_salida %}600{% else %}400{% endif %};">
+        {% if m.monto_salida %}$ {{ '{:,.0f}'.format(m.monto_salida) }}{% else %}—{% endif %}
+      </td>
+      <td style="padding:.65rem 1rem;font-size:.9rem;text-align:right;font-weight:700;
+                 color:{% if m.saldo_acumulado >= 0 %}#1a5276{% else %}#b03a2e{% endif %};">
+        $ {{ '{:,.0f}'.format(m.saldo_acumulado) }}
+      </td>
+      <td style="padding:.65rem 1rem;font-size:.82rem;color:#666;">
+        {{ m.referencia or '—' }}
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+</div>
+<p style="color:#888;font-size:.82rem;margin-top:.5rem;">
+  {{ movs|length }} movimiento(s) encontrado(s).
+</p>
+{% else %}
+<div style="text-align:center;padding:3rem;color:#888;background:#fff;
+            border:1px solid #dde3ea;border-radius:10px;">
+  No hay movimientos registrados para el período seleccionado.
+</div>
+{% endif %}
+
+<style>
+.btn { padding:.5rem 1.2rem;border-radius:6px;font-size:.9rem;cursor:pointer;
+       border:none;text-decoration:none;display:inline-block; }
+.btn-primary  { background:#1A5276;color:#fff; }
+.btn-primary:hover  { background:#154360; }
+.btn-secondary { background:#f0f0f0;color:#333; }
+.btn-secondary:hover { background:#e0e0e0; }
+.breadcrumb { font-size:.85rem;color:#888;margin-bottom:.5rem; }
+.breadcrumb a { color:#1A5276;text-decoration:none; }
+.page-header { margin-bottom:1.75rem; }
+</style>
+{% endblock %}

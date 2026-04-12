@@ -1,0 +1,131 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}{{ cat['nombre'] }}{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">{{ cat['nombre'] }}</h1>
+  <div style="display:flex; gap:8px;">
+    <a href="{{ url_for('admin.categoria_editar', cid=cat['id']) }}" class="btn btn-primary">Editar</a>
+    <a href="{{ url_for('admin.categorias') }}" class="btn btn-secondary">Volver al listado</a>
+  </div>
+</div>
+
+{% if cat['activa'] and prestadores|length > 0 %}
+<div style="background:#FEF9E7; border-left:4px solid #F39C12; color:#7D6608;
+            padding:12px 16px; border-radius:4px; margin-bottom:16px; font-size:14px;">
+  ⚠️ Esta categoría tiene <strong>{{ prestadores|length }}
+  prestador{{ 'es' if prestadores|length != 1 }}
+  activo{{ 's' if prestadores|length != 1 }}</strong>.
+  Para desactivarla primero reasignales otra categoría.
+</div>
+{% endif %}
+
+<!-- DATOS DE LA CATEGORÍA -->
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+
+    <div>
+      <div class="detail-field">
+        <span class="detail-label">Nombre</span>
+        <span class="detail-value">{{ cat['nombre'] }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Estado</span>
+        <span>
+          {% if cat['activa'] %}
+            <span style="background:#27AE60;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;">Activa</span>
+          {% else %}
+            <span style="background:#95A5A6;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;">Inactiva</span>
+          {% endif %}
+        </span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Tarifa mínima sugerida</span>
+        <span class="detail-value">${{ '%.0f'|format(cat['tarifa_minima']) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Tarifa máxima sugerida</span>
+        <span class="detail-value">${{ '%.0f'|format(cat['tarifa_maxima']) }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Prestadores aprobados</span>
+        <span class="detail-value">{{ prestadores|length }}</span>
+      </div>
+    </div>
+
+    <div>
+      <div class="detail-field">
+        <span class="detail-label">Descripción</span>
+        <span class="detail-value">{{ cat['descripcion'] or '—' }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Requisitos de formación y documentación</span>
+        <span class="detail-value" style="white-space:pre-wrap;">{{ cat['requisitos'] or '—' }}</span>
+      </div>
+    </div>
+
+  </div>
+
+  <div style="margin-top:16px; padding-top:16px; border-top:1px solid #EAECEE;
+              display:flex; gap:10px; align-items:center;">
+    {% if cat['activa'] %}
+      {% if prestadores|length == 0 %}
+        <form method="POST" action="{{ url_for('admin.categoria_desactivar', cid=cat['id']) }}"
+              onsubmit="return confirm('¿Desactivar esta categoría?')">
+          <button type="submit" class="btn btn-danger">Desactivar</button>
+        </form>
+      {% endif %}
+    {% else %}
+      <form method="POST" action="{{ url_for('admin.categoria_activar', cid=cat['id']) }}">
+        <button type="submit" class="btn btn-primary">Activar</button>
+      </form>
+    {% endif %}
+    {% if es_protegida %}
+      <small style="color:#7F8C8D;">Esta es una categoría inicial del sistema y no puede eliminarse.</small>
+    {% endif %}
+  </div>
+</div>
+
+<!-- LISTADO DE PRESTADORES -->
+<div class="card" style="padding:0; overflow:hidden;">
+  <div style="padding:14px 16px; border-bottom:1px solid #EAECEE; font-weight:600; color:#1A5276;">
+    Prestadores aprobados en esta categoría ({{ prestadores|length }})
+  </div>
+  {% if prestadores %}
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Nombre y apellido</th>
+        <th>Estado</th>
+        <th>Zona o Barrio</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in prestadores %}
+      <tr>
+        <td><strong>{{ p['nombre'] }} {{ p['apellido'] }}</strong></td>
+        <td>
+          <span class="badge badge-perfil-{{ p['estado_perfil']|lower|replace('_','-') }}">
+            {{ p['estado_perfil']|replace('_', ' ') }}
+          </span>
+        </td>
+        <td>{{ p['zona_nombre'] or '—' }}</td>
+        <td>
+          <a href="{{ url_for('admin.prestador_detalle', pid=p['id']) }}" class="btn-sm btn-sm-view">Ver</a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:28px; display:block; margin-bottom:8px;">🧑‍⚕️</span>
+    No hay prestadores aprobados en esta categoría.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

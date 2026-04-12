@@ -1,0 +1,126 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Gestión de Solicitantes{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Gestión de Solicitantes</h1>
+  <a href="{{ url_for('admin.solicitante_nueva') }}" class="btn btn-primary">+ Agregar nueva solicitante</a>
+</div>
+
+<!-- FILTROS -->
+<div class="filters-card">
+  <form method="GET" action="{{ url_for('admin.solicitantes') }}">
+    <div class="filters-row">
+
+      <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" name="busqueda" class="filter-input"
+               placeholder="Nombre, apellido o email..." value="{{ busqueda }}">
+      </div>
+
+      <div class="filter-group">
+        <label>Zona o Barrio</label>
+        <select name="zona_id" class="filter-select">
+          <option value="">Todas</option>
+          {% for z in zonas %}
+            <option value="{{ z['id'] }}" {{ 'selected' if zona_id == z['id']|string }}>
+              {{ z['nombre'] }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Estado</label>
+        <select name="estado" class="filter-select">
+          <option value="">Todos</option>
+          <option value="ACTIVA"   {{ 'selected' if estado == 'ACTIVA'   }}>Activa</option>
+          <option value="BLOQUEADA"{{ 'selected' if estado == 'BLOQUEADA'}}>Bloqueada</option>
+          <option value="INACTIVA" {{ 'selected' if estado == 'INACTIVA' }}>Inactiva</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a href="{{ url_for('admin.solicitantes') }}" class="btn btn-secondary">Limpiar</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- TABLA -->
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if solicitantes %}
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Nombre y apellido</th>
+        <th>Email</th>
+        <th>Teléfono</th>
+        <th>Localidad</th>
+        <th>Estado</th>
+        <th style="text-align:center;">Contrataciones</th>
+        <th>Fecha de alta</th>
+        <th>Último ingreso</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for fam in solicitantes %}
+      <tr>
+        <td><strong>{{ fam['nombre'] }} {{ fam['apellido'] }}</strong></td>
+        <td>{{ fam['email'] }}</td>
+        <td>{{ fam['telefono'] or '—' }}</td>
+        <td>{{ fam['localidad'] or '—' }}</td>
+        <td>
+          <span class="badge badge-{{ fam['estado']|lower }}">{{ fam['estado'] }}</span>
+        </td>
+        <td style="text-align:center;">
+          <strong>{{ fam['total_contrataciones'] }}</strong>
+        </td>
+        <td>{{ fam['fecha_alta'][:10] if fam['fecha_alta'] else '—' }}</td>
+        <td>{{ fam['ultimo_ingreso'][:16] if fam['ultimo_ingreso'] else '—' }}</td>
+        <td>
+          <div class="btn-actions">
+            <a href="{{ url_for('admin.solicitante_detalle', fid=fam['id']) }}"
+               class="btn-sm btn-sm-view">Ver</a>
+            <a href="{{ url_for('admin.solicitante_editar', fid=fam['id']) }}"
+               class="btn-sm btn-sm-edit">Editar</a>
+            {% if fam['estado'] == 'ACTIVA' %}
+              <form method="POST"
+                    action="{{ url_for('admin.solicitante_desactivar', fid=fam['id']) }}"
+                    style="display:inline"
+                    onsubmit="return confirm('¿Desactivar la cuenta de {{ fam['nombre'] }} {{ fam['apellido'] }}?')">
+                <button type="submit" class="btn-sm btn-sm-block">Desactivar</button>
+              </form>
+            {% elif fam['estado'] == 'INACTIVA' %}
+              <form method="POST"
+                    action="{{ url_for('admin.solicitante_reactivar', fid=fam['id']) }}"
+                    style="display:inline"
+                    onsubmit="return confirm('¿Reactivar la cuenta de {{ fam['nombre'] }} {{ fam['apellido'] }}?')">
+                <button type="submit" class="btn-sm btn-sm-unlock">Reactivar</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div style="padding:10px 16px; font-size:12px; color:#7F8C8D; border-top:1px solid #EAECEE;">
+    {{ solicitantes|length }} solicitante{{ 's' if solicitantes|length != 1 }} encontrada{{ 's' if solicitantes|length != 1 }}
+  </div>
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:36px; display:block; margin-bottom:10px;">👨‍👩‍👧</span>
+    No se encontraron solicitantes con los filtros aplicados.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

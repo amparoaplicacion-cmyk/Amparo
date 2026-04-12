@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AMPARO — {% block titulo %}Administración{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="admin-header">
+    <div class="admin-header__brand" style="display:flex;align-items:center;gap:10px;">
+      <img src="/static/img/amparo_icon.svg" alt="AMPARO" height="44" style="height:44px;width:auto;">
+      <span style="font-weight:bold;color:#1A5276;font-size:18px;">AMPARO Admin</span>
+    </div>
+    <div class="admin-header__right">
+      <span class="admin-header__user">{{ nombre }} {{ apellido }}</span>
+      <a href="{{ url_for('auth.logout') }}" class="btn-logout">Cerrar sesión</a>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="admin-sidebar">
+    <ul class="sidebar-nav">
+      <li>
+        <a href="{{ url_for('admin.dashboard') }}"
+           class="{{ 'active' if seccion_activa == 'dashboard' }}">
+          <span class="sidebar-icon">🏠</span> Panel de Control
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.usuarios') }}"
+           class="{{ 'active' if seccion_activa == 'usuarios' }}">
+          <span class="sidebar-icon">👥</span> Gestión de Usuarios
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.prestadores') }}"
+           class="{{ 'active' if seccion_activa == 'prestadores' }}">
+          <span class="sidebar-icon">🧑‍⚕️</span> Gestión de Prestadores
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.solicitantes') }}"
+           class="{{ 'active' if seccion_activa == 'solicitantes' }}">
+          <span class="sidebar-icon">👨‍👩‍👧</span> Gestión de Solicitantes
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.categorias') }}"
+           class="{{ 'active' if seccion_activa == 'categorias' }}">
+          <span class="sidebar-icon">📋</span> Gestión de Categorías
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.servicios_admin') }}"
+           class="{{ 'active' if seccion_activa == 'servicios' }}">
+          <span class="sidebar-icon">📋</span> Servicios
+          {% if conflictos_activos > 0 %}
+          <span style="background:#e67e22;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:bold;margin-left:4px;">{{ conflictos_activos }}</span>
+          {% elif servicios_activos_hoy > 0 %}
+          <span style="background:#888;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:bold;margin-left:4px;">{{ servicios_activos_hoy }}</span>
+          {% endif %}
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.pagos') }}"
+           class="{{ 'active' if seccion_activa == 'pagos' }}">
+          <span class="sidebar-icon">💰</span> Pagos y Comisiones
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.reportes') }}"
+           class="{{ 'active' if seccion_activa == 'reportes' }}">
+          <span class="sidebar-icon">📊</span> Reportes y Estadísticas
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.conflictos') }}"
+           class="{{ 'active' if seccion_activa == 'conflictos' }}">
+          <span class="sidebar-icon">⚠️</span> Conflictos
+          {% if conflictos_activos > 0 %}
+          <span style="background:#e67e22;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:bold;margin-left:6px;">{{ conflictos_activos }}</span>
+          {% endif %}
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.contactos') }}"
+           class="{{ 'active' if seccion_activa == 'contactos' }}"
+           style="position:relative;">
+          <span class="sidebar-icon">💬</span> Contactos
+          {% if contactos_nuevos > 0 %}
+          <span style="background:#e74c3c;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;font-weight:bold;margin-left:6px;">{{ contactos_nuevos }}</span>
+          {% endif %}
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('admin.configuracion') }}"
+           class="{{ 'active' if seccion_activa == 'configuracion' }}">
+          <span class="sidebar-icon">⚙️</span> Configuración
+        </a>
+      </li>
+      {% if tipo_usuario == 'admin_financiero' %}
+      <li style="margin-top:1rem;padding:.3rem 1rem .2rem;font-size:.72rem;font-weight:700;
+                 color:#7f8c8d;text-transform:uppercase;letter-spacing:.08em;">
+        Financiero
+      </li>
+      <li>
+        <a href="{{ url_for('financiero.movimientos') }}"
+           class="{{ 'active' if seccion_activa == 'fin_movimientos' }}">
+          <span class="sidebar-icon">💵</span> Movimientos
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('financiero.saldo') }}"
+           class="{{ 'active' if seccion_activa == 'fin_saldo' }}">
+          <span class="sidebar-icon">📊</span> Saldo y Acumulados
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('financiero.cierres') }}"
+           class="{{ 'active' if seccion_activa == 'fin_cierres' }}">
+          <span class="sidebar-icon">📁</span> Historial de Cierres
+        </a>
+      </li>
+      <li>
+        <a href="{{ url_for('financiero.configuracion') }}"
+           class="{{ 'active' if seccion_activa == 'fin_configuracion' }}">
+          <span class="sidebar-icon">⚙️</span> Config. Financiera
+        </a>
+      </li>
+      {% endif %}
+    </ul>
+  </aside>
+
+  <!-- CONTENIDO PRINCIPAL -->
+  <main class="admin-main">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="alerts-wrap">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+
+  </main>
+
+</body>
+</html>

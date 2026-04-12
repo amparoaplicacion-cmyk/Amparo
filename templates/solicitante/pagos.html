@@ -1,0 +1,133 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'pagos' %}
+{% block titulo %}Pagos{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <h1>Pagos</h1>
+</div>
+
+<!-- Resumen del mes -->
+<div class="resumen-mes">
+  <div class="resumen-mes__label">Total pagado este mes</div>
+  <div class="resumen-mes__value">${{ '%.2f'|format(total_mes) }}</div>
+</div>
+
+<!-- TABS -->
+<div class="tabs">
+  <a href="{{ url_for('solicitante.pagos', tab='historial') }}"
+     class="tab {{ 'tab-active' if tab == 'historial' }}">Historial</a>
+  <a href="{{ url_for('solicitante.pagos', tab='reclamos') }}"
+     class="tab {{ 'tab-active' if tab == 'reclamos' }}">Reclamos</a>
+</div>
+
+{% if tab == 'historial' %}
+  {% if not rows %}
+    <div class="empty-state">
+      <div class="empty-state__icon">💳</div>
+      <p>Aún no tenés pagos registrados.</p>
+    </div>
+  {% endif %}
+
+  {% for p in rows %}
+  <div class="pago-row">
+    <div class="pago-row__main">
+      <strong>{{ p.prestador_nombre }}</strong>
+      <span class="badge
+        {% if p.estado == 'COMPLETADO' %}badge-done
+        {% elif p.estado == 'LIQUIDADO' %}badge-active
+        {% else %}badge-pending{% endif %}">
+        {{ p.estado.capitalize() }}
+      </span>
+    </div>
+    <div class="pago-row__sub">📅 {{ p.fecha_pago[:10] if p.fecha_pago else '—' }}</div>
+    {% if p.metodo_pago %}
+    <div class="pago-row__sub">💳 {{ p.metodo_pago }}</div>
+    {% endif %}
+    <div class="pago-row__monto">${{ '%.0f'|format(p.monto_bruto or 0) }}</div>
+  </div>
+  {% endfor %}
+
+  {% if total_pages > 1 %}
+  <div class="pagination">
+    {% if page > 1 %}
+      <a href="{{ url_for('solicitante.pagos', tab='historial', page=page-1) }}" class="pag-btn">← Anterior</a>
+    {% else %}<span></span>{% endif %}
+    <span class="pag-info">Página {{ page }} de {{ total_pages }}</span>
+    {% if page < total_pages %}
+      <a href="{{ url_for('solicitante.pagos', tab='historial', page=page+1) }}" class="pag-btn">Siguiente →</a>
+    {% else %}<span></span>{% endif %}
+  </div>
+  {% endif %}
+
+{% else %}  {# reclamos #}
+
+  <!-- Botón nuevo reclamo -->
+  <button type="button" class="btn btn-primary btn-full" style="margin-bottom:1rem;"
+          onclick="document.getElementById('reclamo-form-wrap').classList.toggle('open')">
+    + Nuevo reclamo
+  </button>
+
+  <!-- Formulario nuevo reclamo -->
+  <div class="reclamo-form-wrap" id="reclamo-form-wrap">
+    <div class="reclamo-form">
+      <div class="reclamo-form__title">📝 Presentar reclamo</div>
+      <form method="post" action="{{ url_for('solicitante.reclamo_nuevo') }}">
+        <div class="form-group">
+          <label class="form-label">Servicio relacionado</label>
+          {% if servicios_finalizados %}
+            <select name="servicio_id" class="input-select" required>
+              <option value="">Seleccioná un servicio...</option>
+              {% for sv in servicios_finalizados %}
+              <option value="{{ sv.id }}">{{ sv.fecha_servicio }} — {{ sv.prestador_nombre }}</option>
+              {% endfor %}
+            </select>
+          {% else %}
+            <p style="font-size:.85rem;color:#888;">No tenés servicios finalizados sobre los que puedas reclamar.</p>
+          {% endif %}
+        </div>
+        {% if servicios_finalizados %}
+        <div class="form-group">
+          <label class="form-label">Descripción del problema</label>
+          <textarea name="descripcion" class="input-textarea" rows="3"
+                    placeholder="Describí el problema en detalle..." required></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full">Enviar reclamo</button>
+        {% endif %}
+      </form>
+    </div>
+  </div>
+
+  {% if not reclamos %}
+    <div class="empty-state">
+      <div class="empty-state__icon">✅</div>
+      <p>No tenés reclamos presentados.</p>
+    </div>
+  {% endif %}
+
+  {% for r in reclamos %}
+  <div class="reclamo-card">
+    <div class="reclamo-card__header">
+      <div>
+        <div style="font-size:.88rem;font-weight:700;">{{ r.prestador_nombre }}</div>
+        <div style="font-size:.78rem;color:#888;">📅 Servicio: {{ r.fecha_servicio }}</div>
+      </div>
+      <span class="badge
+        {% if r.estado == 'ABIERTO' %}badge-abierto
+        {% elif r.estado == 'EN_REVISION' %}badge-revision
+        {% else %}badge-resuelto{% endif %}">
+        {{ r.estado.replace('_', ' ').capitalize() }}
+      </span>
+    </div>
+    <div class="reclamo-card__desc">{{ r.descripcion }}</div>
+    <div style="font-size:.75rem;color:#aaa;">Abierto: {{ r.fecha_apertura[:10] if r.fecha_apertura }}</div>
+    {% if r.resolucion %}
+    <div class="reclamo-card__res">
+      <strong>Resolución:</strong> {{ r.resolucion }}
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+
+{% endif %}
+{% endblock %}

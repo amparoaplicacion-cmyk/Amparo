@@ -1,0 +1,186 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Panel de Control{% endblock %}
+
+{% block content %}
+
+<h1 class="page-title">Panel de Administración</h1>
+
+<!-- BLOQUE A: Indicadores rápidos -->
+<div class="stat-grid">
+
+  <div class="stat-card">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Usuarios activos</span>
+      <span class="stat-card__icon">👥</span>
+    </div>
+    <div class="stat-card__value">{{ usuarios_activos }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Prestadores pendientes</span>
+      <span class="stat-card__icon">🧑‍⚕️</span>
+    </div>
+    <div class="stat-card__value">{{ prestadores_pendientes }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Servicios en curso hoy</span>
+      <span class="stat-card__icon">📅</span>
+    </div>
+    <div class="stat-card__value">{{ servicios_hoy }}</div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Reclamos abiertos</span>
+      <span class="stat-card__icon">⚠️</span>
+    </div>
+    <div class="stat-card__value">{{ reclamos_abiertos }}</div>
+  </div>
+
+</div>
+
+<!-- BLOQUE B-1: Confirmaciones de solicitante pendientes -->
+{% if confirmacion_pendiente %}
+<div class="card" style="margin-bottom:1.5rem;border-left:4px solid #e67e22;">
+  <div class="section-title" style="color:#c0392b;">
+    ⏳ Esperando confirmación del solicitante ({{ confirmacion_pendiente|length }})
+  </div>
+  <table class="data-table" style="font-size:.88rem;">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Prestador</th>
+        <th>Solicitante</th>
+        <th>Fecha servicio</th>
+        <th>Confirmó prestador</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sv in confirmacion_pendiente %}
+      <tr>
+        <td><a href="{{ url_for('admin.servicio_admin_detalle', sid=sv.id) }}" style="color:#7D3C98;font-weight:600;">#{{ sv.id }}</a></td>
+        <td>{{ sv.prestador_nombre }}</td>
+        <td>{{ sv.solicitante_nombre }}</td>
+        <td>{{ sv.fecha_servicio }} {{ sv.hora_inicio }}–{{ sv.hora_fin }}</td>
+        <td style="font-size:.8rem;color:#888;">{{ sv.fecha_confirmacion_prestador[:16] if sv.fecha_confirmacion_prestador else '—' }}</td>
+        <td style="white-space:nowrap;">
+          <form method="POST" action="{{ url_for('admin.recordatorio_confirmacion', sid=sv.id) }}"
+                style="display:inline;">
+            <button type="submit" style="background:#3498db;color:#fff;border:none;border-radius:6px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer;margin-right:.3rem;">
+              📧 Enviar recordatorio
+            </button>
+          </form>
+          <form method="POST" action="{{ url_for('admin.confirmar_fin_manual', sid=sv.id) }}"
+                style="display:inline;"
+                onsubmit="return confirm('¿Confirmar manualmente el servicio #{{ sv.id }}?');">
+            <button type="submit" style="background:#27ae60;color:#fff;border:none;border-radius:6px;padding:.3rem .7rem;font-size:.8rem;cursor:pointer;">
+              ✅ Confirmar manual
+            </button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- BLOQUE B: Servicios en curso hoy -->
+{% if servicios_hoy_lista %}
+<div class="card" style="margin-bottom:1.5rem;">
+  <div class="section-title" style="display:flex;align-items:center;justify-content:space-between;">
+    <span>📍 Servicios en curso hoy</span>
+    <a href="{{ url_for('admin.servicios_admin') }}" style="font-size:.8rem;color:#7D3C98;font-weight:600;">Ver todos →</a>
+  </div>
+  <table class="data-table" style="font-size:.88rem;">
+    <thead>
+      <tr>
+        <th>Prestador</th>
+        <th>Solicitante</th>
+        <th>Horario</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for sv in servicios_hoy_lista %}
+      <tr style="border-left:3px solid {{ '#e67e22' if sv.conflicto else ('#27ae60' if sv.prestador_confirmo_llegada else '#bbb') }};">
+        <td><a href="{{ url_for('admin.servicio_admin_detalle', sid=sv.id) }}" style="color:#7D3C98;font-weight:600;">{{ sv.prestador_nombre }}</a></td>
+        <td>{{ sv.solicitante_nombre }}</td>
+        <td style="white-space:nowrap;">{{ sv.hora_inicio }}–{{ sv.hora_fin }}</td>
+        <td>
+          {% if sv.conflicto %}
+            <span style="color:#e67e22;font-weight:700;">⚠️ Conflicto</span>
+          {% elif sv.prestador_confirmo_llegada and not sv.prestador_confirmo_fin %}
+            <span style="color:#27ae60;font-weight:600;">✅ En curso</span>
+          {% elif sv.prestador_confirmo_fin and not sv.solicitante_confirmo_fin %}
+            <span style="color:#3498db;">⏳ Esperando solicitante</span>
+          {% else %}
+            <span style="color:#888;">⏳ Sin iniciar</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+
+<!-- BLOQUE C: Últimas notificaciones -->
+<div class="card">
+  <div class="section-title">Últimas notificaciones del sistema</div>
+
+  {% if notificaciones %}
+  <table class="notif-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Tipo</th>
+        <th>Título</th>
+        <th>Mensaje</th>
+        <th>Destinatario</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for n in notificaciones %}
+      <tr>
+        <td>{{ n['fecha'][:16] if n['fecha'] else '—' }}</td>
+        <td><span class="badge badge-info">{{ n['tipo'] }}</span></td>
+        <td>{{ n['titulo'] }}</td>
+        <td>{{ n['mensaje'] or '—' }}</td>
+        <td>{{ n['destinatario'] }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="notif-empty">No hay notificaciones recientes.</div>
+  {% endif %}
+</div>
+
+<!-- BLOQUE C: Accesos rápidos -->
+<div class="section-title">Accesos rápidos</div>
+<div class="actions-grid">
+
+  <a href="{{ url_for('admin.prestadores') }}" class="action-btn">
+    <span class="action-btn__icon">🧑‍⚕️</span>
+    Aprobar prestadores pendientes
+  </a>
+
+  <a href="{{ url_for('admin.reclamos') }}" class="action-btn">
+    <span class="action-btn__icon">⚠️</span>
+    Ver reclamos abiertos
+  </a>
+
+  <a href="{{ url_for('admin.usuarios') }}" class="action-btn">
+    <span class="action-btn__icon">➕</span>
+    Agregar nuevo usuario
+  </a>
+
+</div>
+
+{% endblock %}

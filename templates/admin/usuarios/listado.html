@@ -1,0 +1,131 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Gestión de Usuarios{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Gestión de Usuarios</h1>
+  <a href="{{ url_for('admin.usuario_nuevo') }}" class="btn btn-primary">+ Agregar nuevo usuario</a>
+</div>
+
+<!-- FILTROS -->
+<div class="filters-card">
+  <form method="GET" action="{{ url_for('admin.usuarios') }}">
+    <div class="filters-row">
+
+      <div class="filter-group">
+        <label for="busqueda">Buscar</label>
+        <input type="text" id="busqueda" name="busqueda"
+               class="filter-input"
+               placeholder="Nombre, apellido o email..."
+               value="{{ busqueda }}">
+      </div>
+
+      <div class="filter-group">
+        <label for="tipo">Tipo de usuario</label>
+        <select id="tipo" name="tipo" class="filter-select">
+          <option value="">Todos</option>
+          <option value="admin"     {{ 'selected' if tipo == 'admin'     }}>Admin</option>
+          <option value="prestador" {{ 'selected' if tipo == 'prestador' }}>Prestador</option>
+          <option value="solicitante"   {{ 'selected' if tipo == 'solicitante'   }}>Solicitante</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label for="estado">Estado</label>
+        <select id="estado" name="estado" class="filter-select">
+          <option value="">Todos</option>
+          <option value="ACTIVA"    {{ 'selected' if estado == 'ACTIVA'    }}>Activa</option>
+          <option value="BLOQUEADA" {{ 'selected' if estado == 'BLOQUEADA' }}>Bloqueada</option>
+          <option value="VENCIDA"   {{ 'selected' if estado == 'VENCIDA'   }}>Vencida</option>
+          <option value="INACTIVA"  {{ 'selected' if estado == 'INACTIVA'  }}>Inactiva</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a href="{{ url_for('admin.usuarios') }}" class="btn btn-secondary">Limpiar</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- RESULTADOS -->
+<div class="card" style="padding: 0; overflow: hidden;">
+
+  {% if usuarios %}
+
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Nombre y apellido</th>
+        <th>Email</th>
+        <th>Teléfono</th>
+        <th>Tipo</th>
+        <th>Estado</th>
+        <th>Fecha de alta</th>
+        <th>Último ingreso</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for u in usuarios %}
+      <tr>
+        <td><strong>{{ u['nombre'] }} {{ u['apellido'] }}</strong></td>
+        <td>{{ u['email'] }}</td>
+        <td>{{ u['telefono'] or '—' }}</td>
+        <td>
+          <span class="badge badge-{{ u['tipo_usuario'] }}">{{ u['tipo_usuario'] }}</span>
+        </td>
+        <td>
+          <span class="badge badge-{{ u['estado']|lower }}">{{ u['estado'] }}</span>
+        </td>
+        <td>{{ u['fecha_alta'][:10] if u['fecha_alta'] else '—' }}</td>
+        <td>{{ u['ultimo_ingreso'][:16] if u['ultimo_ingreso'] else '—' }}</td>
+        <td>
+          <div class="btn-actions">
+            <a href="{{ url_for('admin.usuario_detalle', uid=u['id']) }}"
+               class="btn-sm btn-sm-view">Ver</a>
+            <a href="{{ url_for('admin.usuario_editar', uid=u['id']) }}"
+               class="btn-sm btn-sm-edit">Editar</a>
+
+            {% if u['estado'] == 'BLOQUEADA' %}
+              <form method="POST"
+                    action="{{ url_for('admin.usuario_desbloquear', uid=u['id']) }}"
+                    style="display:inline;"
+                    onsubmit="return confirm('¿Desbloquear la cuenta de {{ u['nombre'] }} {{ u['apellido'] }}?')">
+                <button type="submit" class="btn-sm btn-sm-unlock">Desbloquear</button>
+              </form>
+            {% elif u['estado'] == 'ACTIVA' %}
+              <form method="POST"
+                    action="{{ url_for('admin.usuario_bloquear', uid=u['id']) }}"
+                    style="display:inline;"
+                    onsubmit="return confirm('¿Bloquear la cuenta de {{ u['nombre'] }} {{ u['apellido'] }}?')">
+                <button type="submit" class="btn-sm btn-sm-block">Bloquear</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+
+  <div style="padding: 10px 16px; font-size: 12px; color: #7F8C8D; border-top: 1px solid #EAECEE;">
+    {{ usuarios|length }} usuario{{ 's' if usuarios|length != 1 }} encontrado{{ 's' if usuarios|length != 1 }}
+  </div>
+
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:36px; display:block; margin-bottom:10px;">👥</span>
+    No se encontraron usuarios con los filtros aplicados.
+  </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}

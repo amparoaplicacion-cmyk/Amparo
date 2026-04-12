@@ -1,0 +1,291 @@
+{% extends 'solicitante/base.html' %}
+{% set active_tab = 'servicios' %}
+{% block titulo %}Detalle del Servicio{% endblock %}
+
+{% block content %}
+<div class="page-title-bar">
+  <a href="{{ url_for('solicitante.contrataciones') }}" class="btn-back">← Volver</a>
+  <h1>Detalle del servicio</h1>
+</div>
+
+<!-- Estado general -->
+<div class="detail-section" style="text-align:center;padding:1.25rem;">
+  {% if s.foto_url %}
+    <img src="{{ s.foto_url }}" alt="{{ s.prestador_nombre }}"
+         style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #7D3C98;display:block;margin:0 auto .6rem;">
+  {% else %}
+    <div style="width:72px;height:72px;border-radius:50%;background:#f3e8fb;border:2px solid #7D3C98;display:flex;align-items:center;justify-content:center;font-size:2rem;margin:0 auto .6rem;">👤</div>
+  {% endif %}
+  <div style="font-size:1.05rem;font-weight:700;margin-bottom:.25rem;">{{ s.prestador_nombre }}</div>
+  <div style="font-size:.85rem;color:#888;margin-bottom:.6rem;">{{ s.categoria_nombre or '—' }}</div>
+  <span class="badge badge-lg
+    {% if s.estado == 'PENDIENTE' %}badge-pending
+    {% elif s.estado == 'ACEPTADO' %}badge-accepted
+    {% elif s.estado == 'ACTIVO' %}badge-active
+    {% elif s.estado == 'FINALIZADO' %}badge-done
+    {% elif s.estado == 'CANCELADO' %}badge-cancel
+    {% else %}badge-reject{% endif %}">
+    {{ s.estado.capitalize() }}
+  </span>
+</div>
+
+<!-- Datos del servicio -->
+<div class="detail-section">
+  <div class="detail-section__title">📅 Datos del servicio</div>
+  <div class="detail-row"><span>Fecha</span><strong>{{ s.fecha_servicio }}</strong></div>
+  <div class="detail-row"><span>Horario</span><strong>{{ s.hora_inicio }} a {{ s.hora_fin }}</strong></div>
+  <div class="detail-row"><span>Servicio</span><strong>{{ s.categoria_nombre or '—' }}</strong></div>
+  {% if s.mensaje_solicitante %}
+  <div class="detail-row" style="flex-direction:column;gap:.3rem;">
+    <span>Tu mensaje</span>
+    <p style="font-size:.85rem;font-style:italic;color:#555;">{{ s.mensaje_solicitante }}</p>
+  </div>
+  {% endif %}
+  {% if s.motivo_cancelacion %}
+  <div class="detail-row" style="flex-direction:column;gap:.3rem;">
+    <span>Motivo cancelación</span>
+    <p style="font-size:.85rem;color:#c0392b;">{{ s.motivo_cancelacion }}</p>
+  </div>
+  {% endif %}
+  {% if s.motivo_rechazo %}
+  <div class="detail-row" style="flex-direction:column;gap:.3rem;">
+    <span>Motivo rechazo</span>
+    <p style="font-size:.85rem;color:#c0392b;">{{ s.motivo_rechazo }}</p>
+  </div>
+  {% endif %}
+</div>
+
+<!-- Contacto del prestador (solo si aceptado/activo) -->
+{% if s.estado in ('ACEPTADO', 'ACTIVO', 'FINALIZADO') %}
+<div class="detail-section">
+  <div class="detail-section__title">📞 Contacto del prestador</div>
+  {% if s.prestador_telefono %}
+  <div class="detail-row">
+    <span>Teléfono</span>
+    <a href="tel:{{ s.prestador_telefono }}" class="link-tel">{{ s.prestador_telefono | fmt_tel }}</a>
+  </div>
+  {% endif %}
+  {% if s.prestador_email %}
+  <div class="detail-row">
+    <span>Email</span>
+    <span>{{ s.prestador_email }}</span>
+  </div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Pago -->
+{% if pago %}
+<div class="detail-section">
+  <div class="detail-section__title">💳 Estado del pago</div>
+  {% if pago.tipo_pago == 'penalidad' %}
+  <div style="background:#fff3e0;border-radius:8px;padding:.5rem .75rem;font-size:.82rem;color:#7d3c00;margin-bottom:.5rem;">
+    ⚠️ Pago de penalidad por cancelación
+  </div>
+  {% endif %}
+  <div class="detail-row"><span>Monto</span><strong>${{ '%.2f'|format(pago.monto_bruto) }}</strong></div>
+  <div class="detail-row">
+    <span>Estado</span>
+    <span class="badge
+      {% if pago.estado in ('PROCESADO','COMPLETADO','LIQUIDADO') %}badge-done
+      {% else %}badge-pending{% endif %}">
+      {{ 'Pagado' if pago.estado in ('PROCESADO','COMPLETADO','LIQUIDADO') else 'Pendiente de pago' }}
+    </span>
+  </div>
+  {% if pago.metodo_pago %}
+  <div class="detail-row"><span>Método</span><strong>{{ pago.metodo_pago }}</strong></div>
+  {% endif %}
+  {% if pago.fecha_pago %}
+  <div class="detail-row"><span>Fecha de pago</span><strong>{{ pago.fecha_pago[:10] }}</strong></div>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Botón pagar si hay pago PENDIENTE -->
+{% if pago and pago.estado == 'PENDIENTE' %}
+<div style="margin-bottom:1rem;">
+  {% if s.estado == 'FINALIZADO' %}
+  <a href="{{ url_for('solicitante.contratacion_pagar', sid=s.id) }}"
+     style="display:block;background:#27ae60;color:#fff;padding:.9rem;text-align:center;border-radius:25px;font-size:1rem;font-weight:700;text-decoration:none;">
+    💳 Pagar ahora → $ {{ '%.2f'|format(pago.monto_bruto) }}
+  </a>
+  {% elif s.estado == 'CANCELADO' %}
+  <a href="{{ url_for('solicitante.contratacion_pagar', sid=s.id) }}"
+     style="display:block;background:#e67e22;color:#fff;padding:.9rem;text-align:center;border-radius:25px;font-size:1rem;font-weight:700;text-decoration:none;">
+    ⚠️ Pagar penalidad → $ {{ '%.2f'|format(pago.monto_bruto) }}
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+<!-- Estado confirmaciones GPS -->
+{% if s.estado == 'CANCELADO' %}
+<div class="detail-section">
+  <div class="detail-section__title">Seguimiento GPS</div>
+  <div style="font-size:.9rem;color:#888;text-align:center;padding:.5rem 0;">
+    Servicio cancelado — sin seguimiento GPS
+  </div>
+</div>
+{% elif s.estado == 'ACTIVO' %}
+<div class="detail-section">
+  <div class="detail-section__title">Estado del servicio</div>
+  <div style="display:flex;flex-direction:column;gap:.4rem;font-size:.9rem;">
+    <div>{{ '✅' if s.prestador_confirmo_llegada else '⏳' }}
+      Prestador llegó ({{ 'confirmado por GPS' if s.prestador_confirmo_llegada else 'pendiente' }})
+    </div>
+    <div>{{ '✅' if s.prestador_confirmo_fin else '⏳' }}
+      Prestador confirmó finalización ({{ 'confirmado' if s.prestador_confirmo_fin else 'pendiente' }})
+    </div>
+    <div>{{ '✅' if s.solicitante_confirmo_fin else ('⚠️' if s.conflicto else '⏳') }}
+      Tu confirmación ({{ 'confirmada' if s.solicitante_confirmo_fin else ('problema reportado' if s.conflicto else 'pendiente') }})
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- Confirmación de solicitante (cuando el prestador confirmó fin) -->
+{% if s.estado == 'ACTIVO' and s.prestador_confirmo_fin and not s.solicitante_confirmo_fin and not s.conflicto %}
+<div style="background:#eafaf1;border:2px solid #27ae60;border-radius:14px;padding:1.25rem;margin-bottom:1rem;">
+  <div style="font-weight:700;margin-bottom:.4rem;">¿El servicio se realizó correctamente?</div>
+  <p style="font-size:.88rem;color:#555;margin-bottom:.75rem;">
+    El prestador confirmó que finalizó el servicio del {{ s.fecha_servicio }}
+    de {{ s.hora_inicio }} a {{ s.hora_fin }}.
+  </p>
+  <form method="POST" action="{{ url_for('solicitante.contratacion_confirmar_fin', sid=s.id) }}"
+        onsubmit="return confirm('¿Confirmás que el servicio se realizó correctamente?');">
+    <button type="submit"
+            style="width:100%;background:#27ae60;color:#fff;border:none;border-radius:25px;padding:.85rem;font-size:1rem;font-weight:700;cursor:pointer;margin-bottom:.5rem;">
+      ✅ Sí, confirmar
+    </button>
+  </form>
+  <button type="button"
+          onclick="document.getElementById('form-conflicto').style.display='block';this.style.display='none';"
+          style="width:100%;background:#e67e22;color:#fff;border:none;border-radius:25px;padding:.85rem;font-size:1rem;font-weight:700;cursor:pointer;">
+    ⚠️ Hay un problema
+  </button>
+  <form method="POST" action="{{ url_for('solicitante.contratacion_reportar_conflicto', sid=s.id) }}"
+        id="form-conflicto" style="display:none;margin-top:.75rem;">
+    <textarea name="motivo_conflicto" rows="3" required
+              style="width:100%;border:1px solid #ccc;border-radius:8px;padding:.6rem;font-size:.88rem;resize:vertical;"
+              placeholder="Describí el problema (obligatorio)..."></textarea>
+    <button type="submit"
+            style="width:100%;background:#c0392b;color:#fff;border:none;border-radius:25px;padding:.75rem;font-size:.95rem;font-weight:700;cursor:pointer;margin-top:.5rem;">
+      Enviar reporte
+    </button>
+  </form>
+</div>
+{% elif s.estado == 'ACTIVO' and s.conflicto %}
+<div style="background:#fff3e0;border:2px solid #e67e22;border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:.88rem;color:#7d3c00;">
+  ⚠️ Recibimos tu reporte. El equipo de AMPARO lo revisará y te contactará a la brevedad.
+</div>
+{% elif s.estado == 'ACTIVO' and s.prestador_confirmo_llegada and not s.prestador_confirmo_fin %}
+<div style="background:#f0f9ff;border:1px solid #3498db;border-radius:12px;padding:.85rem;margin-bottom:1rem;font-size:.88rem;color:#1a4a6b;text-align:center;">
+  ⏳ El servicio está en curso. Cuando el prestador confirme el fin, podrás verificarlo.
+</div>
+{% endif %}
+
+<!-- Calificación existente -->
+{% if cal %}
+<div class="detail-section">
+  <div class="detail-section__title">★ Tu calificación</div>
+  <div style="font-size:1.6rem;color:#f0a500;margin-bottom:.35rem;">
+    {{ '★' * cal.puntaje }}{{ '☆' * (5 - cal.puntaje) }}
+  </div>
+  {% if cal.comentario %}
+  <p style="font-size:.85rem;color:#555;font-style:italic;">{{ cal.comentario }}</p>
+  {% endif %}
+  <div style="font-size:.75rem;color:#aaa;margin-top:.4rem;">{{ cal.fecha[:10] if cal.fecha }}</div>
+</div>
+{% endif %}
+
+<!-- Formulario calificación (si FINALIZADO y no calificó) -->
+{% if s.estado == 'FINALIZADO' and not cal %}
+{% if request.args.get('calificar') %}
+<div style="background:#eafaf1;border:2px solid #27ae60;border-radius:14px;padding:1.25rem;margin-bottom:1rem;text-align:center;">
+  <div style="font-size:1.1rem;font-weight:700;margin-bottom:.4rem;">✅ ¡Pago procesado! Gracias por usar AMPARO.</div>
+  <p style="font-size:.88rem;color:#555;margin-bottom:.75rem;">
+    ¿Querés calificar a <strong>{{ s.prestador_nombre }}</strong>?
+  </p>
+  <div style="display:flex;gap:.6rem;flex-wrap:wrap;">
+    <a href="#calificar"
+       style="flex:1;min-width:130px;display:block;background:#f0a500;color:#fff;text-align:center;
+              padding:.7rem;border-radius:25px;font-weight:700;text-decoration:none;font-size:.95rem;">
+      ★ Calificar ahora
+    </a>
+    <a href="{{ url_for('solicitante.contrataciones', tab='historial') }}"
+       style="flex:1;min-width:130px;display:block;background:#eee;color:#555;text-align:center;
+              padding:.7rem;border-radius:25px;font-weight:700;text-decoration:none;font-size:.95rem;">
+      Calificar después
+    </a>
+  </div>
+</div>
+{% endif %}
+<div class="detail-section" id="calificar">
+  <div class="detail-section__title">★ Calificá este servicio</div>
+  <form method="post" action="{{ url_for('solicitante.contratacion_calificar', sid=s.id) }}">
+    <div class="form-group">
+      <label class="form-label">Puntaje</label>
+      <div class="star-selector" id="star-selector">
+        <!-- Stars en orden inverso para el truco CSS hover -->
+        {% for i in [5,4,3,2,1] %}
+        <input type="radio" name="puntaje" id="star{{ i }}" value="{{ i }}" required>
+        <label for="star{{ i }}">★</label>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Comentario <span style="color:#888;font-weight:400;">(opcional)</span></label>
+      <textarea name="comentario" class="input-textarea" rows="3"
+                placeholder="Contá tu experiencia con este prestador..."></textarea>
+    </div>
+    <button type="submit" class="btn btn-primary btn-full">Enviar calificación</button>
+  </form>
+</div>
+{% endif %}
+
+<!-- Cancelar -->
+{% if s.estado == 'PENDIENTE' %}
+<div style="margin-top:.5rem;">
+  <button type="button" class="btn btn-danger btn-full"
+          onclick="document.getElementById('cancel-form').classList.toggle('open')">
+    Cancelar servicio
+  </button>
+  <div class="cancel-form-inline" id="cancel-form" style="margin-top:.5rem;">
+    <form method="post" action="{{ url_for('solicitante.contratacion_cancelar', sid=s.id) }}">
+      <textarea name="motivo" rows="2" placeholder="Motivo de cancelación (obligatorio)"></textarea>
+      <button type="submit" class="btn btn-danger-solid btn-full">Confirmar cancelación</button>
+    </form>
+  </div>
+</div>
+{% elif s.estado in ('ACEPTADO', 'ACTIVO') %}
+<div style="margin-top:.5rem;">
+  <a href="{{ url_for('solicitante.contratacion_cancelar_penalidad', sid=s.id) }}"
+     style="display:block;background:#c0392b;color:#fff;padding:.85rem;text-align:center;border-radius:25px;font-size:.95rem;font-weight:700;text-decoration:none;">
+    Cancelar servicio (aplica penalidad del 10%)
+  </a>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<style>
+/* Star selector — orden inverso para hover CSS */
+.star-selector { display: flex; flex-direction: row-reverse; justify-content: flex-end; }
+.star-selector input { display: none; }
+.star-selector label { font-size: 2rem; color: #ccc; cursor: pointer; padding: 0 .1rem; }
+.star-selector input:checked ~ label,
+.star-selector label:hover,
+.star-selector label:hover ~ label { color: #f0a500; }
+</style>
+<script>
+function toggleCancelForm() {
+  document.getElementById('cancel-form').classList.toggle('open');
+}
+// Auto-scroll a calificar si viene con hash
+if (window.location.hash === '#calificar') {
+  const el = document.getElementById('calificar');
+  if (el) el.scrollIntoView({behavior: 'smooth'});
+}
+</script>
+{% endblock %}

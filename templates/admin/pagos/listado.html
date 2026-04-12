@@ -1,0 +1,179 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Pagos y Comisiones{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Pagos y Comisiones</h1>
+  <div style="display:flex; gap:8px;">
+    <a href="{{ url_for('admin.pagos_liquidaciones') }}"        class="btn btn-secondary">Liquidaciones pendientes</a>
+    <a href="{{ url_for('admin.configuracion_comisiones') }}" class="btn btn-secondary">⚙️ Configurar comisiones</a>
+  </div>
+</div>
+
+<!-- FILTROS -->
+<div class="filters-card">
+  <form method="GET" action="{{ url_for('admin.pagos') }}">
+    <div class="filters-row">
+
+      <div class="filter-group">
+        <label>Desde</label>
+        <input type="date" name="fecha_desde" class="filter-input" value="{{ fecha_desde }}">
+      </div>
+
+      <div class="filter-group">
+        <label>Hasta</label>
+        <input type="date" name="fecha_hasta" class="filter-input" value="{{ fecha_hasta }}">
+      </div>
+
+      <div class="filter-group">
+        <label>Estado</label>
+        <select name="estado" class="filter-select">
+          <option value="">Todos</option>
+          <option value="PENDIENTE"   {{ 'selected' if estado == 'PENDIENTE'   }}>Pendiente</option>
+          <option value="PROCESADO"   {{ 'selected' if estado == 'PROCESADO'   }}>Procesado</option>
+          <option value="LIQUIDADO"   {{ 'selected' if estado == 'LIQUIDADO'   }}>Liquidado</option>
+          <option value="REEMBOLSADO" {{ 'selected' if estado == 'REEMBOLSADO' }}>Reembolsado</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Método de pago</label>
+        <select name="metodo_pago" class="filter-select">
+          <option value="">Todos</option>
+          <option value="mercadopago" {{ 'selected' if metodo_pago == 'mercadopago' }}>Mercado Pago</option>
+          <option value="tarjeta"     {{ 'selected' if metodo_pago == 'tarjeta'     }}>Tarjeta</option>
+        </select>
+      </div>
+
+      <div class="filter-group">
+        <label>Buscar</label>
+        <input type="text" name="busqueda" class="filter-input"
+               placeholder="Solicitante o prestador..." value="{{ busqueda }}">
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a href="{{ url_for('admin.pagos') }}" class="btn btn-secondary">Limpiar</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- TABLA -->
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if pagos %}
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Tipo</th>
+        <th>Solicitante</th>
+        <th>Prestador</th>
+        <th style="text-align:right;">Monto Solic.</th>
+        <th style="text-align:right;">Com. solicitante</th>
+        <th style="text-align:right;">Com. prestador</th>
+        <th style="text-align:right;">Total AMPARO</th>
+        <th style="text-align:right;">Monto Prest.</th>
+        <th>Método</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for p in pagos %}
+      <tr>
+        <td>{{ p['fecha_pago'][:10] if p['fecha_pago'] else '—' }}</td>
+        <td>
+          {% if p['tipo_pago'] == 'penalidad' %}
+            <span style="background:#E67E22;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;font-weight:600;">Penalidad</span>
+          {% else %}
+            <span style="font-size:13px;color:#555;">Servicio</span>
+          {% endif %}
+        </td>
+        <td>{{ p['solicitante_nombre'] }}</td>
+        <td>{{ p['prestador_nombre'] }}</td>
+        <td style="text-align:right; color:#27AE60; font-weight:600;">
+          ${{ '%.0f'|format(p['monto_bruto']) }}
+        </td>
+        <td style="text-align:right; font-size:13px; color:#7F8C8D;">
+          ${{ '%.0f'|format(p['comision_solicitante'] or 0) }}
+        </td>
+        <td style="text-align:right; font-size:13px; color:#7F8C8D;">
+          ${{ '%.0f'|format(p['comision_prestador'] or 0) }}
+        </td>
+        <td style="text-align:right; font-size:13px; font-weight:600; color:#1A5276;">
+          ${{ '%.0f'|format(p['comision_monto']) }}
+        </td>
+        <td style="text-align:right; color:#27AE60; font-weight:600;">
+          ${{ '%.0f'|format(p['monto_neto']) }}
+        </td>
+        <td style="font-size:13px;">
+          {% if p['metodo_pago'] == 'mercadopago' %}Mercado Pago
+          {% elif p['metodo_pago'] == 'tarjeta' %}Tarjeta
+          {% else %}{{ p['metodo_pago'] or '—' }}{% endif %}
+        </td>
+        <td>
+          {% if p['estado'] == 'PENDIENTE' %}
+            <span style="background:#E67E22;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Pendiente</span>
+          {% elif p['estado'] == 'PROCESADO' %}
+            <span style="background:#2980B9;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Procesado</span>
+          {% elif p['estado'] == 'LIQUIDADO' %}
+            <span style="background:#27AE60;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Liquidado</span>
+          {% elif p['estado'] == 'REEMBOLSADO' %}
+            <span style="background:#95A5A6;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Reembolsado</span>
+          {% else %}
+            <span>{{ p['estado'] }}</span>
+          {% endif %}
+        </td>
+        <td style="white-space:nowrap;">
+          <a href="{{ url_for('admin.pago_detalle', pid=p['id']) }}" class="btn-sm btn-sm-view">Ver</a>
+          {% if p['estado'] == 'PENDIENTE' and not p['referencia_pago'] %}
+          <form method="POST" action="{{ url_for('admin.pago_cobrar', pid=p['id']) }}" style="display:inline;">
+            <button type="submit" class="btn-sm"
+                    style="background:#E67E22;color:#fff;border:none;cursor:pointer;padding:3px 8px;border-radius:4px;font-size:12px;"
+                    onclick="return confirm('¿Reintentar cobro MP para este pago?')">
+              Reintentar cobro
+            </button>
+          </form>
+          {% endif %}
+          {% if p['estado'] == 'PENDIENTE' and p['referencia_pago'] %}
+            <span style="font-size:11px;color:#7F8C8D;">Aguardando MP…</span>
+          {% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr style="background:#F2F3F4; font-weight:700; border-top:2px solid #BDC3C7;">
+        <td colspan="4" style="padding:10px 12px;">
+          Total ({{ pagos|length }} transacción{{ 'es' if pagos|length != 1 }})
+        </td>
+        <td style="text-align:right; padding:10px 12px; color:#27AE60;">
+          ${{ '%.0f'|format(total_bruto) }}
+        </td>
+        <td style="text-align:right; padding:10px 12px; color:#7F8C8D;">—</td>
+        <td style="text-align:right; padding:10px 12px; color:#7F8C8D;">—</td>
+        <td style="text-align:right; padding:10px 12px; color:#1A5276; font-weight:700;">
+          ${{ '%.0f'|format(total_comis) }}
+        </td>
+        <td style="text-align:right; padding:10px 12px; color:#27AE60;">
+          ${{ '%.0f'|format(total_neto) }}
+        </td>
+        <td colspan="3"></td>
+      </tr>
+    </tfoot>
+  </table>
+  </div>
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:36px; display:block; margin-bottom:10px;">💰</span>
+    No se encontraron transacciones con los filtros aplicados.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}

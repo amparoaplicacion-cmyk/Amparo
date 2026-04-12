@@ -1,0 +1,44 @@
+{% extends 'prestador/base.html' %}
+{% block titulo %}Notificaciones{% endblock %}
+
+{% block content %}
+{% set active_tab = 'inicio' %}
+
+<div class="page-title-bar">
+  <a href="{{ url_for('prestador.dashboard') }}" class="btn-back">← Volver</a>
+  <h1>🔔 Notificaciones</h1>
+</div>
+
+{% set ICONOS = {
+  'servicio_aceptado':    '✅',
+  'servicio_rechazado':   '❌',
+  'servicio_cancelado':   '🚫',
+  'pago_acreditado':      '💰',
+  'nueva_resena':         '⭐',
+  'perfil_aprobado':      '🎉',
+  'documento_rechazado':  '📄',
+  'sistema':              '🔔',
+} %}
+
+{% if notifs %}
+  {% for n in notifs %}
+  <div class="notif-item {{ 'notif-item--unread' if not n.leida }}">
+    <div class="notif-item__icon">
+      {{ ICONOS.get(n.tipo, '🔔') }}
+    </div>
+    <div class="notif-item__body">
+      <div class="notif-item__title">{{ n.titulo }}</div>
+      {% if n.mensaje %}
+      <div class="notif-item__msg">{{ n.mensaje }}</div>
+      {% endif %}
+      <div class="notif-item__fecha">{{ n.fecha[:16] }}</div>
+    </div>
+  </div>
+  {% endfor %}
+{% else %}
+  <div class="empty-state">
+    <div class="empty-state__icon">🔔</div>
+    <p>No tenés notificaciones aún.</p>
+  </div>
+{% endif %}
+{% endblock %}

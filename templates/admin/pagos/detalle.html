@@ -1,0 +1,235 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Detalle del Pago #{{ pago['id'] }}{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Pago #{{ pago['id'] }}</h1>
+  <a href="{{ url_for('admin.pagos') }}" class="btn btn-secondary">Volver al listado</a>
+</div>
+
+<!-- DATOS DEL PAGO -->
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+
+    <div>
+      <div class="detail-field">
+        <span class="detail-label">Solicitante</span>
+        <span class="detail-value">{{ pago['solicitante_nombre'] }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Prestador</span>
+        <span class="detail-value">{{ pago['prestador_nombre'] }}</span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Fecha del servicio</span>
+        <span class="detail-value">
+          {{ pago['fecha_servicio'] }}
+          {% if pago['hora_inicio'] and pago['hora_fin'] %}
+            ({{ pago['hora_inicio'] }} – {{ pago['hora_fin'] }})
+          {% endif %}
+        </span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Método de pago</span>
+        <span class="detail-value">
+          {% if pago['metodo_pago'] == 'mercadopago' %}Mercado Pago
+          {% elif pago['metodo_pago'] == 'tarjeta' %}Tarjeta de crédito/débito
+          {% else %}{{ pago['metodo_pago'] or '—' }}{% endif %}
+        </span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Token externo</span>
+        <span class="detail-value" style="font-family:monospace; font-size:13px;">
+          {{ pago['token_externo'] or '—' }}
+        </span>
+      </div>
+    </div>
+
+    <div>
+      <div class="detail-field">
+        <span class="detail-label">Monto bruto</span>
+        <span class="detail-value" style="color:#27AE60; font-size:20px; font-weight:700;">
+          ${{ '%.0f'|format(pago['monto_bruto']) }}
+        </span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Comisión total AMPARO</span>
+        <span class="detail-value">
+          {% if pago['comision_pct'] and pago['comision_pct'] > 0 %}
+            {{ '%.0f'|format(pago['comision_pct']) }}% = ${{ '%.0f'|format(pago['comision_monto']) }}
+          {% else %}
+            Monto fijo = ${{ '%.0f'|format(pago['comision_monto']) }}
+          {% endif %}
+        </span>
+      </div>
+      {% if (pago['comision_solicitante'] or 0) > 0 or (pago['comision_prestador'] or 0) > 0 %}
+      <div class="detail-field">
+        <span class="detail-label">Com. a cargo del solicitante</span>
+        <span class="detail-value" style="color:#E67E22;">
+          ${{ '%.2f'|format(pago['comision_solicitante'] or 0) }}
+        </span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Com. a cargo del prestador</span>
+        <span class="detail-value" style="color:#E67E22;">
+          ${{ '%.2f'|format(pago['comision_prestador'] or 0) }}
+        </span>
+      </div>
+      {% endif %}
+      <div class="detail-field">
+        <span class="detail-label">Monto neto al prestador</span>
+        <span class="detail-value" style="color:#27AE60; font-size:18px; font-weight:700;">
+          ${{ '%.0f'|format(pago['monto_neto']) }}
+        </span>
+      </div>
+      <div class="detail-field">
+        <span class="detail-label">Estado</span>
+        <span>
+          {% if pago['estado'] == 'PENDIENTE' %}
+            <span style="background:#E67E22;color:#fff;padding:3px 12px;border-radius:12px;">Pendiente</span>
+          {% elif pago['estado'] == 'PROCESADO' %}
+            <span style="background:#2980B9;color:#fff;padding:3px 12px;border-radius:12px;">Procesado</span>
+          {% elif pago['estado'] == 'LIQUIDADO' %}
+            <span style="background:#27AE60;color:#fff;padding:3px 12px;border-radius:12px;">Liquidado</span>
+          {% elif pago['estado'] == 'REEMBOLSADO' %}
+            <span style="background:#95A5A6;color:#fff;padding:3px 12px;border-radius:12px;">Reembolsado</span>
+          {% endif %}
+        </span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- HISTORIAL DE ESTADOS -->
+<div class="card" style="margin-bottom:20px;">
+  <div style="font-weight:600; color:#1A5276; margin-bottom:12px;">Historial de estados</div>
+  <table style="width:100%; font-size:14px; border-collapse:collapse;">
+    <thead>
+      <tr style="background:#EBF5FB;">
+        <th style="padding:8px 12px; text-align:left; color:#1A5276;">Estado</th>
+        <th style="padding:8px 12px; text-align:left; color:#1A5276;">Fecha</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% if pago['fecha_pago'] %}
+      <tr style="border-top:1px solid #EAECEE;">
+        <td style="padding:8px 12px;">
+          <span style="background:#E67E22;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Creado / Pendiente</span>
+        </td>
+        <td style="padding:8px 12px; color:#5D6D7E;">{{ pago['fecha_pago'][:16] }}</td>
+      </tr>
+      {% endif %}
+      {% if pago['estado'] in ('PROCESADO','LIQUIDADO','REEMBOLSADO') %}
+      <tr style="border-top:1px solid #EAECEE;">
+        <td style="padding:8px 12px;">
+          <span style="background:#2980B9;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Procesado</span>
+        </td>
+        <td style="padding:8px 12px; color:#5D6D7E;">—</td>
+      </tr>
+      {% endif %}
+      {% if pago['fecha_liquidacion'] %}
+      <tr style="border-top:1px solid #EAECEE;">
+        <td style="padding:8px 12px;">
+          <span style="background:#27AE60;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Liquidado</span>
+        </td>
+        <td style="padding:8px 12px; color:#5D6D7E;">{{ pago['fecha_liquidacion'][:16] }}</td>
+      </tr>
+      {% endif %}
+      {% if pago['estado'] == 'REEMBOLSADO' %}
+      <tr style="border-top:1px solid #EAECEE;">
+        <td style="padding:8px 12px;">
+          <span style="background:#95A5A6;color:#fff;padding:2px 9px;border-radius:12px;font-size:12px;">Reembolsado</span>
+        </td>
+        <td style="padding:8px 12px; color:#5D6D7E;">—</td>
+      </tr>
+      {% endif %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ACCIONES -->
+{% if pago['estado'] == 'PENDIENTE' and pago['referencia_pago'] %}
+<div class="card" style="margin-bottom:20px;">
+  <div style="font-weight:600; color:#1A5276; margin-bottom:12px;">Pago pendiente — aguardando confirmación de Mercado Pago</div>
+  <div style="background:#EAF4FB; border:1px solid #2980B9; border-radius:6px; padding:12px; font-size:13px; color:#1A5276;">
+    El cobro fue iniciado automáticamente. El pago se procesará en cuanto el solicitante complete el pago en Mercado Pago.
+  </div>
+  <div style="margin-top:10px;">
+    <div style="font-size:12px; color:#7F8C8D; margin-bottom:4px;">Preference ID:</div>
+    <code style="font-size:12px; background:#EEE; padding:3px 8px; border-radius:4px;">{{ pago['referencia_pago'] }}</code>
+  </div>
+</div>
+
+{% elif pago['estado'] == 'PENDIENTE' and not pago['referencia_pago'] %}
+<div class="card" style="margin-bottom:20px;">
+  <div style="font-weight:600; color:#1A5276; margin-bottom:12px;">Acciones — Pago pendiente sin preferencia MP</div>
+  <form method="POST" action="{{ url_for('admin.pago_cobrar', pid=pago['id']) }}"
+        onsubmit="return confirm('¿Crear preferencia MP para este pago?')">
+    <button type="submit" class="btn btn-primary">Reintentar cobro (crear preferencia MP)</button>
+  </form>
+</div>
+
+{% elif pago['estado'] == 'PROCESADO' %}
+<div class="card" style="margin-bottom:20px;">
+  <div style="font-weight:600; color:#1A5276; margin-bottom:12px;">Acciones disponibles</div>
+  <div style="background:#EAF4FB; border:1px solid #2980B9; border-radius:6px; padding:12px; font-size:13px; color:#1A5276; margin-bottom:12px;">
+    El sistema liquidará este pago automáticamente. No se requiere acción del administrador.
+  </div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-start;">
+
+    <button type="button" class="btn btn-danger"
+            onclick="document.getElementById('form-reembolso').style.display='block'; this.style.display='none'">
+      Iniciar reembolso
+    </button>
+
+  </div>
+  <div id="form-reembolso" style="display:none; margin-top:16px; border-top:1px solid #EAECEE; padding-top:16px;">
+    <form method="POST" action="{{ url_for('admin.pago_reembolsar', pid=pago['id']) }}">
+      <div class="form-group">
+        <label class="form-label">Motivo del reembolso <span class="required">*</span></label>
+        <textarea name="motivo" class="form-input" rows="3"
+                  placeholder="Describí el motivo del reembolso..." required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-danger">Confirmar reembolso</button>
+        <button type="button" class="btn btn-secondary"
+                onclick="document.getElementById('form-reembolso').style.display='none';
+                         document.querySelector('.btn-danger[onclick]').style.display='inline-block'">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% elif pago['estado'] == 'LIQUIDADO' %}
+<div class="card" style="margin-bottom:20px;">
+  <div style="font-weight:600; color:#1A5276; margin-bottom:12px;">Acciones disponibles</div>
+  <button type="button" class="btn btn-danger"
+          onclick="document.getElementById('form-reembolso').style.display='block'; this.style.display='none'">
+    Iniciar reembolso
+  </button>
+  <div id="form-reembolso" style="display:none; margin-top:16px; border-top:1px solid #EAECEE; padding-top:16px;">
+    <form method="POST" action="{{ url_for('admin.pago_reembolsar', pid=pago['id']) }}">
+      <div class="form-group">
+        <label class="form-label">Motivo del reembolso <span class="required">*</span></label>
+        <textarea name="motivo" class="form-input" rows="3"
+                  placeholder="Describí el motivo del reembolso..." required></textarea>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn btn-danger">Confirmar reembolso</button>
+        <button type="button" class="btn btn-secondary"
+                onclick="document.getElementById('form-reembolso').style.display='none';
+                         document.querySelector('.btn-danger[onclick]').style.display='inline-block'">
+          Cancelar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}

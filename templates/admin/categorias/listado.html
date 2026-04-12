@@ -1,0 +1,106 @@
+{% extends 'admin/base.html' %}
+
+{% block titulo %}Gestión de Categorías{% endblock %}
+
+{% block content %}
+
+<div class="page-header">
+  <h1 class="page-title">Gestión de Categorías</h1>
+  <a href="{{ url_for('admin.categoria_nueva') }}" class="btn btn-primary">+ Nueva categoría</a>
+</div>
+
+<!-- FILTROS -->
+<div class="filters-card">
+  <form method="GET" action="{{ url_for('admin.categorias') }}">
+    <div class="filters-row">
+
+      <div class="filter-group">
+        <label>Estado</label>
+        <select name="estado" class="filter-select">
+          <option value="">Todas</option>
+          <option value="activas"   {{ 'selected' if estado == 'activas'   }}>Activas</option>
+          <option value="inactivas" {{ 'selected' if estado == 'inactivas' }}>Inactivas</option>
+        </select>
+      </div>
+
+      <div class="filter-actions">
+        <button type="submit" class="btn btn-primary">Buscar</button>
+        <a href="{{ url_for('admin.categorias') }}" class="btn btn-secondary">Limpiar filtros</a>
+      </div>
+
+    </div>
+  </form>
+</div>
+
+<!-- TABLA -->
+<div class="card" style="padding:0; overflow:hidden;">
+  {% if categorias %}
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th style="text-align:right;">Tarifa mínima</th>
+        <th style="text-align:right;">Tarifa máxima</th>
+        <th style="text-align:center;">Prestadores activos</th>
+        <th>Estado</th>
+        <th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for cat in categorias %}
+      <tr {% if not cat['activa'] %}style="opacity:.6;"{% endif %}>
+        <td><strong>{{ cat['nombre'] }}</strong></td>
+        <td>
+          {% if cat['descripcion'] %}
+            {{ cat['descripcion'][:80] }}{{ '...' if cat['descripcion']|length > 80 }}
+          {% else %}
+            —
+          {% endif %}
+        </td>
+        <td style="text-align:right;">${{ '%.0f'|format(cat['tarifa_minima']) }}</td>
+        <td style="text-align:right;">${{ '%.0f'|format(cat['tarifa_maxima']) }}</td>
+        <td style="text-align:center;">{{ cat['prestadores_activos'] }}</td>
+        <td>
+          {% if cat['activa'] %}
+            <span class="badge" style="background:#27AE60;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;">Activa</span>
+          {% else %}
+            <span class="badge" style="background:#95A5A6;color:#fff;padding:3px 10px;border-radius:12px;font-size:12px;">Inactiva</span>
+          {% endif %}
+        </td>
+        <td>
+          <div class="btn-actions">
+            <a href="{{ url_for('admin.categoria_detalle', cid=cat['id']) }}" class="btn-sm btn-sm-view">Ver</a>
+            <a href="{{ url_for('admin.categoria_editar', cid=cat['id']) }}" class="btn-sm btn-sm-edit">Editar</a>
+            {% if cat['activa'] %}
+              <form method="POST" action="{{ url_for('admin.categoria_desactivar', cid=cat['id']) }}"
+                    style="display:inline"
+                    onsubmit="return confirm('¿Desactivar la categoría {{ cat['nombre'] }}?')">
+                <button type="submit" class="btn-sm btn-sm-block">Desactivar</button>
+              </form>
+            {% else %}
+              <form method="POST" action="{{ url_for('admin.categoria_activar', cid=cat['id']) }}"
+                    style="display:inline">
+                <button type="submit" class="btn-sm btn-sm-unlock">Activar</button>
+              </form>
+            {% endif %}
+          </div>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+  <div style="padding:10px 16px; font-size:12px; color:#7F8C8D; border-top:1px solid #EAECEE;">
+    {{ categorias|length }} categoría{{ 's' if categorias|length != 1 }} encontrada{{ 's' if categorias|length != 1 }}
+  </div>
+  {% else %}
+  <div class="notif-empty">
+    <span style="font-size:36px; display:block; margin-bottom:10px;">📋</span>
+    No se encontraron categorías con los filtros aplicados.
+  </div>
+  {% endif %}
+</div>
+
+{% endblock %}
