@@ -62,33 +62,33 @@
     </div>
   </div>
 
-  <!-- Datos del solicitanter (confidencial) -->
+  <!-- Datos del familiar a cuidar (confidencial) -->
   <div class="confidential-block" style="margin-bottom:20px;">
-    <div class="confidential-header">🔒 Información confidencial del solicitanter a cuidar</div>
+    <div class="confidential-header">🔒 Información confidencial del familiar a cuidar</div>
 
     <div class="form-row">
       <div class="form-group">
-        <label class="form-label">Nombre del solicitanter</label>
-        <input type="text" name="solicitanter_nombre" class="form-input"
-               value="{{ f['solicitanter_nombre'] or '' }}">
+        <label class="form-label">Nombre del familiar</label>
+        <input type="text" name="familiar_nombre" class="form-input"
+               value="{{ f['familiar_nombre'] or '' }}">
       </div>
       <div class="form-group">
         <label class="form-label">Edad</label>
-        <input type="number" name="solicitanter_edad" class="form-input"
-               value="{{ f['solicitanter_edad'] or '' }}" min="0" max="120" placeholder="Años">
+        <input type="number" name="familiar_edad" class="form-input"
+               value="{{ f['familiar_edad'] or '' }}" min="0" max="120" placeholder="Años">
       </div>
     </div>
 
     <div class="form-group">
       <label class="form-label">Condición de salud</label>
-      <textarea name="solicitanter_condicion" class="form-input" rows="2"
-                placeholder="Describí la condición de salud...">{{ f['solicitanter_condicion'] or '' }}</textarea>
+      <textarea name="familiar_condicion" class="form-input" rows="2"
+                placeholder="Describí la condición de salud...">{{ f['familiar_condicion'] or '' }}</textarea>
     </div>
 
     <div class="form-group" style="margin-bottom:0;">
       <label class="form-label">Necesidades especiales</label>
-      <textarea name="solicitanter_necesidades" class="form-input" rows="2"
-                placeholder="Describí las necesidades especiales...">{{ f['solicitanter_necesidades'] or '' }}</textarea>
+      <textarea name="familiar_necesidades" class="form-input" rows="2"
+                placeholder="Describí las necesidades especiales...">{{ f['familiar_necesidades'] or '' }}</textarea>
     </div>
   </div>
 
