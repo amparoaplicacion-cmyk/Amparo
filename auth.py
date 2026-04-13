@@ -889,6 +889,16 @@ def registro_solicitante():
              card_token if metodo_pago == 'tarjeta' else None)
         )
 
+        # ── Notificar al admin ───────────────────────────────────────────────
+        admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
+        if admin:
+            db.execute(
+                'INSERT INTO notificaciones (usuario_id, tipo, titulo, mensaje) VALUES (?,?,?,?)',
+                (admin['id'], 'nuevo_solicitante',
+                 'Nuevo solicitante registrado',
+                 f'Nuevo solicitante registrado: {nombre} {apellido}.')
+            )
+
         db.commit()
 
         _enviar_bienvenida(email, nombre, 'solicitante')
