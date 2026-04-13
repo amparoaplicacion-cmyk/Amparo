@@ -200,14 +200,12 @@ def restaurar():
     conn = sqlite3.connect('amparo.db')
     actualizados = 0
     for clave, valor in CORREOS:
-        resultado = conn.execute(
-            'UPDATE configuracion SET valor=? WHERE clave=?', (valor, clave)
+        conn.execute(
+            'INSERT OR REPLACE INTO configuracion (clave, valor) VALUES (?, ?)',
+            (clave, valor)
         )
-        if resultado.rowcount > 0:
-            actualizados += 1
-            print(f'  OK  {clave}')
-        else:
-            print(f'  --  {clave} (no encontrada, saltando)')
+        actualizados += 1
+        print(f'  OK  {clave}')
     conn.commit()
     conn.close()
     print(f'\n{actualizados} plantillas de correo restauradas.')
