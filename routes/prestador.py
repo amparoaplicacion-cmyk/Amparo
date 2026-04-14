@@ -7,6 +7,34 @@ from werkzeug.utils import secure_filename
 
 from database import get_db, ahora_argentina
 
+
+def _comprimir_imagen(ruta, max_px=1200, calidad=78):
+    """Redimensiona y comprime una imagen JPG/PNG al guardarla."""
+    try:
+        from PIL import Image, ExifTags
+        img = Image.open(ruta)
+        # Corregir orientación EXIF (fotos de celular suelen estar rotadas)
+        try:
+            for tag, val in img._getexif().items():
+                if ExifTags.TAGS.get(tag) == 'Orientation':
+                    if val == 3:   img = img.rotate(180, expand=True)
+                    elif val == 6: img = img.rotate(270, expand=True)
+                    elif val == 8: img = img.rotate(90,  expand=True)
+                    break
+        except Exception:
+            pass
+        # Redimensionar si supera max_px
+        w, h = img.size
+        if max(w, h) > max_px:
+            ratio = max_px / max(w, h)
+            img = img.resize((int(w * ratio), int(h * ratio)), Image.LANCZOS)
+        # Convertir a RGB para guardar como JPEG
+        if img.mode in ('RGBA', 'P'):
+            img = img.convert('RGB')
+        img.save(ruta, 'JPEG', quality=calidad, optimize=True)
+    except Exception:
+        pass  # Si falla, deja la imagen original intacta
+
 prestador_bp = Blueprint('prestador', __name__, url_prefix='/prestador')
 
 
@@ -954,9 +982,10 @@ def perfil_editar():
         foto_url = prestador['foto_url']
         if foto and foto.filename and _allowed(foto.filename):
             os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-            ext      = foto.filename.rsplit('.', 1)[1].lower()
-            filename = secure_filename(f'prestador_{pid}.{ext}')
-            foto.save(os.path.join(UPLOAD_FOLDER, filename))
+            filename = secure_filename(f'prestador_{pid}.jpg')
+            ruta_foto = os.path.join(UPLOAD_FOLDER, filename)
+            foto.save(ruta_foto)
+            _comprimir_imagen(ruta_foto)
             foto_url = f'/static/uploads/prestadores/{filename}'
 
         # Fotos DNI
@@ -971,8 +1000,10 @@ def perfil_editar():
             if ext not in ALLOWED_EXTS:
                 return old_url
             os.makedirs(UPLOAD_FOLDER_DNI, exist_ok=True)
-            fname = secure_filename(f'{prefix}_{uid}_{int(_time.time())}.{ext}')
-            f.save(os.path.join(UPLOAD_FOLDER_DNI, fname))
+            fname = secure_filename(f'{prefix}_{uid}_{int(_time.time())}.jpg')
+            ruta = os.path.join(UPLOAD_FOLDER_DNI, fname)
+            f.save(ruta)
+            _comprimir_imagen(ruta)
             return f'/static/docs/dni/{fname}'
 
         dni_frente_url = _guardar_dni('dni_foto_frente', 'dni_frente', prestador['dni_foto_frente_url'])
