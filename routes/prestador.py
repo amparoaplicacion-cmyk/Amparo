@@ -1013,6 +1013,12 @@ def perfil_editar():
                         (pid, dia, h_ini, h_fin)
                     )
 
+        admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
+        if admin:
+            nombre_pr = f"{prestador['nombre']} {prestador['apellido']}"
+            _notificar(db, admin['id'], 'MODIFICACION',
+                       f'Prestador actualizó su perfil: {nombre_pr}',
+                       f'{nombre_pr} modificó datos de su perfil.')
         db.commit()
         flash('Perfil actualizado correctamente.', 'success')
         return redirect(url_for('prestador.perfil'))

@@ -1757,6 +1757,11 @@ def mi_cuenta_editar():
                  latitud, longitud, codigo_postal, localidad, provincia,
                  ub_dt, fid)
             )
+            admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
+            if admin:
+                _notificar(db, admin['id'], 'MODIFICACION',
+                           f'Solicitante actualizó su perfil: {nombre} {apellido}',
+                           f'{nombre} {apellido} modificó datos de su perfil.')
             db.commit()
             session['nombre']   = nombre
             session['apellido'] = apellido
