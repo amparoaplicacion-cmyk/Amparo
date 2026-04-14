@@ -542,6 +542,12 @@ def usuario_eliminar(uid):
         flash('No se puede eliminar un usuario administrador.', 'error')
         return redirect(url_for('admin.usuario_detalle', uid=uid))
 
+    # Notificar al admin antes de borrar los datos
+    tipo_label = {'prestador': 'Prestador', 'solicitante': 'Solicitante'}.get(u['tipo_usuario'], u['tipo_usuario'])
+    _notificar(db, session['usuario_id'], 'BAJA',
+               f'{tipo_label} eliminado: {u["email"]}',
+               f'{tipo_label} eliminado permanentemente del sistema.')
+
     # Eliminar datos relacionados según tipo
     sol = db.execute('SELECT id FROM solicitantes WHERE usuario_id=?', (uid,)).fetchone()
     if sol:
