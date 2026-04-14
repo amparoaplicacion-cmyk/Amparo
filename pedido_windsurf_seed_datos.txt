@@ -1,0 +1,407 @@
+PEDIDO PARA CLAUDE EN WINDSURF — ARCHIVO SEED DE DATOS INICIALES
+==================================================================
+
+PROBLEMA CRÍTICO:
+Cada vez que se redespliegue en Railway o se migre
+la base de datos, se pierden todos los datos de
+configuración que el admin cargó manualmente.
+
+SOLUCIÓN:
+Crear un archivo seed_data.py que se ejecute
+automáticamente al iniciar la app y cargue todos
+los datos base si no existen.
+
+==================================================================
+CREAR ARCHIVO: seed_data.py
+==================================================================
+Este archivo debe ejecutarse en app.py al inicio,
+DESPUÉS de crear las tablas y ANTES de arrancar Flask.
+
+Debe insertar con INSERT OR IGNORE (nunca sobreescribir):
+
+------------------------------------------------------------------
+1. CONFIGURACIÓN SMTP (Brevo)
+------------------------------------------------------------------
+  mail_servidor = smtp-relay.brevo.com
+  mail_puerto = 587
+  mail_usuario = a518bf001@smtp-brevo.com
+  mail_tls = 1
+  mail_remitente = AMPARO <amparo.aplicacion@gmail.com>
+  empresa_email = amparo.aplicacion@gmail.com
+  empresa_nombre = AMPARO
+  empresa_web = (vacío por ahora)
+
+NOTA: La contraseña SMTP y la API key de Brevo
+NO se cargan por seguridad — el admin las ingresa
+manualmente una sola vez.
+
+------------------------------------------------------------------
+2. PARÁMETROS DEL SISTEMA
+------------------------------------------------------------------
+  password_vigencia_dias = 90
+  password_min_longitud = 8
+  password_max_intentos = 3
+  comision_tipo = porcentaje
+  comision_pct_default = 15
+  comision_solicitante_pct = 15
+  comision_prestador_pct = 7
+  cancelacion_penalidad_pct = 10
+  cancelacion_prestador_pct = 70
+  cancelacion_amparo_pct = 30
+  geofence_radio_metros = 50
+  confirmacion_horas_limite = 2
+  mp_modo = sandbox
+  mp_access_token = APP_USR-3466505023264581-032209-9f50d4a2d6acd245ff4a0c7d80f83b46-3284095586
+  mp_public_key = APP_USR-bf351279-88b0-4ef1-9e97-94fdebf12880
+  app_url = https://amparo-production.up.railway.app
+  admin_financiero_email = jorgeagueroar@yahoo.com.ar
+  antecedentes_vigencia_meses = 12
+  antecedentes_alerta_dias = 30
+  cierre_diario_hora = 00:00
+  movimientos_backup_dias = 3650
+
+------------------------------------------------------------------
+3. ZONAS — 48 BARRIOS DE CABA
+------------------------------------------------------------------
+Insertar con INSERT OR IGNORE INTO zonas
+(nombre, ciudad, provincia, activa):
+
+Agronomía, Almagro, Balvanera, Barracas, Belgrano,
+Boedo, Caballito, Chacarita, Coghlan, Colegiales,
+Constitución, Flores, Floresta, La Boca, La Paternal,
+Liniers, Mataderos, Monte Castro, Monserrat,
+Nueva Pompeya, Núñez, Palermo, Parque Avellaneda,
+Parque Chacabuco, Parque Chas, Parque Patricios,
+Puerto Madero, Recoleta, Retiro, Saavedra,
+San Cristóbal, San Nicolás, San Telmo,
+Vélez Sársfield, Versalles, Villa Crespo,
+Villa del Parque, Villa Devoto, Villa General Mitre,
+Villa Lugano, Villa Luro, Villa Ortúzar,
+Villa Pueyrredón, Villa Real, Villa Riachuelo,
+Villa Santa Rita, Villa Soldati, Villa Urquiza
+
+Todas con ciudad='CABA', provincia='Buenos Aires', activa=1
+
+------------------------------------------------------------------
+4. CATEGORÍAS
+------------------------------------------------------------------
+INSERT OR IGNORE INTO categorias:
+
+  nombre: Cuidador Domiciliario
+  descripcion: Cuidado y acompañamiento de personas mayores
+               o con necesidades especiales en el hogar
+  tarifa_min: 3000
+  tarifa_max: 8000
+  activa: 1
+
+  nombre: Acompañante Terapéutico
+  descripcion: Profesional de salud mental que acompaña
+               y asiste en actividades de la vida diaria
+  tarifa_min: 4000
+  tarifa_max: 10000
+  activa: 1
+
+  nombre: Enfermero Domiciliario
+  descripcion: Atención de enfermería profesional
+               en el domicilio del paciente
+  tarifa_min: 5000
+  tarifa_max: 15000
+  activa: 1
+
+------------------------------------------------------------------
+5. TEXTOS DE CORREOS AUTOMÁTICOS
+------------------------------------------------------------------
+INSERT OR IGNORE INTO configuracion para cada correo:
+
+CORREO 1 — Bienvenida solicitante:
+  clave: mail_bienvenida_asunto
+  valor: ¡Bienvenido/a a AMPARO! Tu cuenta está lista
+
+  clave: mail_bienvenida_cuerpo
+  valor:
+Hola {nombre},
+
+Es un placer tenerte con nosotros. Tu registro en AMPARO fue completado exitosamente y tu cuenta ya está activa.
+
+Encontrar el cuidado profesional que tu familiar necesita ahora es simple, seguro y confiable.
+
+Para comenzar seguí estos pasos:
+
+1. Ingresá a AMPARO con tu email y contraseña.
+2. Completá los datos de tu familiar a cuidar en Mi Cuenta.
+3. Buscá un prestador por categoría y zona.
+4. Revisá los perfiles, calificaciones y tarifas.
+5. Enviá tu solicitud y coordiná el servicio.
+
+Todos los prestadores de AMPARO tienen identidad, antecedentes penales y formación verificados. Los que tienen el distintivo ✅ AMPARO Verificado cuentan con los tres documentos aprobados.
+
+Para ingresar hacé click aquí: {link_app}
+
+AMPARO te da la bienvenida y te desea los mejores éxitos en esta nueva etapa.
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 2 — Desbloqueo de cuenta:
+  clave: mail_desbloqueo_asunto
+  valor: Tu cuenta de AMPARO fue desbloqueada
+
+  clave: mail_desbloqueo_cuerpo
+  valor:
+Hola {nombre},
+
+Tu cuenta fue desbloqueada exitosamente. Ya podés ingresar a AMPARO con tu email y contraseña habitual.
+
+Recordá que tu cuenta se bloquea automáticamente después de 3 intentos fallidos de ingreso. Si no recordás tu contraseña podés solicitar una nueva desde la pantalla de login.
+
+Para ingresar hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 3 — Contraseña temporal:
+  clave: mail_contrasena_temp_asunto
+  valor: Tu nueva contraseña temporal de AMPARO
+
+  clave: mail_contrasena_temp_cuerpo
+  valor:
+Hola {nombre},
+
+El administrador de AMPARO generó una contraseña temporal para tu cuenta.
+
+Tu contraseña temporal es: {contrasena_temporal}
+
+Al ingresar con esta contraseña el sistema te pedirá que la cambies por una nueva. Recordá que tu nueva contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial.
+
+Para ingresar hacé click aquí: {link_app}
+
+Si no solicitaste este cambio contactate con nosotros a: {empresa_email}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 4 — Vencimiento próximo:
+  clave: mail_vencimiento_asunto
+  valor: Tu contraseña de AMPARO vence en {dias_restantes} días
+
+  clave: mail_vencimiento_cuerpo
+  valor:
+Hola {nombre},
+
+Te avisamos que tu contraseña de AMPARO vence el {fecha_vencimiento}.
+
+Para evitar que tu cuenta quede bloqueada te recomendamos cambiarla antes de esa fecha. Podés hacerlo ingresando a la app y yendo a Mi Cuenta.
+
+Recordá que tu nueva contraseña debe tener al menos 8 caracteres, una mayúscula y un carácter especial.
+
+Para ingresar y cambiar tu contraseña hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 5 — Perfil aprobado prestador:
+  clave: mail_perfil_aprobado_asunto
+  valor: ¡Bienvenido/a a AMPARO Red! Tu perfil fue aprobado
+
+  clave: mail_perfil_aprobado_cuerpo
+  valor:
+Hola {nombre},
+
+¡Excelentes noticias! Tu perfil fue verificado y aprobado por el equipo de AMPARO. A partir de ahora aparecés en las búsquedas y podés empezar a recibir solicitudes de servicio.
+
+¿Qué sigue?
+
+1. Ingresá a AMPARO Red y revisá tu perfil público.
+2. Asegurate de tener tu disponibilidad horaria actualizada.
+3. Cuando recibas una solicitud tenés 24 horas para aceptarla o rechazarla.
+
+Para ingresar hacé click aquí: {link_app}
+
+AMPARO te da la bienvenida y te desea los mejores éxitos en esta nueva etapa.
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 6 — Perfil rechazado prestador:
+  clave: mail_perfil_rechazado_asunto
+  valor: Revisión de tu documentación en AMPARO Red
+
+  clave: mail_perfil_rechazado_cuerpo
+  valor:
+Hola {nombre},
+
+Revisamos tu documentación y encontramos un inconveniente que necesita tu atención.
+
+Motivo: {motivo_rechazo}
+
+Por favor ingresá a la app, corregí o volvé a subir la documentación indicada y aguardá una nueva revisión.
+
+Para ingresar hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 7 — Registro recibido prestador:
+  clave: mail_registro_prestador_asunto
+  valor: Recibimos tu registro en AMPARO Red
+
+  clave: mail_registro_prestador_cuerpo
+  valor:
+Hola {nombre},
+
+Recibimos tu registro en AMPARO Red. Estamos revisando tu documentación y te notificaremos cuando tu perfil esté aprobado.
+
+El tiempo de verificación depende del plazo que hayas elegido para obtener tu certificado de antecedentes penales. Una vez que nos llegue toda tu documentación, procesamos tu aprobación a la brevedad.
+
+Mientras tanto podés ingresar a la app para completar o corregir cualquier dato de tu perfil.
+
+Para ingresar hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 8 — Recibo de pago solicitante:
+  clave: mail_recibo_pago_asunto
+  valor: Recibo de pago — Servicio AMPARO del {fecha_servicio}
+
+  clave: mail_recibo_pago_cuerpo
+  valor:
+Hola {nombre},
+
+Te confirmamos el pago del siguiente servicio:
+
+Prestador: {prestador_nombre}
+Fecha: {fecha_servicio}
+Horario: {hora_inicio} a {hora_fin}
+
+Detalle del cobro:
+Subtotal del servicio: $ {monto_servicio}
+Servicio de AMPARO: $ {comision}
+Total cobrado: $ {total_pagado}
+
+Gracias por confiar en AMPARO.
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 9 — Pago liquidado prestador:
+  clave: mail_pago_liquidado_asunto
+  valor: Tu pago fue acreditado — AMPARO
+
+  clave: mail_pago_liquidado_cuerpo
+  valor:
+Hola {nombre},
+
+Te informamos que tu pago fue procesado y acreditado en tu cuenta.
+
+Detalle de la liquidación:
+Monto acreditado: $ {monto_neto}
+Método de acreditación: {metodo_cobro}
+Fecha de acreditación: {fecha_liquidacion}
+
+Si tenés alguna consulta sobre este pago no dudes en contactarnos.
+
+Para ingresar a tu cuenta hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 10 — Cancelación sin penalidad:
+  clave: mail_cancelacion_sin_penalidad_asunto
+  valor: Servicio cancelado — AMPARO
+
+  clave: mail_cancelacion_sin_penalidad_cuerpo
+  valor:
+Hola {nombre},
+
+Te informamos que el siguiente servicio fue cancelado:
+
+Prestador: {prestador_nombre}
+Fecha: {fecha_servicio}
+Horario: {hora_inicio} a {hora_fin}
+
+La cancelación se realizó antes de que el prestador aceptara la solicitud, por lo que no se aplicó ningún cargo.
+
+Podés buscar otro prestador disponible ingresando a la app.
+
+Para ingresar hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 11 — Cancelación con penalidad:
+  clave: mail_cancelacion_con_penalidad_asunto
+  valor: Servicio cancelado con penalidad — AMPARO
+
+  clave: mail_cancelacion_con_penalidad_cuerpo
+  valor:
+Hola {nombre},
+
+Te informamos que el siguiente servicio fue cancelado:
+
+Prestador: {prestador_nombre}
+Fecha: {fecha_servicio}
+Horario: {hora_inicio} a {hora_fin}
+
+Debido a que el prestador ya había aceptado tu solicitud, se aplicó una penalidad del 10% sobre el monto del servicio de acuerdo a los términos y condiciones de AMPARO.
+
+Monto de la penalidad cobrada: $ {monto_penalidad}
+
+Si tenés alguna consulta sobre este cobro no dudes en contactarnos.
+
+Para ingresar a tu cuenta hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+------------------------------------------------------------------
+
+CORREO 12 — Respuesta a mensaje de contacto:
+  clave: mail_respuesta_contacto_asunto
+  valor: Respuesta a tu mensaje — AMPARO
+
+  clave: mail_respuesta_contacto_cuerpo
+  valor:
+Hola {nombre},
+
+Recibimos tu {tipo_contacto} con el asunto "{asunto_mensaje}" y queremos darte una respuesta.
+
+{respuesta_admin}
+
+Si necesitás más información o tenés alguna otra consulta no dudes en escribirnos nuevamente desde la app en la sección Contacto.
+
+Para ingresar hacé click aquí: {link_app}
+
+El equipo de AMPARO
+
+==================================================================
+CÓMO EJECUTAR EL SEED
+==================================================================
+En app.py, después de init_db() y antes de if __name__:
+
+  from seed_data import cargar_datos_iniciales
+  with app.app_context():
+      cargar_datos_iniciales()
+
+La función cargar_datos_iniciales() usa INSERT OR IGNORE
+para no sobreescribir datos que el admin ya modificó.
+
+==================================================================
+VERIFICACIÓN:
+  1. Hacer push a Railway
+  2. En el log debe aparecer:
+     [SEED] Datos iniciales cargados
+  3. Entrar al admin → Configuración → Textos de Mails
+  4. Verificar que los 12 correos tienen texto
+  5. Entrar a Zonas → verificar 48 barrios
+  6. Entrar a Categorías → verificar 3 categorías
+==================================================================
