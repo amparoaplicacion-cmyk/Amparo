@@ -1103,6 +1103,7 @@ def prestador_antecedentes_ver(pid):
     if not p or not p['antecedentes_pdf_url']:
         flash('No hay PDF de antecedentes para este prestador.', 'error')
         return redirect(url_for('admin.prestador_detalle', pid=pid))
+    print(f'[VER PDF] carpeta={ANTECEDENTES_FOLDER} archivo={p["antecedentes_pdf_url"]}')
     return send_from_directory(ANTECEDENTES_FOLDER, p['antecedentes_pdf_url'])
 
 
