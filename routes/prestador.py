@@ -24,11 +24,12 @@ def _calcular_horas(hora_inicio, hora_fin):
     diferencia = hf - hi
     return diferencia.seconds / 3600
 
-UPLOAD_FOLDER      = os.path.join('static', 'uploads', 'prestadores')
+_BASE_DIR          = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+UPLOAD_FOLDER      = os.path.join(_BASE_DIR, 'static', 'uploads', 'prestadores')
 ALLOWED_EXTS       = {'jpg', 'jpeg', 'png', 'webp'}
-UPLOAD_FOLDER_DOCS = os.path.join('static', 'docs', 'prestadores')
-UPLOAD_FOLDER_CV   = os.path.join('static', 'docs', 'cv')
-UPLOAD_FOLDER_DNI  = os.path.join('static', 'docs', 'dni')
+UPLOAD_FOLDER_DOCS = os.path.join(_BASE_DIR, 'static', 'docs', 'prestadores')
+UPLOAD_FOLDER_CV   = os.path.join(_BASE_DIR, 'static', 'docs', 'cv')
+UPLOAD_FOLDER_DNI  = os.path.join(_BASE_DIR, 'static', 'docs', 'dni')
 ALLOWED_DOCS       = {'pdf', 'jpg', 'jpeg', 'png'}
 
 DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
