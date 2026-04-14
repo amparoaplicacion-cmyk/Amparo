@@ -1187,6 +1187,7 @@ def prestador_rechazar(pid):
     if not motivo:
         flash('El motivo de rechazo es obligatorio.', 'error')
         return redirect(url_for('admin.prestador_detalle', pid=pid))
+    print(f'[RECHAZO] Procesando rechazo para prestador {pid}')
     db = get_db()
     p  = db.execute('SELECT * FROM prestadores WHERE id=?', (pid,)).fetchone()
     if not p:
@@ -1201,6 +1202,7 @@ def prestador_rechazar(pid):
     db.commit()
     u = db.execute('SELECT nombre, email FROM usuarios WHERE id=?', (p['usuario_id'],)).fetchone()
     if u:
+        print(f'[RECHAZO] Enviando correo a {u["email"]}')
         asunto = _cfg_db('mail_perfil_rechazado_asunto', 'Actualización sobre tu perfil — AMPARO Red')
         cuerpo = _cfg_db('mail_perfil_rechazado_cuerpo',
             'Hola {nombre},\n\nTu perfil fue rechazado.\n\nMotivo: {motivo_rechazo}\n\n'
