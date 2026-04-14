@@ -1097,14 +1097,14 @@ def prestador_antecedentes_subir(pid):
 
 @admin_bp.route('/prestadores/<int:pid>/antecedentes/ver')
 def prestador_antecedentes_ver(pid):
-    from flask import send_from_directory
+    from flask import send_file
     db = get_db()
     p  = db.execute('SELECT antecedentes_pdf_url FROM prestadores WHERE id=?', (pid,)).fetchone()
     if not p or not p['antecedentes_pdf_url']:
         flash('No hay PDF de antecedentes para este prestador.', 'error')
         return redirect(url_for('admin.prestador_detalle', pid=pid))
-    print(f'[VER PDF] carpeta={ANTECEDENTES_FOLDER} archivo={p["antecedentes_pdf_url"]}')
-    return send_from_directory(ANTECEDENTES_FOLDER, p['antecedentes_pdf_url'])
+    ruta = os.path.join(ANTECEDENTES_FOLDER, p['antecedentes_pdf_url'])
+    return send_file(ruta, mimetype='application/pdf')
 
 
 # ---------------------------------------------------------------------------
