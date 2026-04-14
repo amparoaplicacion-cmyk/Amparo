@@ -669,6 +669,14 @@ window.addEventListener('pageshow', function(event) {
     if (form) form.reset();
   }
 });
+
+// Evitar doble envío del formulario
+document.getElementById('reg-form').addEventListener('submit', function(e) {
+  const btn = this.querySelector('button[type="submit"]');
+  if (btn.disabled) { e.preventDefault(); return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+});
 </script>
 
 <input type="hidden" id="mp-public-key" value="{{ mp_public_key|default('') }}">

@@ -17,8 +17,9 @@ from werkzeug.utils import secure_filename
 
 from database import get_db
 
-UPLOAD_FOLDER_PRESTADORES = os.path.join('static', 'img', 'prestadores')
-UPLOAD_FOLDER_DNI         = os.path.join('static', 'docs', 'dni', 'prestadores')
+_BASE_DIR                 = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER_PRESTADORES = os.path.join(_BASE_DIR, 'static', 'uploads', 'prestadores')
+UPLOAD_FOLDER_DNI         = os.path.join(_BASE_DIR, 'static', 'docs', 'dni', 'prestadores')
 ALLOWED_EXTS = {'jpg', 'jpeg', 'png', 'webp'}
 
 DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
@@ -679,7 +680,7 @@ def registro_prestador():
         foto_url = None
         foto = request.files.get('foto')
         if foto and foto.filename and _allowed_foto(foto.filename):
-            _upload_dir = os.path.join('static', 'uploads', 'prestadores')
+            _upload_dir = UPLOAD_FOLDER_PRESTADORES
             os.makedirs(_upload_dir, exist_ok=True)
             ext      = foto.filename.rsplit('.', 1)[1].lower()
             filename = secure_filename(f'prestador_{usuario_id}.{ext}')

@@ -625,13 +625,18 @@ function abrirCamara() {
   document.getElementById('foto-camara').click();
 }
 
-// Validar foto antes de hacer submit
+// Validar foto antes de hacer submit y evitar doble envío
 document.getElementById('reg-form').addEventListener('submit', function(e) {
   if (!fotoSeleccionada) {
     e.preventDefault();
     document.getElementById('foto-error').style.display = 'block';
     document.getElementById('foto-error').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
   }
+  const btn = this.querySelector('button[type="submit"]');
+  if (btn.disabled) { e.preventDefault(); return; }
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
 });
 
 // Si hubo errores del servidor, mostrar paso 2 directamente
