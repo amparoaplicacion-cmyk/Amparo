@@ -21,9 +21,10 @@ def _calcular_horas(hora_inicio, hora_fin):
     diferencia = hf - hi
     return diferencia.seconds / 3600
 
+_BASE_DIR           = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 UPLOAD_FOLDER       = os.path.join('static', 'uploads', 'prestadores')
 ALLOWED_EXTS        = {'jpg', 'jpeg', 'png', 'webp'}
-ANTECEDENTES_FOLDER = os.path.join('static', 'docs', 'antecedentes')
+ANTECEDENTES_FOLDER = os.path.join(_BASE_DIR, 'static', 'docs', 'antecedentes')
 
 
 # ---------------------------------------------------------------------------
