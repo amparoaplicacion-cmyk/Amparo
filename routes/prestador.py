@@ -881,6 +881,9 @@ def cobros():
 def perfil():
     db  = get_db()
     pid = _get_prestador_id(db)
+    if not pid:
+        flash('Tu perfil de prestador no fue encontrado.', 'error')
+        return redirect(url_for('auth.logout'))
 
     prestador = db.execute(
         """SELECT pr.*, u.nombre, u.apellido, u.email, u.telefono,
@@ -931,6 +934,9 @@ def perfil():
 def perfil_editar():
     db  = get_db()
     pid = _get_prestador_id(db)
+    if not pid:
+        flash('Tu perfil de prestador no fue encontrado.', 'error')
+        return redirect(url_for('auth.logout'))
 
     prestador = db.execute(
         """SELECT pr.*, u.nombre, u.apellido, u.email,
