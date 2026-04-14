@@ -1055,9 +1055,10 @@ def prestador_antecedentes_subir(pid):
         return redirect(url_for('admin.prestador_detalle', pid=pid))
 
     # Calcular vencimiento
-    meses = int(db.execute(
+    _row_meses = db.execute(
         "SELECT valor FROM configuracion WHERE clave='antecedentes_vigencia_meses'"
-    ).fetchone()['valor'] or 12)
+    ).fetchone()
+    meses = int(_row_meses['valor'] if _row_meses and _row_meses['valor'] else 12)
     mes_venc = fe.month - 1 + meses
     anio_venc = fe.year + mes_venc // 12
     mes_venc = mes_venc % 12 + 1
