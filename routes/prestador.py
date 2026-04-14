@@ -1068,7 +1068,7 @@ def cv_subir():
     pid = _get_prestador_id(db)
     f   = request.files.get('cv_archivo')
     redirect_dest = request.form.get('redirect_to', 'perfil')
-    dest = url_for('prestador.perfil_editar') if redirect_dest == 'editar' else url_for('prestador.perfil')
+    dest = url_for('prestador.perfil_editar') + '#cv' if redirect_dest == 'editar' else url_for('prestador.perfil')
 
     if not f or not f.filename:
         flash('No se seleccionó ningún archivo.', 'error')
