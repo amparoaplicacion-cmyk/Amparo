@@ -392,6 +392,9 @@ def usuario_nuevo():
             (nombre, apellido, email, generate_password_hash(password),
              tipo, datetime.now().isoformat(), hoy, venc, telefono or None)
         )
+        _notificar(db, session['usuario_id'], 'ALTA',
+                   f'Nuevo usuario registrado: {nombre} {apellido}',
+                   f'{tipo.capitalize()} {nombre} {apellido} ({email}) dado de alta.')
         db.commit()
         flash(
             f'Usuario {nombre} {apellido} creado correctamente. '
@@ -828,6 +831,9 @@ def prestador_nuevo():
                 db.execute('UPDATE prestadores SET foto_url=? WHERE id=?',
                            (filename, prestador_id))
 
+        _notificar(db, session['usuario_id'], 'ALTA',
+                   f'Nuevo prestador registrado: {nombre} {apellido}',
+                   f'Prestador {nombre} {apellido} ({email}) dado de alta.')
         db.commit()
         flash(
             f'Prestador {nombre} {apellido} creado correctamente. '
@@ -1475,6 +1481,9 @@ def solicitante_nueva():
              fam_nombre or None, int(fam_edad) if fam_edad.isdigit() else None,
              fam_condic or None, fam_nec or None)
         )
+        _notificar(db, session['usuario_id'], 'ALTA',
+                   f'Nuevo solicitante registrado: {nombre} {apellido}',
+                   f'Solicitante {nombre} {apellido} ({email}) dado de alta.')
         db.commit()
         flash(
             f'Familia {nombre} {apellido} creada correctamente. '
