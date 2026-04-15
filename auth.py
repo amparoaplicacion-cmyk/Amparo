@@ -562,11 +562,16 @@ def _enviar_bienvenida(email, nombre, tipo):
     if not (_cfg_db('mail_usuario') or os.environ.get('SMTP_USER')):
         print(f"[AMPARO] Bienvenida {tipo} para {email}")
 
-    base_dir     = os.path.dirname(os.path.abspath(__file__))
-    ruta_manual  = os.path.join(base_dir, 'static', 'docs', 'manual_solicitante.pdf')
+    base_dir = os.path.dirname(os.path.abspath(__file__))
+    if tipo == 'solicitante':
+        ruta_manual   = os.path.join(base_dir, 'static', 'docs', 'manual_solicitante.pdf')
+        nombre_manual = 'Manual_AMPARO_Solicitantes.pdf'
+    else:
+        ruta_manual   = os.path.join(base_dir, 'static', 'docs', 'manual_prestador.pdf')
+        nombre_manual = 'Manual_AMPARO_Prestadores.pdf'
     return enviar_email(email, asunto, cuerpo,
-                        adjunto_path=ruta_manual if tipo == 'solicitante' else None,
-                        adjunto_nombre='Manual_AMPARO_Solicitantes.pdf' if tipo == 'solicitante' else None)
+                        adjunto_path=ruta_manual,
+                        adjunto_nombre=nombre_manual)
 
 
 
