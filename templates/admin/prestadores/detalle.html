@@ -220,6 +220,16 @@
       </form>
 
       <div class="doc-block__actions" style="margin-top:10px;">
+        {% if p['antecedentes_ok'] != 'VERIFICADO' and p['antecedentes_pdf_url'] %}
+        <form method="POST"
+              action="{{ url_for('admin.prestador_doc_aprobar', pid=p['id'], doc='antecedentes') }}"
+              style="display:inline;"
+              onsubmit="return confirm('¿Aprobar certificado de antecedentes penales?')">
+          <button type="submit" class="btn btn-success" style="font-size:13px;padding:6px 14px;">
+            ✓ Aprobar
+          </button>
+        </form>
+        {% endif %}
         {% if p['antecedentes_ok'] != 'RECHAZADO' %}
         <button type="button" class="btn btn-danger" style="font-size:13px;padding:6px 14px;"
                 onclick="abrirModal('{{ url_for('admin.prestador_doc_rechazar', pid=p['id'], doc='antecedentes') }}','Rechazar Certificado de Antecedentes')">
