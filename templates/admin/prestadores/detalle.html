@@ -220,7 +220,7 @@
       </form>
 
       <div class="doc-block__actions" style="margin-top:10px;">
-        {% if p['antecedentes_ok'] != 'VERIFICADO' and p['antecedentes_pdf_url'] %}
+        {% if p['antecedentes_ok'] != 'VERIFICADO' %}
         <form method="POST"
               action="{{ url_for('admin.prestador_doc_aprobar', pid=p['id'], doc='antecedentes') }}"
               style="display:inline;"
