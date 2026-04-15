@@ -298,6 +298,9 @@ def login():
     if 'usuario_id' in session and 'tipo' in session:
         if request.method == 'GET':
             session.clear()
+        elif request.form.get('email') and request.form.get('password'):
+            # POST con credenciales: limpiar sesión anterior y procesar el login
+            session.clear()
         else:
             return redirect(RUTAS_POR_TIPO.get(session['tipo'], '/'))
 
