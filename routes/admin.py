@@ -1023,7 +1023,7 @@ def _enviar_alerta_antecedentes(db, prestador_id, fecha_venc):
                f'Tu certificado de antecedentes penales vence el {fecha_str} '
                f'(en {dias_restantes} días). Solicitá la renovación en '
                f'argentina.gob.ar/justicia/reincidencia/antecedentespenales '
-               f'y envialo a antecedentes@amparo.com')
+               f'y envialo a amparo.aplicacion@gmail.com')
 
     admins = db.execute(
         "SELECT id FROM usuarios WHERE tipo_usuario IN ('admin', 'admin_financiero')"

@@ -150,7 +150,7 @@ def _enviar_alerta_antecedentes(db, prestador_id, fecha_venc):
                f'Tu certificado de antecedentes penales vence el {fecha_str} '
                f'(en {dias_restantes} días). Solicitá la renovación en '
                f'argentina.gob.ar/justicia/reincidencia/antecedentespenales '
-               f'y envialo a antecedentes@amparo.com')
+               f'y envialo a amparo.aplicacion@gmail.com')
     admins = db.execute(
         "SELECT id FROM usuarios WHERE tipo_usuario IN ('admin', 'admin_financiero')"
     ).fetchall()
@@ -419,11 +419,11 @@ def servicio_aceptar(sid):
                        'Tu certificado de antecedentes está vencido',
                        f'Tu certificado de antecedentes penales venció el {fecha_venc_str}. '
                        f'Para seguir recibiendo solicitudes necesitás renovarlo y enviarlo a '
-                       f'antecedentes@amparo.com')
+                       f'amparo.aplicacion@gmail.com')
 
         db.commit()
         flash('No podés aceptar este servicio porque tu certificado de antecedentes penales '
-              'está vencido. Para renovarlo envialo a antecedentes@amparo.com', 'error')
+              'está vencido. Para renovarlo envialo a amparo.aplicacion@gmail.com', 'error')
         return redirect(url_for('prestador.servicios', tab='pendientes'))
 
     db.execute(
