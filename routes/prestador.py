@@ -75,9 +75,10 @@ def verificar_prestador():
     if request.endpoint == 'prestador.login_prestador':
         return  # Login PWA: sin autenticacion requerida
     if 'usuario_id' not in session:
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('prestador.login_prestador'))
     if session.get('tipo') != 'prestador':
-        abort(403)
+        session.clear()
+        return redirect(url_for('prestador.login_prestador'))
     db = get_db()
     u = db.execute("SELECT estado FROM usuarios WHERE id=?", (session['usuario_id'],)).fetchone()
     if u and u['estado'] == 'VENCIDA':

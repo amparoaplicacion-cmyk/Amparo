@@ -52,9 +52,10 @@ def verificar_solicitante():
     if request.endpoint == 'solicitante.login_solicitante':
         return  # Login PWA: sin autenticacion requerida
     if 'usuario_id' not in session:
-        return redirect(url_for('auth.login'))
+        return redirect(url_for('solicitante.login_solicitante'))
     if session.get('tipo') != 'solicitante':
-        abort(403)
+        session.clear()
+        return redirect(url_for('solicitante.login_solicitante'))
     db = get_db()
     u = db.execute("SELECT estado FROM usuarios WHERE id=?", (session['usuario_id'],)).fetchone()
     if u and u['estado'] == 'VENCIDA':
