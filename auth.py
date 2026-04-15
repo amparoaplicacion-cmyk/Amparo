@@ -216,8 +216,14 @@ def enviar_email(destinatario, asunto, texto_cuerpo,
     if brevo_api_key:
         # ── Envío por API HTTP de Brevo ───────────────────────────────────
         print(f"[AMPARO] Enviando via Brevo API a {destinatario}: {asunto}")
+        # Extraer solo el nombre para Brevo (acepta "Nombre" pero no "Nombre <email>")
+        import re as _re
+        _m = _re.match(r'^(.*?)\s*<[^>]+>\s*$', remitente or '')
+        sender_name = _m.group(1).strip() if _m else (remitente or 'AMPARO')
+        if not sender_name:
+            sender_name = 'AMPARO'
         payload = {
-            'sender':      {'name': remitente or 'AMPARO', 'email': smtp_user},
+            'sender':      {'name': sender_name, 'email': smtp_user},
             'to':          [{'email': destinatario}],
             'subject':     asunto,
             'htmlContent': html,
@@ -229,9 +235,11 @@ def enviar_email(destinatario, asunto, texto_cuerpo,
                 json=payload,
                 timeout=15,
             )
-            resp.raise_for_status()
-            print(f"[AMPARO] Brevo API OK ({resp.status_code}) para {destinatario}")
-            return True
+            if not resp.ok:
+                print(f"[AMPARO] Error Brevo API {resp.status_code}: {resp.text} — intentando por SMTP...")
+            else:
+                print(f"[AMPARO] Brevo API OK ({resp.status_code}) para {destinatario}")
+                return True
         except Exception as e:
             print(f"[AMPARO] Error Brevo API '{asunto}': {e} — intentando por SMTP...")
 
