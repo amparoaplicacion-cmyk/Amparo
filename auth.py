@@ -696,7 +696,7 @@ def registro_prestador():
             ext      = foto.filename.rsplit('.', 1)[1].lower()
             filename = secure_filename(f'prestador_{usuario_id}.{ext}')
             foto.save(os.path.join(_upload_dir, filename))
-            foto_url = filename
+            foto_url = f'/static/uploads/prestadores/{filename}'
 
         # ── Fotos DNI (opcionales en registro, requeridas para aprobación) ───
         def _guardar_dni_foto(field_name, prefix):
