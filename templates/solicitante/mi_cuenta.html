@@ -232,9 +232,16 @@ async function mcGuardarMetodo() {
 
     try {
       var mp = new MercadoPago(mpPublicKey);
+      // El SDK de MP exige al menos dos palabras en el nombre del titular.
+      // En sandbox (clave TEST-), valores de prueba como "APRO" son de una sola
+      // palabra y el SDK los rechaza; los duplicamos para satisfacer esa validación.
+      var tokenName = name;
+      if (mpPublicKey.startsWith('TEST-') && !tokenName.includes(' ')) {
+        tokenName = tokenName + ' ' + tokenName;
+      }
       var token = await mp.createCardToken({
         cardNumber:          num,
-        cardholderName:      name,
+        cardholderName:      tokenName,
         cardExpirationMonth: mm.padStart(2, '0'),
         cardExpirationYear:  aa,
         securityCode:        cvv

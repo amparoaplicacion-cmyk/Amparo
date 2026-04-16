@@ -22,6 +22,28 @@ UPLOAD_FOLDER_PRESTADORES = os.path.join(_BASE_DIR, 'static', 'uploads', 'presta
 UPLOAD_FOLDER_DNI         = os.path.join(_BASE_DIR, 'static', 'docs', 'dni', 'prestadores')
 ALLOWED_EXTS = {'jpg', 'jpeg', 'png', 'webp'}
 
+def _subir_imagen_cloudinary(file_storage, public_id, folder):
+    """Sube un FileStorage a Cloudinary si CLOUDINARY_URL está configurada.
+    Retorna la URL segura (str) o None si falla / no está configurado."""
+    cloudinary_url = os.environ.get('CLOUDINARY_URL', '')
+    if not cloudinary_url:
+        return None
+    try:
+        import cloudinary
+        import cloudinary.uploader
+        # La librería lee CLOUDINARY_URL automáticamente del entorno.
+        result = cloudinary.uploader.upload(
+            file_storage.stream,
+            public_id=public_id,
+            folder=folder,
+            overwrite=True,
+            resource_type='image',
+        )
+        return result.get('secure_url')
+    except Exception:
+        return None
+
+
 DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 FRANJAS_REG = [
     ('manana', 'Mañana',  '08:00', '12:00'),
@@ -696,12 +718,19 @@ def registro_prestador():
         foto_url = None
         foto = request.files.get('foto')
         if foto and foto.filename and _allowed_foto(foto.filename):
-            _upload_dir = UPLOAD_FOLDER_PRESTADORES
-            os.makedirs(_upload_dir, exist_ok=True)
-            ext      = foto.filename.rsplit('.', 1)[1].lower()
-            filename = secure_filename(f'prestador_{usuario_id}.{ext}')
-            foto.save(os.path.join(_upload_dir, filename))
-            foto_url = f'/static/uploads/prestadores/{filename}'
+            foto_url = _subir_imagen_cloudinary(
+                foto,
+                public_id=f'prestador_{usuario_id}',
+                folder='amparo/prestadores',
+            )
+            if not foto_url:
+                # Fallback: guardar localmente
+                _upload_dir = UPLOAD_FOLDER_PRESTADORES
+                os.makedirs(_upload_dir, exist_ok=True)
+                ext      = foto.filename.rsplit('.', 1)[1].lower()
+                filename = secure_filename(f'prestador_{usuario_id}.{ext}')
+                foto.save(os.path.join(_upload_dir, filename))
+                foto_url = f'/static/uploads/prestadores/{filename}'
 
         # ── Fotos DNI (opcionales en registro, requeridas para aprobación) ───
         def _guardar_dni_foto(field_name, prefix):
@@ -711,8 +740,17 @@ def registro_prestador():
             ext = f.filename.rsplit('.', 1)[-1].lower()
             if ext not in ALLOWED_EXTS:
                 return None
+            ts = int(_time.time())
+            url = _subir_imagen_cloudinary(
+                f,
+                public_id=f'{prefix}_{usuario_id}_{ts}',
+                folder='amparo/dni',
+            )
+            if url:
+                return url
+            # Fallback: guardar localmente
             os.makedirs(UPLOAD_FOLDER_DNI, exist_ok=True)
-            fname = secure_filename(f'{prefix}_{usuario_id}_{int(_time.time())}.{ext}')
+            fname = secure_filename(f'{prefix}_{usuario_id}_{ts}.{ext}')
             f.save(os.path.join(UPLOAD_FOLDER_DNI, fname))
             return f'/static/docs/dni/prestadores/{fname}'
 

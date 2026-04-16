@@ -87,15 +87,25 @@ def generar_password_temporal():
 
 
 def _guardar_foto(file, prefix):
+    """Guarda foto de perfil. Retorna la URL completa (Cloudinary o local)."""
     if not file or not file.filename:
         return None
     ext = file.filename.rsplit('.', 1)[-1].lower()
     if ext not in ALLOWED_EXTS:
         return None
+    from auth import _subir_imagen_cloudinary
+    url = _subir_imagen_cloudinary(
+        file,
+        public_id=prefix,
+        folder='amparo/prestadores',
+    )
+    if url:
+        return url
+    # Fallback: guardar localmente
     filename = f'{prefix}.{ext}'
     os.makedirs(UPLOAD_FOLDER, exist_ok=True)
     file.save(os.path.join(UPLOAD_FOLDER, filename))
-    return filename
+    return f'/static/uploads/prestadores/{filename}'
 
 
 def _notificar(db, usuario_id, tipo, titulo, mensaje=None):

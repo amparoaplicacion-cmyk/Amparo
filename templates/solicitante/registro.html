@@ -479,11 +479,17 @@ function mostrarPagoError(msg) {
 }
 
 async function irPaso2() {
+  // Limpiar error de pago anterior y recalcular fortaleza de contraseña desde el
+  // campo real (el browser puede restaurar el valor sin disparar oninput)
+  document.getElementById('pago-error').style.display = 'none';
+
   const nombre   = document.querySelector('[name=nombre]').value.trim();
   const apellido = document.querySelector('[name=apellido]').value.trim();
   const email    = document.querySelector('[name=email]').value.trim();
   const pwd      = document.getElementById('pwd').value;
   const pwd2     = document.getElementById('pwd2').value;
+
+  checkStrength(pwd);
 
   if (!nombre || !apellido) { alert('Nombre y apellido son obligatorios.'); return; }
   if (!email || !email.includes('@')) { alert('Ingresá un email válido.'); return; }

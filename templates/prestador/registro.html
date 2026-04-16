@@ -549,6 +549,10 @@ function irPaso2() {
   const pwd      = document.getElementById('pwd').value;
   const pwd2     = document.getElementById('pwd2').value;
 
+  // Recalcular fortaleza desde el campo real por si el browser restauró el valor
+  // sin disparar oninput (evita falso alerta "contraseña débil" tras error de servidor)
+  checkStrength(pwd);
+
   if (!nombre || !apellido) { alert('Nombre y apellido son obligatorios.'); return; }
   if (!email || !email.includes('@')) { alert('Ingresá un email válido.'); return; }
   if (!telefono) { alert('El teléfono es obligatorio.'); return; }
@@ -639,9 +643,22 @@ document.getElementById('reg-form').addEventListener('submit', function(e) {
   btn.textContent = '⏳ Enviando...';
 });
 
-// Si hubo errores del servidor, mostrar paso 2 directamente
-{% if request.method == 'POST' and get_flashed_messages() %}
-  irPaso2();
+// Si hubo errores del servidor y el usuario ya había llegado al paso 2,
+// restaurar el paso 2 directamente SIN re-validar (evita falso alerta "contraseña débil")
+{% if request.method == 'POST' and request.form.get('paso_actual') == '2' %}
+(function() {
+  var pa = document.getElementById('paso-actual');
+  if (!pa) return;
+  pa.value = '2';
+  document.getElementById('step1').style.display = 'none';
+  document.getElementById('step2').style.display = 'block';
+  var dot1  = document.getElementById('dot1');
+  var dot2  = document.getElementById('dot2');
+  var line1 = document.getElementById('line1');
+  if (dot1)  { dot1.classList.remove('active'); dot1.classList.add('done'); }
+  if (dot2)  { dot2.classList.add('active'); }
+  if (line1) { line1.classList.add('done'); }
+})();
 {% endif %}
 
 // ── GPS ──────────────────────────────────────────────────────────────
