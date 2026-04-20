@@ -567,8 +567,25 @@ def usuario_eliminar(uid):
         db.execute('DELETE FROM notificaciones WHERE usuario_id=?', (uid,))
         db.execute('DELETE FROM solicitantes WHERE usuario_id=?', (uid,))
 
-    pre = db.execute('SELECT id FROM prestadores WHERE usuario_id=?', (uid,)).fetchone()
+    pre = db.execute(
+        'SELECT id, foto_url, dni_foto_frente_url, dni_foto_selfie_url, certificado_url, antecedentes_pdf_url FROM prestadores WHERE usuario_id=?',
+        (uid,)
+    ).fetchone()
     if pre:
+        # Borrar archivos locales asociados al prestador
+        def _borrar_local(ruta_relativa):
+            if ruta_relativa and ruta_relativa.startswith('/static/'):
+                ruta_abs = os.path.join(_BASE_DIR, ruta_relativa.lstrip('/'))
+                if os.path.exists(ruta_abs):
+                    os.remove(ruta_abs)
+        _borrar_local(pre['foto_url'])
+        _borrar_local(pre['dni_foto_frente_url'])
+        _borrar_local(pre['dni_foto_selfie_url'])
+        _borrar_local(pre['certificado_url'])
+        if pre['antecedentes_pdf_url']:
+            ruta_ant = os.path.join(ANTECEDENTES_FOLDER, pre['antecedentes_pdf_url'])
+            if os.path.exists(ruta_ant):
+                os.remove(ruta_ant)
         db.execute('DELETE FROM disponibilidad WHERE prestador_id=?', (pre['id'],))
         db.execute('DELETE FROM notificaciones WHERE usuario_id=?', (uid,))
         db.execute('DELETE FROM prestadores WHERE usuario_id=?', (uid,))
