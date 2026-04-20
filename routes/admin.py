@@ -572,16 +572,28 @@ def usuario_eliminar(uid):
         (uid,)
     ).fetchone()
     if pre:
-        # Borrar archivos locales asociados al prestador
-        def _borrar_local(ruta_relativa):
-            if ruta_relativa and ruta_relativa.startswith('/static/'):
-                ruta_abs = os.path.join(_BASE_DIR, ruta_relativa.lstrip('/'))
+        # Borrar archivos asociados al prestador (local o Cloudinary)
+        def _borrar_archivo(url):
+            if not url:
+                return
+            if url.startswith('/static/'):
+                ruta_abs = os.path.join(_BASE_DIR, url.lstrip('/'))
                 if os.path.exists(ruta_abs):
                     os.remove(ruta_abs)
-        _borrar_local(pre['foto_url'])
-        _borrar_local(pre['dni_foto_frente_url'])
-        _borrar_local(pre['dni_foto_selfie_url'])
-        _borrar_local(pre['certificado_url'])
+            elif 'cloudinary.com' in url:
+                try:
+                    import cloudinary.uploader
+                    # Extraer public_id: todo entre /upload/v.../  y la extensión
+                    import re as _re
+                    m = _re.search(r'/upload/(?:v\d+/)?(.+)\.[^.]+$', url)
+                    if m:
+                        cloudinary.uploader.destroy(m.group(1), resource_type='image')
+                except Exception:
+                    pass
+        _borrar_archivo(pre['foto_url'])
+        _borrar_archivo(pre['dni_foto_frente_url'])
+        _borrar_archivo(pre['dni_foto_selfie_url'])
+        _borrar_archivo(pre['certificado_url'])
         if pre['antecedentes_pdf_url']:
             ruta_ant = os.path.join(ANTECEDENTES_FOLDER, pre['antecedentes_pdf_url'])
             if os.path.exists(ruta_ant):
