@@ -250,12 +250,15 @@ def enviar_email(destinatario, asunto, texto_cuerpo,
             'subject':     asunto,
             'htmlContent': html,
         }
+        if adjunto_path:
+            print(f"[BREVO] adjunto_path={adjunto_path} existe={os.path.exists(adjunto_path)}")
         if adjunto_path and os.path.exists(adjunto_path):
             with open(adjunto_path, 'rb') as _f:
                 payload['attachment'] = [{
                     'name':    adjunto_nombre or os.path.basename(adjunto_path),
                     'content': base64.b64encode(_f.read()).decode('utf-8'),
                 }]
+            print(f"[BREVO] Adjunto agregado: {adjunto_nombre}")
         try:
             resp = requests.post(
                 'https://api.brevo.com/v3/smtp/email',
