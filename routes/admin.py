@@ -495,6 +495,22 @@ def usuario_desbloquear(uid):
         (uid,)
     )
     db.commit()
+    u = db.execute('SELECT nombre, email, tipo_usuario FROM usuarios WHERE id=?', (uid,)).fetchone()
+    if u:
+        app_url  = _cfg_db('app_url', 'http://127.0.0.1:5000')
+        tipo     = u['tipo_usuario'] or ''
+        if tipo == 'prestador':
+            link_login = app_url + '/prestador/login'
+        elif tipo == 'solicitante':
+            link_login = app_url + '/solicitante/login'
+        else:
+            link_login = app_url + '/login'
+        asunto = _cfg_db('mail_admin_desbloqueo_asunto', 'Tu cuenta fue desbloqueada — AMPARO')
+        cuerpo = _cfg_db('mail_admin_desbloqueo_cuerpo',
+            'Hola {nombre},\n\nTu cuenta ha sido desbloqueada por el administrador. '
+            'Ya podés ingresar desde el siguiente enlace:\n\n{link_login}')
+        cuerpo = cuerpo.replace('{nombre}', u['nombre']).replace('{link_login}', link_login)
+        enviar_email(u['email'], asunto, cuerpo)
     flash('Cuenta desbloqueada correctamente.', 'success')
     return redirect(url_for('admin.usuario_detalle', uid=uid))
 
