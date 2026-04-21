@@ -738,6 +738,7 @@ def registro_prestador():
                 os.makedirs(_upload_dir, exist_ok=True)
                 ext      = foto.filename.rsplit('.', 1)[1].lower()
                 filename = secure_filename(f'prestador_{usuario_id}.{ext}')
+                foto.stream.seek(0)
                 foto.save(os.path.join(_upload_dir, filename))
                 foto_url = f'/static/uploads/prestadores/{filename}'
 
@@ -760,6 +761,7 @@ def registro_prestador():
             # Fallback: guardar localmente
             os.makedirs(UPLOAD_FOLDER_DNI, exist_ok=True)
             fname = secure_filename(f'{prefix}_{usuario_id}_{ts}.{ext}')
+            f.stream.seek(0)
             f.save(os.path.join(UPLOAD_FOLDER_DNI, fname))
             return f'/static/docs/dni/prestadores/{fname}'
 
