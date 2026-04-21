@@ -48,7 +48,12 @@ def _ctx():
     db  = get_db()
     hoy = date.today().isoformat()
     contactos_nuevos = db.execute(
-        "SELECT COUNT(*) as c FROM contactos WHERE estado='NUEVO'"
+        """SELECT COUNT(*) as c FROM contactos c
+           JOIN usuarios u ON c.usuario_id = u.id
+           WHERE c.estado='NUEVO'"""
+    ).fetchone()['c']
+    usuarios_bloqueados = db.execute(
+        "SELECT COUNT(*) as c FROM usuarios WHERE estado='BLOQUEADA'"
     ).fetchone()['c']
     conflictos_activos = db.execute(
         "SELECT COUNT(*) as c FROM servicios WHERE conflicto=1 AND estado='ACTIVO'"
@@ -62,6 +67,7 @@ def _ctx():
         'apellido':             session.get('apellido', ''),
         'tipo_usuario':         session.get('tipo', ''),
         'contactos_nuevos':     contactos_nuevos,
+        'usuarios_bloqueados':  usuarios_bloqueados,
         'conflictos_activos':   conflictos_activos,
         'servicios_activos_hoy': servicios_activos_hoy,
     }
