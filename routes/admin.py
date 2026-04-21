@@ -1225,7 +1225,8 @@ def prestador_aprobar(pid):
         cuerpo    = cuerpo.replace('{nombre}', u['nombre']).replace('{link_app}', link_app)
         import os as _os
         base_dir    = _os.path.dirname(_os.path.abspath(__file__))
-        ruta_manual = _os.path.join(base_dir, '..', 'static', 'docs', 'manual_prestador.pdf')
+        ruta_manual = _os.path.normpath(_os.path.join(base_dir, '..', 'static', 'docs', 'manual_prestador.pdf'))
+        print(f"[ADMIN] ruta_manual={ruta_manual} existe={_os.path.exists(ruta_manual)}")
         enviar_email(u['email'], asunto, cuerpo,
                      adjunto_path=ruta_manual,
                      adjunto_nombre='Manual_AMPARO_Red.pdf')
