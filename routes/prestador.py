@@ -728,8 +728,7 @@ def servicio_confirmar_fin(sid):
     # ── Calcular monto ────────────────────────────────────────────────────────
     cfg = {r['clave']: r['valor'] for r in db.execute(
         "SELECT clave, valor FROM configuracion "
-        "WHERE clave IN ('mp_modo','mp_access_token',"
-        "'comision_solicitante_pct','comision_prestador_pct')"
+        "WHERE clave IN ('comision_solicitante_pct','comision_prestador_pct')"
     ).fetchall()}
 
     try:
@@ -753,8 +752,9 @@ def servicio_confirmar_fin(sid):
 
     # ── Procesar cobro automático ─────────────────────────────────────────────
     # En sandbox o sin credenciales: simular cobro exitoso directamente
-    mp_modo         = cfg.get('mp_modo', 'sandbox')
-    mp_access_token = cfg.get('mp_access_token', '').strip()
+    from auth import _cfg_db as _cfgdb
+    mp_modo         = _cfgdb('mp_modo', 'sandbox')
+    mp_access_token = _cfgdb('mp_access_token', '').strip()
     metodo_pago     = 'automatico_sandbox' if (mp_modo == 'sandbox' or not mp_access_token) else 'automatico_mp'
 
     # ── Actualizar servicio y crear pago ──────────────────────────────────────

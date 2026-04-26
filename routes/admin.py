@@ -2002,6 +2002,7 @@ def pagos():
 @admin_bp.route('/pagos/liquidaciones')
 def pagos_liquidaciones():
     db = get_db()
+    # Pagos manuales pendientes (flujo legacy / penalidades simuladas)
     prestadores_pend = db.execute(
         '''SELECT pr.id AS prestador_id,
                   up.nombre || ' ' || up.apellido AS prestador_nombre,
@@ -2017,10 +2018,24 @@ def pagos_liquidaciones():
            ORDER BY up.apellido, up.nombre'''
     ).fetchall()
 
+    # Disbursements fallidos: requieren reintento
+    disbursements_fallidos = db.execute(
+        '''SELECT pg.id, pg.monto_neto, pg.disbursement_error, pg.disbursement_fecha,
+                  pg.servicio_id, up.nombre || ' ' || up.apellido AS prestador_nombre,
+                  pr.email_mp, pr.cbu
+           FROM pagos pg
+           JOIN prestadores pr ON pg.prestador_id = pr.id
+           JOIN usuarios    up ON pr.usuario_id   = up.id
+           WHERE pg.estado = 'LIQUIDADO'
+             AND pg.disbursement_estado IN ('FALLIDO', 'SIN_CREDENCIALES')
+           ORDER BY pg.disbursement_fecha DESC'''
+    ).fetchall()
+
     return render_template(
         'admin/pagos/liquidaciones.html',
         seccion_activa='pagos',
         prestadores=prestadores_pend,
+        disbursements_fallidos=disbursements_fallidos,
         **_ctx()
     )
 
@@ -2097,6 +2112,37 @@ def pagos_liquidar_prestador(prestador_id):
         print(f'[AMPARO] Error registrando movimientos PAGO_PRESTADOR: {e}')
     flash(f'Se liquidaron {len(pagos_proc)} pago(s) por ${total:,.0f}.', 'success')
     return redirect(url_for('admin.pagos_liquidaciones'))
+
+
+@admin_bp.route('/pagos/<int:pid>/reintentar_disbursement', methods=['POST'])
+def pago_reintentar_disbursement(pid):
+    db   = get_db()
+    pago = db.execute('SELECT * FROM pagos WHERE id=?', (pid,)).fetchone()
+    if not pago or pago['estado'] != 'LIQUIDADO':
+        flash('Solo se pueden reintentar disbursements de pagos en estado LIQUIDADO.', 'error')
+        return redirect(url_for('admin.pago_detalle', pid=pid))
+
+    access_token = _cfg_db('mp_access_token', '').strip()
+    if not access_token:
+        flash('No hay Access Token de MP configurado (Admin › Configuración › Pagos).', 'error')
+        return redirect(url_for('admin.pago_detalle', pid=pid))
+
+    # Resetear idempotency key para permitir reintento
+    db.execute(
+        "UPDATE pagos SET disbursement_estado='PENDIENTE', disbursement_error=NULL WHERE id=?",
+        (pid,)
+    )
+    db.commit()
+
+    from routes.financiero import disbursement_prestador, registrar_movimiento
+    ok, detalle = disbursement_prestador(db, pid, access_token)
+    db.commit()
+
+    if ok:
+        flash(f'Transferencia exitosa al prestador. Transfer ID MP: {detalle}', 'success')
+    else:
+        flash(f'Fallo en la transferencia: {detalle}', 'error')
+    return redirect(url_for('admin.pago_detalle', pid=pid))
 
 
 @admin_bp.route('/pagos/comisiones')
@@ -3180,6 +3226,10 @@ def reporte_pdf(reporte):
 # ─── Helpers de configuración ─────────────────────────────────────────────────
 
 def _cfg(db, clave, default=''):
+    import os
+    env_val = os.environ.get(clave.upper())
+    if env_val:
+        return env_val
     row = db.execute('SELECT valor FROM configuracion WHERE clave=?', (clave,)).fetchone()
     return row['valor'] if row else default
 

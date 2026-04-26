@@ -88,7 +88,10 @@ def password_vencida(fecha_cambio_str):
 
 
 def _cfg_db(clave, default=''):
-    """Lee una clave de la tabla configuracion."""
+    """Lee una clave: primero variable de entorno (CLAVE_EN_MAYUSCULAS), luego BD."""
+    env_val = os.environ.get(clave.upper())
+    if env_val:
+        return env_val
     try:
         row = get_db().execute(
             'SELECT valor FROM configuracion WHERE clave=?', (clave,)
@@ -946,13 +949,15 @@ def registro_solicitante():
                 familiar_condicion, familiar_necesidades,
                 latitud, longitud, codigo_postal, localidad, provincia,
                 ubicacion_actualizada,
-                metodo_pago, metodo_pago_descripcion, mp_card_token)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                metodo_pago, metodo_pago_descripcion, mp_card_token,
+                mp_card_payment_method)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)''',
             (usuario_id, zona_id, direccion,
              fam_nombre, fam_edad, fam_condicion, fam_necesidades,
              f_latitud, f_longitud, f_cp, f_localidad, f_provincia, ub_dt_f,
              metodo_pago, metodo_pago_desc,
-             card_token if metodo_pago == 'tarjeta' else None)
+             card_token if metodo_pago == 'tarjeta' else None,
+             card_type if metodo_pago == 'tarjeta' else None)
         )
 
         # ── Notificar al admin ───────────────────────────────────────────────

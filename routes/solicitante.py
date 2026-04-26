@@ -870,11 +870,8 @@ def contratacion_pagar(sid):
         flash('No hay pago pendiente para este servicio.', 'error')
         return redirect(url_for('solicitante.contratacion_detalle', sid=sid))
 
-    cfg = {r['clave']: r['valor'] for r in db.execute(
-        "SELECT clave, valor FROM configuracion WHERE clave IN ('mp_access_token','mp_modo')"
-    ).fetchall()}
-    tiene_mp   = bool(cfg.get('mp_access_token', '').strip())
-    modo_prueba = not tiene_mp or cfg.get('mp_modo', 'sandbox') == 'sandbox'
+    tiene_mp    = bool(_cfg_db('mp_access_token', '').strip())
+    modo_prueba = not tiene_mp or _cfg_db('mp_modo', 'sandbox') == 'sandbox'
 
     return render_template('solicitante/pago_servicio.html',
                            s=s, pago=pago,
@@ -903,11 +900,7 @@ def contratacion_pagar_procesar(sid):
         flash('No hay pago pendiente.', 'error')
         return redirect(url_for('solicitante.contratacion_detalle', sid=sid))
 
-    # Obtener credenciales MP y datos de pago del solicitante
-    cfg = {r['clave']: r['valor'] for r in db.execute(
-        "SELECT clave, valor FROM configuracion WHERE clave IN ('mp_public_key','mp_access_token','mp_modo')"
-    ).fetchall()}
-    access_token = cfg.get('mp_access_token', '').strip()
+    access_token = _cfg_db('mp_access_token', '').strip()
 
     solicitante = db.execute(
         '''SELECT s.metodo_pago, s.mp_card_token, u.email
@@ -981,7 +974,7 @@ def contratacion_pagar_procesar(sid):
             }
             resp = sdk.preference().create(preference_data)
             pref = resp.get("response", {})
-            modo = cfg.get('mp_modo', 'sandbox')
+            modo = _cfg_db('mp_modo', 'sandbox')
             init_point = pref.get("init_point") if modo == 'produccion' else pref.get("sandbox_init_point")
             if init_point:
                 return redirect(init_point)
@@ -1745,10 +1738,7 @@ def mi_cuenta():
         (fid,)
     ).fetchone()
 
-    mp_public_key = db.execute(
-        "SELECT valor FROM configuracion WHERE clave='mp_public_key'"
-    ).fetchone()
-    mp_public_key = mp_public_key['valor'] if mp_public_key else ''
+    mp_public_key = _cfg_db('mp_public_key', '')
 
     return render_template('solicitante/mi_cuenta.html',
                            datos=datos, mp_public_key=mp_public_key, **_ctx())
