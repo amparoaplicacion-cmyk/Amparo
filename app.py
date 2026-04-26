@@ -1,4 +1,15 @@
 import os
+
+# Cargar secrets.env si existe (credenciales permanentes en PythonAnywhere)
+_secrets_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'secrets.env')
+if os.path.isfile(_secrets_path):
+    with open(_secrets_path) as _f:
+        for _line in _f:
+            _line = _line.strip()
+            if _line and not _line.startswith('#') and '=' in _line:
+                _k, _v = _line.split('=', 1)
+                os.environ.setdefault(_k.strip(), _v.strip())
+
 from flask import Flask, redirect, session, url_for
 from werkzeug.security import generate_password_hash
 from database import get_db

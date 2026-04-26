@@ -3,4 +3,5 @@ backups/
 *.pyc
 __pycache__/
 .env
+secrets.env
 .venv/
