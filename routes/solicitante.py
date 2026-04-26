@@ -1084,10 +1084,9 @@ def _procesar_pago(db, pago, s, metodo, referencia):
         else:
             print(f"[PENALIDAD] ADVERTENCIA: no se encontró el solicitante id={pago['solicitante_id']}")
 
-        mp_modo = _cfg_db('mp_modo', 'sandbox')
         mp_token = _cfg_db('mp_access_token', '').strip()
-        if mp_modo == 'sandbox' or not mp_token:
-            print(f"[PENALIDAD] Modo sandbox — cobro simulado OK")
+        if not mp_token:
+            print(f"[PENALIDAD] Sin access token — cobro simulado")
             db.execute(
                 """UPDATE pagos SET
                        estado = 'PROCESADO',
@@ -1179,6 +1178,35 @@ def _procesar_pago(db, pago, s, metodo, referencia):
         _enviar_correos_liquidacion(db, pago['id'])
     except Exception as e:
         print(f"[CORREO] Error al enviar correos de liquidación: {e}")
+
+    # Disbursement automático: transferir monto_neto al prestador vía MP
+    try:
+        from routes.financiero import disbursement_prestador
+        mp_token = _cfg_db('mp_access_token', '').strip()
+        if mp_token:
+            ok, detalle = disbursement_prestador(db, pago['id'], mp_token)
+            if ok:
+                print(f'[DISBURSEMENT] OK pago={pago["id"]} transfer_id={detalle}')
+                if pr_row:
+                    _notificar(db, pr_row['usuario_id'], 'pago_liquidado',
+                               f'Tu pago de $ {pago["monto_neto"]:,.0f} fue transferido',
+                               f'Transferimos $ {pago["monto_neto"]:.2f} a tu cuenta. '
+                               f'Referencia de transferencia: {detalle}.')
+            else:
+                print(f'[DISBURSEMENT] FALLIDO pago={pago["id"]} error={detalle}')
+                if admin:
+                    _notificar(db, admin['id'], 'disbursement_fallido',
+                               f'⚠️ Fallo al pagar prestador — pago #{pago["id"]}',
+                               f'No se pudo transferir $ {pago["monto_neto"]:.2f} al prestador. '
+                               f'Error: {detalle}. Revisar en Admin › Pagos › #{pago["id"]}.')
+        else:
+            db.execute(
+                "UPDATE pagos SET disbursement_estado='SIN_CREDENCIALES' WHERE id=?",
+                (pago['id'],)
+            )
+            print(f'[DISBURSEMENT] Sin access token — disbursement omitido para pago {pago["id"]}')
+    except Exception as e:
+        print(f'[DISBURSEMENT] Error inesperado en pago {pago["id"]}: {e}')
 
 
 @solicitante_bp.route('/pago/mp/ok')
@@ -1383,6 +1411,94 @@ def contratacion_calificar(sid):
 
 # ─── CONFIRMACIÓN DE SERVICIO ─────────────────────────────────────────────────
 
+def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
+    """
+    Cobra automáticamente la tarjeta registrada del solicitante vía MP.
+    Si el cobro es exitoso llama a _procesar_pago() que marca LIQUIDADO y
+    ejecuta el disbursement al prestador.
+    Si falla, deja el pago en PENDIENTE y notifica al admin.
+    """
+    pago = db.execute('SELECT * FROM pagos WHERE id=?', (pago_id,)).fetchone()
+    if not pago:
+        print(f'[COBRO_AUTO] Pago {pago_id} no encontrado')
+        return
+
+    sol = db.execute(
+        'SELECT sol.mp_card_token, sol.mp_card_payment_method, u.email '
+        'FROM solicitantes sol JOIN usuarios u ON u.id=sol.usuario_id WHERE sol.id=?',
+        (fid,)
+    ).fetchone()
+
+    access_token = _cfg_db('mp_access_token', '').strip()
+
+    # Sin token de tarjeta o sin credenciales MP: notificar admin y dejar PENDIENTE
+    if not access_token or not sol or not sol['mp_card_token']:
+        motivo = 'Sin credenciales MP' if not access_token else 'El solicitante no tiene tarjeta registrada'
+        print(f'[COBRO_AUTO] No se puede cobrar automáticamente — {motivo}')
+        admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
+        if admin:
+            _notificar(db, admin['id'], 'cobro_fallido',
+                       f'⚠️ No se pudo cobrar automáticamente — pago #{pago_id}',
+                       f'Servicio #{s["id"]} finalizado pero el cobro automático no pudo ejecutarse: {motivo}. '
+                       f'Revisar en Admin › Pagos › #{pago_id}.')
+        db.commit()
+        return
+
+    monto_total = round((pago['monto_bruto'] or 0) + (pago['comision_solicitante'] or 0), 2)
+    payment_method = sol['mp_card_payment_method'] or 'visa'
+
+    try:
+        import mercadopago
+        sdk = mercadopago.SDK(access_token)
+        payment_data = {
+            'transaction_amount': monto_total,
+            'token': sol['mp_card_token'],
+            'description': f'Servicio AMPARO #{s["id"]}',
+            'installments': 1,
+            'payment_method_id': payment_method,
+            'payer': {'email': sol['email']},
+        }
+        print(f'[COBRO_AUTO] Intentando cobrar ${monto_total} con {payment_method} al solicitante {sol["email"]}')
+        resp   = sdk.payment().create(payment_data)
+        result = resp.get('response', {})
+        status = result.get('status')
+        mp_pid = str(result.get('id', ''))
+        print(f'[COBRO_AUTO] Respuesta MP: status={status} id={mp_pid} detail={result.get("status_detail")}')
+
+        if status == 'approved':
+            _procesar_pago(db, pago, s, metodo='tarjeta_mp', referencia=mp_pid)
+            db.commit()
+        else:
+            detalle = result.get('status_detail', status or 'error desconocido')
+            db.execute(
+                "UPDATE pagos SET referencia_pago=? WHERE id=?",
+                (mp_pid or 'RECHAZADO', pago_id)
+            )
+            admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
+            if admin:
+                _notificar(db, admin['id'], 'cobro_fallido',
+                           f'⚠️ Cobro rechazado — pago #{pago_id}',
+                           f'El cobro automático del servicio #{s["id"]} fue rechazado por MP: {detalle}. '
+                           f'Revisar en Admin › Pagos › #{pago_id}.')
+            sol_uid = db.execute(
+                'SELECT id FROM usuarios WHERE id=(SELECT usuario_id FROM solicitantes WHERE id=?)', (fid,)
+            ).fetchone()
+            if sol_uid:
+                _notificar(db, sol_uid['id'], 'cobro_fallido',
+                           'El cobro de tu tarjeta fue rechazado',
+                           f'No pudimos cobrar el servicio del {s["fecha_servicio"]}. '
+                           f'Por favor, actualizá tu tarjeta en Mi Cuenta.')
+            db.commit()
+    except Exception as e:
+        print(f'[COBRO_AUTO] Error inesperado: {e}')
+        admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
+        if admin:
+            _notificar(db, admin['id'], 'cobro_fallido',
+                       f'⚠️ Error en cobro automático — pago #{pago_id}',
+                       f'Error técnico al intentar cobrar servicio #{s["id"]}: {str(e)[:200]}.')
+        db.commit()
+
+
 def _crear_pago_por_servicio(db, s, fid):
     """Crea el registro de pago al finalizar un servicio."""
     cfg = {r['clave']: r['valor'] for r in db.execute(
@@ -1439,36 +1555,10 @@ def contratacion_confirmar_fin(sid):
         (ahora, ahora, sid)
     )
     monto, pago_id = _crear_pago_por_servicio(db, s, fid)
-
-    # Auto-liquidar inmediatamente
-    pr_row = db.execute('SELECT usuario_id, metodo_cobro FROM prestadores WHERE id=?',
-                        (s['prestador_id'],)).fetchone()
-    db.execute(
-        """UPDATE pagos SET estado='LIQUIDADO', metodo_pago='automatico',
-           fecha_pago=?, fecha_liquidacion=?, metodo_cobro_prestador=? WHERE id=?""",
-        (ahora, ahora, pr_row['metodo_cobro'] if pr_row else None, pago_id)
-    )
-
-    # Notificar prestador
-    if pr_row:
-        _notificar(db, pr_row['usuario_id'], 'pago_liquidado',
-                   'Tu cobro fue procesado',
-                   f'El solicitante confirmó el servicio del {s["fecha_servicio"]}. '
-                   f'Tu pago de $ {monto:.0f} fue liquidado automáticamente.')
-    # Notificar admin
-    admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
-    if admin:
-        _notificar(db, admin['id'], 'servicio_finalizado',
-                   'Servicio finalizado y cobro liquidado',
-                   f'Servicio #{sid} finalizado. Pago #{pago_id} — $ {monto:.0f} liquidado automáticamente.')
     db.commit()
 
-    # Enviar correos con desglose
-    try:
-        from routes.prestador import _enviar_correos_liquidacion
-        _enviar_correos_liquidacion(db, pago_id)
-    except Exception as e:
-        print(f"[CORREO] Error al enviar correos de liquidación: {e}")
+    # Cobro automático a la tarjeta registrada del solicitante
+    _cobrar_tarjeta_automatico(db, pago_id, s, fid)
 
     flash('✅ Servicio confirmado. El cobro fue procesado automáticamente.', 'success')
     return redirect(url_for('solicitante.contrataciones', tab='historial'))
@@ -1700,9 +1790,10 @@ def mi_cuenta_metodo_pago():
             desc = 'Tarjeta registrada'
         db.execute(
             '''UPDATE solicitantes
-               SET metodo_pago=?, metodo_pago_descripcion=?, mp_card_token=?
+               SET metodo_pago=?, metodo_pago_descripcion=?, mp_card_token=?,
+                   mp_card_payment_method=?
                WHERE id=?''',
-            (metodo_pago, desc, card_token, fid)
+            (metodo_pago, desc, card_token, card_type, fid)
         )
 
     db.commit()

@@ -441,6 +441,14 @@ def migrar_pagos(db):
         db.execute('ALTER TABLE pagos ADD COLUMN comision_solicitante REAL DEFAULT 0')
     if 'comision_prestador' not in cols:
         db.execute('ALTER TABLE pagos ADD COLUMN comision_prestador REAL DEFAULT 0')
+    if 'disbursement_id' not in cols:
+        db.execute('ALTER TABLE pagos ADD COLUMN disbursement_id TEXT')
+    if 'disbursement_estado' not in cols:
+        db.execute("ALTER TABLE pagos ADD COLUMN disbursement_estado TEXT DEFAULT 'PENDIENTE'")
+    if 'disbursement_fecha' not in cols:
+        db.execute('ALTER TABLE pagos ADD COLUMN disbursement_fecha DATETIME')
+    if 'disbursement_error' not in cols:
+        db.execute('ALTER TABLE pagos ADD COLUMN disbursement_error TEXT')
 
 
 def migrar_solicitantes(db):
@@ -463,6 +471,8 @@ def migrar_solicitantes(db):
         db.execute('ALTER TABLE solicitantes ADD COLUMN metodo_pago_descripcion TEXT')
     if 'mp_card_token' not in cols:
         db.execute('ALTER TABLE solicitantes ADD COLUMN mp_card_token TEXT')
+    if 'mp_card_payment_method' not in cols:
+        db.execute('ALTER TABLE solicitantes ADD COLUMN mp_card_payment_method TEXT')
 
 
 def migrar_usuarios_cobro_automatico(db):
