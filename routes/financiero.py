@@ -42,7 +42,12 @@ def _fctx():
         'apellido':             session.get('apellido', ''),
         'tipo_usuario':         'admin_financiero',
         'contactos_nuevos':     db.execute(
-            "SELECT COUNT(*) AS c FROM contactos WHERE estado='NUEVO'"
+            """SELECT COUNT(*) AS c FROM contactos c
+               JOIN usuarios u ON c.usuario_id = u.id
+               WHERE c.estado='NUEVO'"""
+        ).fetchone()['c'],
+        'usuarios_bloqueados':  db.execute(
+            "SELECT COUNT(*) AS c FROM usuarios WHERE estado='BLOQUEADA'"
         ).fetchone()['c'],
         'conflictos_activos':   db.execute(
             "SELECT COUNT(*) AS c FROM servicios WHERE conflicto=1 AND estado='ACTIVO'"
@@ -57,6 +62,111 @@ def _fctx():
 # ---------------------------------------------------------------------------
 # Helpers compartidos (importables desde otros módulos)
 # ---------------------------------------------------------------------------
+
+def disbursement_prestador(db, pago_id, access_token):
+    """
+    Transfiere el monto_neto al prestador vía MP Transfers API.
+    Actualiza pagos.disbursement_* con el resultado.
+    Retorna (ok: bool, detalle: str)
+    """
+    import requests
+    from database import ahora_argentina
+
+    pago = db.execute('SELECT * FROM pagos WHERE id=?', (pago_id,)).fetchone()
+    if not pago:
+        return False, f'Pago #{pago_id} no encontrado'
+
+    pr = db.execute(
+        'SELECT pr.metodo_cobro, pr.cbu, pr.alias_mp, pr.email_mp, '
+        'u.nombre, u.apellido, pr.usuario_id '
+        'FROM prestadores pr JOIN usuarios u ON u.id=pr.usuario_id '
+        'WHERE pr.id=?',
+        (pago['prestador_id'],)
+    ).fetchone()
+    if not pr:
+        return False, 'Prestador no encontrado'
+
+    monto = round(float(pago['monto_neto'] or 0), 2)
+    if monto <= 0:
+        return False, f'Monto neto inválido: {monto}'
+
+    # Prioridad: email_mp (sandbox/producción) > CBU (transferencia bancaria)
+    metodo = pr['metodo_cobro'] or 'mercadopago'
+    if metodo == 'transferencia' and pr['cbu']:
+        receiver_type, receiver_value = 'cbu', pr['cbu']
+    elif pr['email_mp']:
+        receiver_type, receiver_value = 'email', pr['email_mp']
+    elif pr['cbu']:
+        receiver_type, receiver_value = 'cbu', pr['cbu']
+    else:
+        ahora = ahora_argentina()
+        db.execute(
+            "UPDATE pagos SET disbursement_estado='FALLIDO', disbursement_error=?, "
+            "disbursement_fecha=? WHERE id=?",
+            ('Prestador sin datos de cobro (sin email MP ni CBU)', ahora, pago_id)
+        )
+        return False, 'Prestador sin datos de cobro configurados'
+
+    ahora = ahora_argentina()
+    headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json',
+        'X-Idempotency-Key': f'amparo-disbursement-{pago_id}',
+    }
+    payload = {
+        'amount': monto,
+        'currency_id': 'ARS',
+        'receiver': {'type': receiver_type, 'value': receiver_value},
+        'metadata': {
+            'pago_id': str(pago_id),
+            'servicio_id': str(pago['servicio_id']),
+        },
+    }
+
+    try:
+        resp = requests.post(
+            'https://api.mercadopago.com/v1/transfers',
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
+        data = resp.json()
+        print(f'[DISBURSEMENT] pago={pago_id} monto={monto} '
+              f'{receiver_type}={receiver_value} HTTP={resp.status_code} resp={data}')
+
+        transfer_id = data.get('id')
+        if resp.status_code in (200, 201) and transfer_id:
+            db.execute(
+                "UPDATE pagos SET disbursement_id=?, disbursement_estado='COMPLETADO', "
+                "disbursement_fecha=?, disbursement_error=NULL WHERE id=?",
+                (str(transfer_id), ahora, pago_id)
+            )
+            registrar_movimiento(
+                db, 'PAGO_PRESTADOR',
+                f"Transferencia MP a {pr['nombre']} {pr['apellido']} — pago #{pago_id}",
+                monto_salida=monto,
+                referencia=str(transfer_id),
+                pago_id=pago_id,
+                usuario_id=pr['usuario_id']
+            )
+            return True, str(transfer_id)
+        else:
+            msg = (data.get('message') or data.get('error') or str(data))[:300]
+            db.execute(
+                "UPDATE pagos SET disbursement_estado='FALLIDO', disbursement_error=?, "
+                "disbursement_fecha=? WHERE id=?",
+                (msg, ahora, pago_id)
+            )
+            return False, msg
+    except Exception as e:
+        msg = str(e)[:300]
+        db.execute(
+            "UPDATE pagos SET disbursement_estado='FALLIDO', disbursement_error=?, "
+            "disbursement_fecha=? WHERE id=?",
+            (msg, ahora, pago_id)
+        )
+        return False, msg
+
 
 def registrar_movimiento(db, tipo, descripcion, monto_entrada=0, monto_salida=0,
                          referencia=None, pago_id=None, usuario_id=None):
