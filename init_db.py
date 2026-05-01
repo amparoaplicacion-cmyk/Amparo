@@ -473,6 +473,10 @@ def migrar_solicitantes(db):
         db.execute('ALTER TABLE solicitantes ADD COLUMN mp_card_token TEXT')
     if 'mp_card_payment_method' not in cols:
         db.execute('ALTER TABLE solicitantes ADD COLUMN mp_card_payment_method TEXT')
+    if 'mp_customer_id' not in cols:
+        db.execute('ALTER TABLE solicitantes ADD COLUMN mp_customer_id TEXT')
+    if 'mp_card_id' not in cols:
+        db.execute('ALTER TABLE solicitantes ADD COLUMN mp_card_id TEXT')
 
 
 def migrar_usuarios_cobro_automatico(db):

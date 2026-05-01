@@ -1417,15 +1417,15 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
         return
 
     sol = db.execute(
-        'SELECT sol.mp_card_token, sol.mp_card_payment_method, u.email '
+        'SELECT sol.mp_card_token, sol.mp_card_payment_method, sol.mp_customer_id, sol.mp_card_id, u.email '
         'FROM solicitantes sol JOIN usuarios u ON u.id=sol.usuario_id WHERE sol.id=?',
         (fid,)
     ).fetchone()
 
     access_token = _cfg_db('mp_access_token', '').strip()
 
-    # Sin token de tarjeta o sin credenciales MP: notificar admin y dejar PENDIENTE
-    if not access_token or not sol or not sol['mp_card_token']:
+    tiene_tarjeta = sol and (sol['mp_card_id'] or sol['mp_card_token'])
+    if not access_token or not tiene_tarjeta:
         motivo = 'Sin credenciales MP' if not access_token else 'El solicitante no tiene tarjeta registrada'
         print(f'[COBRO_AUTO] No se puede cobrar automáticamente — {motivo}')
         admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
@@ -1442,11 +1442,32 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
     payment_method = pm_raw if pm_raw and pm_raw != 'undefined' else 'visa'
 
     try:
-        import mercadopago
+        import mercadopago, requests as _req
         sdk = mercadopago.SDK(access_token)
+
+        # Obtener token de cobro: desde card guardada (Customers API) o token directo
+        charge_token = None
+        customer_id  = sol['mp_customer_id']
+        card_id      = sol['mp_card_id']
+        if customer_id and card_id:
+            tk_resp = _req.post(
+                'https://api.mercadopago.com/v1/card_tokens',
+                json={'customer_id': customer_id, 'card_id': card_id},
+                headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
+                timeout=15
+            )
+            if tk_resp.status_code == 200:
+                charge_token = tk_resp.json().get('id')
+                print(f'[COBRO_AUTO] Token desde Customers API OK: {charge_token[:10]}...')
+            else:
+                print(f'[COBRO_AUTO] Error generando token desde Customers API: {tk_resp.status_code} {tk_resp.text[:200]}')
+        if not charge_token:
+            charge_token = sol['mp_card_token']
+            print(f'[COBRO_AUTO] Usando token directo (fallback)')
+
         payment_data = {
             'transaction_amount': monto_total,
-            'token': sol['mp_card_token'],
+            'token': charge_token,
             'description': f'Servicio AMPARO #{s["id"]}',
             'installments': 1,
             'payment_method_id': payment_method,
@@ -1780,12 +1801,41 @@ def mi_cuenta_metodo_pago():
             desc = f'{card_type.upper()} terminada en {card_last_four}'
         else:
             desc = 'Tarjeta registrada'
+
+        # Crear cliente y card permanente en MP (Customers API)
+        mp_customer_id = None
+        mp_card_id = None
+        access_token = _cfg_db('mp_access_token', '').strip()
+        if access_token:
+            try:
+                import mercadopago, requests as _req
+                sdk = mercadopago.SDK(access_token)
+                sol_user = db.execute(
+                    'SELECT u.email FROM usuarios u JOIN solicitantes s ON s.usuario_id=u.id WHERE s.id=?',
+                    (fid,)
+                ).fetchone()
+                email_sol = sol_user['email'] if sol_user else None
+                if email_sol:
+                    search = sdk.customer().search({'filters': {'email': email_sol}})
+                    results = search.get('response', {}).get('results', [])
+                    if results:
+                        mp_customer_id = results[0]['id']
+                    else:
+                        new_cust = sdk.customer().create({'email': email_sol})
+                        mp_customer_id = new_cust.get('response', {}).get('id')
+                    if mp_customer_id:
+                        card_resp = sdk.card().create(mp_customer_id, {'token': card_token})
+                        mp_card_id = card_resp.get('response', {}).get('id')
+                        print(f'[MP_CUSTOMER] customer={mp_customer_id} card={mp_card_id}')
+            except Exception as e:
+                print(f'[MP_CUSTOMER] Error: {e}')
+
         db.execute(
             '''UPDATE solicitantes
                SET metodo_pago=?, metodo_pago_descripcion=?, mp_card_token=?,
-                   mp_card_payment_method=?
+                   mp_card_payment_method=?, mp_customer_id=?, mp_card_id=?
                WHERE id=?''',
-            (metodo_pago, desc, card_token, card_type, fid)
+            (metodo_pago, desc, card_token, card_type, mp_customer_id, mp_card_id, fid)
         )
 
     db.commit()
