@@ -1438,7 +1438,8 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
         return
 
     monto_total = round((pago['monto_bruto'] or 0) + (pago['comision_solicitante'] or 0), 2)
-    payment_method = sol['mp_card_payment_method'] or 'visa'
+    pm_raw = sol['mp_card_payment_method'] or ''
+    payment_method = pm_raw if pm_raw and pm_raw != 'undefined' else 'visa'
 
     try:
         import mercadopago
