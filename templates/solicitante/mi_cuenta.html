@@ -239,6 +239,9 @@ async function mcGuardarMetodo() {
       if (mpPublicKey.startsWith('TEST-') && !tokenName.includes(' ')) {
         tokenName = tokenName + ' ' + tokenName;
       }
+      var pmResult = await mp.getPaymentMethods({ bin: num.slice(0, 6) });
+      var pmId = (pmResult.results && pmResult.results[0]) ? pmResult.results[0].id : '';
+
       var token = await mp.createCardToken({
         cardNumber:          num,
         cardholderName:      tokenName,
@@ -248,7 +251,7 @@ async function mcGuardarMetodo() {
       });
       document.getElementById('mc-card-token').value     = token.id;
       document.getElementById('mc-card-last-four').value = token.last_four_digits;
-      document.getElementById('mc-card-type').value      = token.payment_method_id;
+      document.getElementById('mc-card-type').value      = pmId || token.payment_method_id || '';
       document.getElementById('form-metodo-pago').submit();
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Guardar método de pago';
