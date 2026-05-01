@@ -1457,6 +1457,7 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
         result = resp.get('response', {})
         status = result.get('status')
         mp_pid = str(result.get('id', ''))
+        print(f'[COBRO_AUTO] Respuesta MP completa: {resp}')
         print(f'[COBRO_AUTO] Respuesta MP: status={status} id={mp_pid} detail={result.get("status_detail")}')
 
         if status == 'approved':
