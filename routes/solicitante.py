@@ -1826,7 +1826,7 @@ def mi_cuenta_metodo_pago():
                     if mp_customer_id:
                         card_resp = sdk.card().create(mp_customer_id, {'token': card_token})
                         mp_card_id = card_resp.get('response', {}).get('id')
-                        print(f'[MP_CUSTOMER] customer={mp_customer_id} card={mp_card_id}')
+                        print(f'[MP_CUSTOMER] customer={mp_customer_id} card={mp_card_id} resp_completa={card_resp}')
             except Exception as e:
                 print(f'[MP_CUSTOMER] Error: {e}')
 
