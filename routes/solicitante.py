@@ -8,6 +8,16 @@ from flask import (Blueprint, abort, flash, redirect, render_template,
 from database import get_db, ahora_argentina
 from auth import enviar_email, _cfg_db
 
+_MP_LOG = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'mp_debug.log')
+
+def _log_mp(msg):
+    from database import ahora_argentina as _ahora
+    try:
+        with open(_MP_LOG, 'a', encoding='utf-8') as f:
+            f.write(f'{_ahora()} {msg}\n')
+    except Exception:
+        pass
+
 
 def _calcular_horas(hora_inicio, hora_fin):
     """Calcula horas exactas entre dos horarios HH:MM (acepta también HH:MM:SS)."""
@@ -1838,9 +1848,9 @@ def mi_cuenta_metodo_pago():
                         )
                         cr_data = cr.json()
                         mp_card_id = cr_data.get('id')
-                        print(f'[MP_CUSTOMER] HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id} resp={cr_data}')
+                        _log_mp(f'HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id} resp={cr_data}')
             except Exception as e:
-                print(f'[MP_CUSTOMER] Error: {e}')
+                _log_mp(f'EXCEPCION: {e}')
 
         db.execute(
             '''UPDATE solicitantes
