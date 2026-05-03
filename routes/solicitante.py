@@ -1848,18 +1848,18 @@ def mi_cuenta_metodo_pago():
                     })
                     mp_customer_id = new_cust.get('response', {}).get('id')
                 _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln}')
-                    if mp_customer_id:
-                        # Llamada directa HTTP (más confiable que SDK para Customers cards)
-                        cr = _req.post(
-                            f'https://api.mercadopago.com/v1/customers/{mp_customer_id}/cards',
-                            json={'token': card_token},
-                            headers={'Authorization': f'Bearer {access_token}',
-                                     'Content-Type': 'application/json'},
-                            timeout=15
-                        )
-                        cr_data = cr.json()
-                        mp_card_id = cr_data.get('id')
-                        _log_mp(f'HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id} resp={cr_data}')
+                if mp_customer_id:
+                    # Llamada directa HTTP (más confiable que SDK para Customers cards)
+                    cr = _req.post(
+                        f'https://api.mercadopago.com/v1/customers/{mp_customer_id}/cards',
+                        json={'token': card_token},
+                        headers={'Authorization': f'Bearer {access_token}',
+                                 'Content-Type': 'application/json'},
+                        timeout=15
+                    )
+                    cr_data = cr.json()
+                    mp_card_id = cr_data.get('id')
+                    _log_mp(f'HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id} resp={cr_data}')
             except Exception as e:
                 _log_mp(f'EXCEPCION: {e}')
 
