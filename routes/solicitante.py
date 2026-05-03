@@ -1265,6 +1265,24 @@ def pago_mp_webhook():
                 "SELECT * FROM pagos WHERE referencia_pago=? OR token_externo=?",
                 (mp_pid, mp_pid)
             ).fetchone()
+            if not pago:
+                # Buscar por external_reference consultando la API de MP
+                try:
+                    import requests as _req
+                    at = _cfg_db('mp_access_token', '').strip()
+                    if at:
+                        mp_r = _req.get(
+                            f'https://api.mercadopago.com/v1/payments/{mp_pid}',
+                            headers={'Authorization': f'Bearer {at}'}, timeout=10
+                        )
+                        if mp_r.status_code == 200:
+                            ext_ref = mp_r.json().get('external_reference')
+                            if ext_ref:
+                                pago = db.execute(
+                                    "SELECT * FROM pagos WHERE id=?", (ext_ref,)
+                                ).fetchone()
+                except Exception:
+                    pass
             if pago and pago['estado'] == 'PENDIENTE':
                 s = db.execute(
                     """SELECT s.*, u.nombre || ' ' || u.apellido AS prestador_nombre
@@ -1587,11 +1605,40 @@ def contratacion_confirmar_fin(sid):
     monto, pago_id = _crear_pago_por_servicio(db, s, fid)
     db.commit()
 
-    # Cobro automático a la tarjeta registrada del solicitante
-    _cobrar_tarjeta_automatico(db, pago_id, s, fid)
+    # Redirigir a Checkout Pro para que el solicitante pague ahora
+    access_token = _cfg_db('mp_access_token', '').strip()
+    if access_token:
+        try:
+            import mercadopago
+            sdk = mercadopago.SDK(access_token)
+            pago_row = db.execute('SELECT * FROM pagos WHERE id=?', (pago_id,)).fetchone()
+            monto_total = round((pago_row['monto_bruto'] or 0) + (pago_row['comision_solicitante'] or 0), 2)
+            sol_user = db.execute(
+                'SELECT u.email FROM usuarios u JOIN solicitantes sol ON sol.usuario_id=u.id WHERE sol.id=?',
+                (fid,)
+            ).fetchone()
+            base = 'https://amparoaplicacion.pythonanywhere.com'
+            pref_resp = sdk.preference().create({
+                'items': [{'title': f'Servicio AMPARO #{sid}', 'quantity': 1,
+                           'unit_price': monto_total, 'currency_id': 'ARS'}],
+                'payer': {'email': sol_user['email'] if sol_user else ''},
+                'external_reference': str(pago_id),
+                'back_urls': {
+                    'success': f'{base}/solicitante/pago/mp/ok?pago_id={pago_id}&sid={sid}',
+                    'failure': f'{base}/solicitante/pago/mp/fallo?sid={sid}',
+                    'pending': f'{base}/solicitante/pago/mp/pendiente?sid={sid}',
+                },
+                'auto_return': 'approved',
+                'notification_url': f'{base}/solicitante/pago/mp/webhook',
+            })
+            init_point = pref_resp.get('response', {}).get('init_point')
+            if init_point:
+                return redirect(init_point)
+        except Exception as e:
+            _log_mp(f'[CHECKOUT_PRO] Error: {e}')
 
-    flash('✅ Servicio confirmado. El cobro fue procesado automáticamente.', 'success')
-    return redirect(url_for('solicitante.contrataciones', tab='historial'))
+    flash('✅ Servicio confirmado. Completá el pago para finalizar.', 'success')
+    return redirect(url_for('solicitante.contratacion_pagar', sid=sid))
 
 
 @solicitante_bp.route('/contrataciones/<int:sid>/reportar-conflicto', methods=['POST'])
