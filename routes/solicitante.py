@@ -1830,30 +1830,24 @@ def mi_cuenta_metodo_pago():
                     (fid,)
                 ).fetchone()
                 email_sol = sol_user['email'] if sol_user else None
-                # Usar el nombre tal como figura en la tarjeta (MP valida que coincida)
+                # Usar email interno para el customer de MP (evita conflicto con cuenta MP personal del usuario)
                 partes = card_holder_name.split(None, 1) if card_holder_name else []
                 fn = partes[0] if partes else (sol_user['nombre'] if sol_user else '')
                 ln = partes[1] if len(partes) > 1 else (sol_user['apellido'] if sol_user else '')
-                if email_sol:
-                    search = sdk.customer().search({'filters': {'email': email_sol}})
-                    results = search.get('response', {}).get('results', [])
-                    if results:
-                        mp_customer_id = results[0]['id']
-                        # Actualizar nombre para que coincida exactamente con el titular de la tarjeta
-                        _req.put(
-                            f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
-                            json={'first_name': fn, 'last_name': ln},
-                            headers={'Authorization': f'Bearer {access_token}',
-                                     'Content-Type': 'application/json'},
-                            timeout=15
-                        )
-                    else:
-                        new_cust = sdk.customer().create({
-                            'email': email_sol,
-                            'first_name': fn,
-                            'last_name': ln,
-                        })
-                        mp_customer_id = new_cust.get('response', {}).get('id')
+                # Email interno: nunca coincide con una cuenta MP existente
+                email_interno = f'sol{fid}@clientes.amparo.app'
+                search = sdk.customer().search({'filters': {'email': email_interno}})
+                results = search.get('response', {}).get('results', [])
+                if results:
+                    mp_customer_id = results[0]['id']
+                else:
+                    new_cust = sdk.customer().create({
+                        'email': email_interno,
+                        'first_name': fn,
+                        'last_name': ln,
+                    })
+                    mp_customer_id = new_cust.get('response', {}).get('id')
+                _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln}')
                     if mp_customer_id:
                         # Llamada directa HTTP (más confiable que SDK para Customers cards)
                         cr = _req.post(
