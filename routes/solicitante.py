@@ -1836,17 +1836,26 @@ def mi_cuenta_metodo_pago():
                 ln = partes[1] if len(partes) > 1 else (sol_user['apellido'] if sol_user else '')
                 # Email interno: nunca coincide con una cuenta MP existente
                 email_interno = f'sol{fid}@clientes.amparo.app'
-                search = sdk.customer().search({'filters': {'email': email_interno}})
-                results = search.get('response', {}).get('results', [])
-                if results:
-                    mp_customer_id = results[0]['id']
+                # Buscar customer por email usando HTTP directo (el SDK no filtra bien)
+                sr = _req.get(
+                    'https://api.mercadopago.com/v1/customers/search',
+                    params={'email': email_interno},
+                    headers={'Authorization': f'Bearer {access_token}'},
+                    timeout=15
+                )
+                sr_data = sr.json()
+                sr_results = sr_data.get('results', [])
+                if sr_results:
+                    mp_customer_id = sr_results[0]['id']
                 else:
-                    new_cust = sdk.customer().create({
-                        'email': email_interno,
-                        'first_name': fn,
-                        'last_name': ln,
-                    })
-                    mp_customer_id = new_cust.get('response', {}).get('id')
+                    cr2 = _req.post(
+                        'https://api.mercadopago.com/v1/customers',
+                        json={'email': email_interno, 'first_name': fn, 'last_name': ln},
+                        headers={'Authorization': f'Bearer {access_token}',
+                                 'Content-Type': 'application/json'},
+                        timeout=15
+                    )
+                    mp_customer_id = cr2.json().get('id')
                 _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln}')
                 if mp_customer_id:
                     # Llamada directa HTTP (más confiable que SDK para Customers cards)
