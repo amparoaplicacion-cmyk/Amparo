@@ -165,6 +165,11 @@
                    style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
           </div>
         </div>
+        <div style="margin-bottom:.75rem;">
+          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">DNI del titular *</label>
+          <input type="text" id="mc-card-dni" maxlength="10" placeholder="Sin puntos ni espacios" inputmode="numeric"
+                 style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
+        </div>
         <span style="font-size:.78rem;color:#7D3C98;">🔒 Datos encriptados. AMPARO nunca almacena el número completo.</span>
       </div>
 
@@ -219,11 +224,13 @@ async function mcGuardarMetodo() {
     var mm   = document.getElementById('mc-exp-month').value.trim();
     var aa   = document.getElementById('mc-exp-year').value.trim();
     var cvv  = document.getElementById('mc-cvv').value.trim();
+    var dni  = document.getElementById('mc-card-dni').value.replace(/\D/g, '');
 
     if (num.length < 13) { mcError('Ingresá un número de tarjeta válido.'); return; }
     if (!name)           { mcError('Ingresá el nombre como figura en la tarjeta.'); return; }
     if (!mm || !aa)      { mcError('Ingresá la fecha de vencimiento.'); return; }
     if (!cvv)            { mcError('Ingresá el código de seguridad.'); return; }
+    if (!dni || dni.length < 7) { mcError('Ingresá el DNI del titular sin puntos.'); return; }
 
     var mpPublicKey = document.getElementById('mc-mp-public-key').value;
     if (!mpPublicKey) { mcError('El sistema de pagos no está configurado. Contactá al administrador.'); return; }
@@ -244,11 +251,13 @@ async function mcGuardarMetodo() {
       var pmId = (pmResult.results && pmResult.results[0]) ? pmResult.results[0].id : '';
 
       var token = await mp.createCardToken({
-        cardNumber:          num,
-        cardholderName:      tokenName,
-        cardExpirationMonth: mm.padStart(2, '0'),
-        cardExpirationYear:  aa,
-        securityCode:        cvv
+        cardNumber:           num,
+        cardholderName:       tokenName,
+        cardExpirationMonth:  mm.padStart(2, '0'),
+        cardExpirationYear:   aa,
+        securityCode:         cvv,
+        identificationType:   'DNI',
+        identificationNumber: dni
       });
       document.getElementById('mc-card-token').value       = token.id;
       document.getElementById('mc-card-last-four').value   = token.last_four_digits;
