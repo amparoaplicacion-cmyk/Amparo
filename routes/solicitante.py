@@ -1788,9 +1788,10 @@ def mi_cuenta_metodo_pago():
 
     metodo_pago    = request.form.get('metodo_pago', '').strip()
     email_mp       = request.form.get('email_mp', '').strip() or None
-    card_token     = request.form.get('card_token', '').strip() or None
-    card_last_four = request.form.get('card_last_four', '').strip() or None
-    card_type      = request.form.get('card_type', '').strip() or None
+    card_token       = request.form.get('card_token', '').strip() or None
+    card_last_four   = request.form.get('card_last_four', '').strip() or None
+    card_type        = request.form.get('card_type', '').strip() or None
+    card_holder_name = request.form.get('card_holder_name', '').strip()
 
     if metodo_pago not in ('mercadopago', 'tarjeta'):
         flash('Método de pago no válido.', 'error')
@@ -1828,18 +1829,20 @@ def mi_cuenta_metodo_pago():
                     'SELECT u.email, u.nombre, u.apellido FROM usuarios u JOIN solicitantes s ON s.usuario_id=u.id WHERE s.id=?',
                     (fid,)
                 ).fetchone()
-                email_sol  = sol_user['email']    if sol_user else None
-                nombre_sol = sol_user['nombre']   if sol_user else ''
-                apellido_sol = sol_user['apellido'] if sol_user else ''
+                email_sol = sol_user['email'] if sol_user else None
+                # Usar el nombre tal como figura en la tarjeta (MP valida que coincida)
+                partes = card_holder_name.split(None, 1) if card_holder_name else []
+                fn = partes[0] if partes else (sol_user['nombre'] if sol_user else '')
+                ln = partes[1] if len(partes) > 1 else (sol_user['apellido'] if sol_user else '')
                 if email_sol:
                     search = sdk.customer().search({'filters': {'email': email_sol}})
                     results = search.get('response', {}).get('results', [])
                     if results:
                         mp_customer_id = results[0]['id']
-                        # Actualizar nombre para que coincida con el titular de la tarjeta
+                        # Actualizar nombre para que coincida exactamente con el titular de la tarjeta
                         _req.put(
                             f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
-                            json={'first_name': nombre_sol, 'last_name': apellido_sol},
+                            json={'first_name': fn, 'last_name': ln},
                             headers={'Authorization': f'Bearer {access_token}',
                                      'Content-Type': 'application/json'},
                             timeout=15
@@ -1847,8 +1850,8 @@ def mi_cuenta_metodo_pago():
                     else:
                         new_cust = sdk.customer().create({
                             'email': email_sol,
-                            'first_name': nombre_sol,
-                            'last_name': apellido_sol,
+                            'first_name': fn,
+                            'last_name': ln,
                         })
                         mp_customer_id = new_cust.get('response', {}).get('id')
                     if mp_customer_id:
