@@ -1828,9 +1828,17 @@ def mi_cuenta_metodo_pago():
                         new_cust = sdk.customer().create({'email': email_sol})
                         mp_customer_id = new_cust.get('response', {}).get('id')
                     if mp_customer_id:
-                        card_resp = sdk.card().create(mp_customer_id, {'token': card_token})
-                        mp_card_id = card_resp.get('response', {}).get('id')
-                        print(f'[MP_CUSTOMER] customer={mp_customer_id} card={mp_card_id} resp_completa={card_resp}')
+                        # Llamada directa HTTP (más confiable que SDK para Customers cards)
+                        cr = _req.post(
+                            f'https://api.mercadopago.com/v1/customers/{mp_customer_id}/cards',
+                            json={'token': card_token},
+                            headers={'Authorization': f'Bearer {access_token}',
+                                     'Content-Type': 'application/json'},
+                            timeout=15
+                        )
+                        cr_data = cr.json()
+                        mp_card_id = cr_data.get('id')
+                        print(f'[MP_CUSTOMER] HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id} resp={cr_data}')
             except Exception as e:
                 print(f'[MP_CUSTOMER] Error: {e}')
 
