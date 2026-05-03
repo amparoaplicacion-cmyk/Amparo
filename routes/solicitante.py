@@ -1465,15 +1465,19 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
             charge_token = sol['mp_card_token']
             print(f'[COBRO_AUTO] Usando token directo (fallback)')
 
+        payer = {'email': sol['email']}
+        if customer_id:
+            payer['id'] = customer_id  # requerido por MP Customers API para cobro con tarjeta guardada
+
         payment_data = {
             'transaction_amount': monto_total,
             'token': charge_token,
             'description': f'Servicio AMPARO #{s["id"]}',
             'installments': 1,
             'payment_method_id': payment_method,
-            'payer': {'email': sol['email']},
+            'payer': payer,
         }
-        print(f'[COBRO_AUTO] Intentando cobrar ${monto_total} con {payment_method} al solicitante {sol["email"]}')
+        print(f'[COBRO_AUTO] Intentando cobrar ${monto_total} con {payment_method} al solicitante {sol["email"]} customer_id={customer_id}')
         resp   = sdk.payment().create(payment_data)
         result = resp.get('response', {})
         status = result.get('status')
