@@ -983,9 +983,10 @@ def registro_solicitante():
                         _cust_body['identification'] = {'type': 'DNI', 'number': card_dni}
                     if sr_results:
                         mp_cid = sr_results[0]['id']
+                        _put_body = {k: v for k, v in _cust_body.items() if k != 'email'}
                         _req.put(
                             f'https://api.mercadopago.com/v1/customers/{mp_cid}',
-                            json=_cust_body,
+                            json=_put_body,
                             headers={'Authorization': f'Bearer {_at}',
                                      'Content-Type': 'application/json'},
                             timeout=15

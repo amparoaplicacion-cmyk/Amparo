@@ -1869,9 +1869,11 @@ def mi_cuenta_metodo_pago():
                     customer_body['identification'] = {'type': 'DNI', 'number': card_dni}
                 if sr_results:
                     mp_customer_id = sr_results[0]['id']
+                    # MP no permite actualizar el email — se excluye del PUT
+                    put_body = {k: v for k, v in customer_body.items() if k != 'email'}
                     put_r = _req.put(
                         f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
-                        json=customer_body,
+                        json=put_body,
                         headers={'Authorization': f'Bearer {access_token}',
                                  'Content-Type': 'application/json'},
                         timeout=15
