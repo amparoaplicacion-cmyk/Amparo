@@ -1869,14 +1869,14 @@ def mi_cuenta_metodo_pago():
                     customer_body['identification'] = {'type': 'DNI', 'number': card_dni}
                 if sr_results:
                     mp_customer_id = sr_results[0]['id']
-                    # Actualizar identificación en el customer existente
-                    _req.put(
+                    put_r = _req.put(
                         f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
                         json=customer_body,
                         headers={'Authorization': f'Bearer {access_token}',
                                  'Content-Type': 'application/json'},
                         timeout=15
                     )
+                    _log_mp(f'PUT customer={mp_customer_id} status={put_r.status_code} resp={put_r.json()}')
                 else:
                     cr2 = _req.post(
                         'https://api.mercadopago.com/v1/customers',
@@ -1886,6 +1886,16 @@ def mi_cuenta_metodo_pago():
                         timeout=15
                     )
                     mp_customer_id = cr2.json().get('id')
+                    _log_mp(f'POST customer={mp_customer_id} status={cr2.status_code}')
+                # Verificar estado del customer antes de agregar tarjeta
+                if mp_customer_id:
+                    get_r = _req.get(
+                        f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
+                        headers={'Authorization': f'Bearer {access_token}'},
+                        timeout=15
+                    )
+                    gc = get_r.json()
+                    _log_mp(f'GET customer fn={gc.get("first_name")} ln={gc.get("last_name")} identification={gc.get("identification")}')
                 _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln} dni={card_dni}')
                 if mp_customer_id:
                     # Llamada directa HTTP (más confiable que SDK para Customers cards)
