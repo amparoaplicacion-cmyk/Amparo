@@ -868,6 +868,7 @@ def registro_solicitante():
         card_token     = request.form.get('card_token', '').strip() or None
         card_last_four = request.form.get('card_last_four', '').strip() or None
         card_type      = request.form.get('card_type', '').strip() or None
+        card_dni       = ''.join(filter(str.isdigit, request.form.get('card_dni', '')))
 
         # ── Paso 2 ───────────────────────────────────────────────────────────
         zona_id         = request.form.get('zona_id', '').strip() or None
@@ -976,13 +977,23 @@ def registro_solicitante():
                         timeout=15
                     )
                     sr_results = sr.json().get('results', [])
+                    _cust_body = {'email': email_interno,
+                                  'first_name': nombre, 'last_name': apellido}
+                    if card_dni:
+                        _cust_body['identification'] = {'type': 'DNI', 'number': card_dni}
                     if sr_results:
                         mp_cid = sr_results[0]['id']
+                        _req.put(
+                            f'https://api.mercadopago.com/v1/customers/{mp_cid}',
+                            json=_cust_body,
+                            headers={'Authorization': f'Bearer {_at}',
+                                     'Content-Type': 'application/json'},
+                            timeout=15
+                        )
                     else:
                         cr2 = _req.post(
                             'https://api.mercadopago.com/v1/customers',
-                            json={'email': email_interno,
-                                  'first_name': nombre, 'last_name': apellido},
+                            json=_cust_body,
                             headers={'Authorization': f'Bearer {_at}',
                                      'Content-Type': 'application/json'},
                             timeout=15

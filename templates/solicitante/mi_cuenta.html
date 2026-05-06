@@ -173,10 +173,11 @@
         <span style="font-size:.78rem;color:#7D3C98;">🔒 Datos encriptados. AMPARO nunca almacena el número completo.</span>
       </div>
 
-      <input type="hidden" id="mc-card-token"     name="card_token">
-      <input type="hidden" id="mc-card-last-four" name="card_last_four">
-      <input type="hidden" id="mc-card-type"      name="card_type">
+      <input type="hidden" id="mc-card-token"      name="card_token">
+      <input type="hidden" id="mc-card-last-four"  name="card_last_four">
+      <input type="hidden" id="mc-card-type"       name="card_type">
       <input type="hidden" id="mc-card-name-hidden" name="card_holder_name">
+      <input type="hidden" id="mc-card-dni-hidden"  name="card_dni">
 
       <div id="mc-pago-error" style="display:none;background:#fde8e8;color:#c0392b;border-radius:8px;padding:.65rem .85rem;font-size:.85rem;margin-bottom:.75rem;"></div>
 
@@ -263,6 +264,7 @@ async function mcGuardarMetodo() {
       document.getElementById('mc-card-last-four').value   = token.last_four_digits;
       document.getElementById('mc-card-type').value        = pmId || token.payment_method_id || '';
       document.getElementById('mc-card-name-hidden').value = name;
+      document.getElementById('mc-card-dni-hidden').value  = dni;
       document.getElementById('form-metodo-pago').submit();
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Guardar método de pago';

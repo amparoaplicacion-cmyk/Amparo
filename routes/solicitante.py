@@ -1804,12 +1804,13 @@ def mi_cuenta_metodo_pago():
     db  = get_db()
     fid = _get_solicitante_id(db)
 
-    metodo_pago    = request.form.get('metodo_pago', '').strip()
-    email_mp       = request.form.get('email_mp', '').strip() or None
+    metodo_pago      = request.form.get('metodo_pago', '').strip()
+    email_mp         = request.form.get('email_mp', '').strip() or None
     card_token       = request.form.get('card_token', '').strip() or None
     card_last_four   = request.form.get('card_last_four', '').strip() or None
     card_type        = request.form.get('card_type', '').strip() or None
     card_holder_name = request.form.get('card_holder_name', '').strip()
+    card_dni         = ''.join(filter(str.isdigit, request.form.get('card_dni', '')))
 
     if metodo_pago not in ('mercadopago', 'tarjeta'):
         flash('Método de pago no válido.', 'error')
@@ -1863,18 +1864,29 @@ def mi_cuenta_metodo_pago():
                 )
                 sr_data = sr.json()
                 sr_results = sr_data.get('results', [])
+                customer_body = {'email': email_interno, 'first_name': fn, 'last_name': ln}
+                if card_dni:
+                    customer_body['identification'] = {'type': 'DNI', 'number': card_dni}
                 if sr_results:
                     mp_customer_id = sr_results[0]['id']
+                    # Actualizar identificación en el customer existente
+                    _req.put(
+                        f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
+                        json=customer_body,
+                        headers={'Authorization': f'Bearer {access_token}',
+                                 'Content-Type': 'application/json'},
+                        timeout=15
+                    )
                 else:
                     cr2 = _req.post(
                         'https://api.mercadopago.com/v1/customers',
-                        json={'email': email_interno, 'first_name': fn, 'last_name': ln},
+                        json=customer_body,
                         headers={'Authorization': f'Bearer {access_token}',
                                  'Content-Type': 'application/json'},
                         timeout=15
                     )
                     mp_customer_id = cr2.json().get('id')
-                _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln}')
+                _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln} dni={card_dni}')
                 if mp_customer_id:
                     # Llamada directa HTTP (más confiable que SDK para Customers cards)
                     cr = _req.post(
