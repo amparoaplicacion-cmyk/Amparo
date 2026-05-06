@@ -2333,109 +2333,35 @@ def pago_reembolsar(pid):
 
 @admin_bp.route('/pagos/<int:pid>/cobrar', methods=['POST'])
 def pago_cobrar(pid):
-    print(f"=== REINTENTAR COBRO pid={pid} ===")
+    from routes.solicitante import _cobrar_tarjeta_automatico
     db   = get_db()
     pago = db.execute('SELECT * FROM pagos WHERE id=?', (pid,)).fetchone()
 
     if not pago:
-        print(f"ERROR: Pago {pid} no encontrado en DB")
         flash('Pago no encontrado.', 'error')
         return redirect(url_for('admin.pagos'))
 
-    print(f"Pago encontrado: id={pago['id']} estado={pago['estado']} monto_bruto={pago['monto_bruto']} referencia_pago={pago['referencia_pago']}")
-
     if pago['estado'] != 'PENDIENTE':
-        print(f"ERROR: Estado es '{pago['estado']}', se requiere PENDIENTE")
         flash(f"Solo se puede reintentar cobro en pagos PENDIENTES (estado actual: {pago['estado']}).", 'error')
         return redirect(url_for('admin.pago_detalle', pid=pid))
 
-    s = db.execute(
-        """SELECT s.*, u.nombre||' '||u.apellido AS prestador_nombre
-           FROM servicios s
-           JOIN prestadores pr ON pr.id=s.prestador_id
-           JOIN usuarios u ON u.id=pr.usuario_id
-           WHERE s.id=?""",
-        (pago['servicio_id'],)
-    ).fetchone()
-    print(f"Servicio: {dict(s) if s else 'NO ENCONTRADO'}")
-
-    sol_row = db.execute(
-        'SELECT uf.email FROM solicitantes f JOIN usuarios uf ON uf.id=f.usuario_id WHERE f.id=?',
-        (pago['solicitante_id'],)
-    ).fetchone()
-    sol_email = sol_row['email'] if sol_row else 'pagos@amparo.com.ar'
-    print(f"Email solicitante: {sol_email}")
-
-    cfg_mp = {r['clave']: r['valor'] for r in db.execute(
-        "SELECT clave, valor FROM configuracion WHERE clave IN ('mp_access_token','mp_modo','app_url')"
-    ).fetchall()}
-    access_token = cfg_mp.get('mp_access_token', '').strip()
-    mp_modo      = cfg_mp.get('mp_modo', 'sandbox')
-    app_url      = cfg_mp.get('app_url', '').strip()
-    print(f"MP Token: {'[CONFIGURADO] ' + access_token[:20] + '...' if access_token else 'VACIO/NO CONFIGURADO'}")
-    print(f"MP Modo: {mp_modo}")
-    print(f"App URL en config: '{app_url}'")
-
-    if not access_token:
-        flash('No hay Access Token de Mercado Pago configurado. Configuralo en Admin > Configuracion > Pagos.', 'error')
+    sol = db.execute('SELECT * FROM solicitantes WHERE id=?', (pago['solicitante_id'],)).fetchone()
+    if not sol or not (sol['mp_customer_id'] and sol['mp_card_id']):
+        flash('El solicitante no tiene tarjeta guardada. Pedirle que actualice el método de pago en Mi Cuenta.', 'error')
         return redirect(url_for('admin.pago_detalle', pid=pid))
 
-    try:
-        import mercadopago
-        print("Librería mercadopago importada OK")
-        sdk = mercadopago.SDK(access_token)
-        print("SDK MP inicializado")
-        base_url = app_url or request.host_url.rstrip('/')
-        print(f"base_url usado: {base_url}")
-        prestador_nom = s['prestador_nombre'] if s else f'servicio #{pago["servicio_id"]}'
-        preference_data = {
-            "items": [{
-                "title": f"Servicio AMPARO - {prestador_nom}",
-                "quantity": 1,
-                "unit_price": float(pago['monto_bruto']),
-                "currency_id": "ARS",
-            }],
-            "payer": {"email": sol_email},
-            "payment_methods": {"installments": 1},
-            "external_reference": str(pid),
-            "statement_descriptor": "AMPARO",
-        }
-        es_local = '127.0.0.1' in base_url or 'localhost' in base_url
-        print(f"Entorno local: {es_local}")
-        if not es_local:
-            preference_data["back_urls"] = {
-                "success": f"{base_url}/solicitante/pago/mp/ok?pago_id={pid}&sid={pago['servicio_id']}",
-                "failure": f"{base_url}/solicitante/pago/mp/fallo?pago_id={pid}&sid={pago['servicio_id']}",
-                "pending": f"{base_url}/solicitante/pago/mp/pendiente?pago_id={pid}&sid={pago['servicio_id']}",
-            }
-            preference_data["auto_return"]       = "approved"
-            preference_data["notification_url"]  = f"{base_url}/solicitante/pago/mp/webhook"
-        print(f"Creando preferencia MP con datos: {preference_data}")
-        resp    = sdk.preference().create(preference_data)
-        print(f"Respuesta MP completa: {resp}")
-        pref    = resp.get("response", {})
-        pref_id = pref.get("id")
-        print(f"preference_id obtenido: {pref_id}")
-        if pref_id:
-            url_pago = pref.get('init_point') if mp_modo == 'produccion' else pref.get('sandbox_init_point')
-            print(f"URL de pago: {url_pago}")
-            db.execute("UPDATE pagos SET referencia_pago=? WHERE id=?", (pref_id, pid))
-            db.commit()
-            print(f"[OK] referencia_pago actualizado a {pref_id} para pago {pid}")
-            session[f'url_pago_{pid}'] = url_pago
-            flash(f'Preferencia MP creada. Usá el botón "Ver link de pago" para abrirla y simular el cobro.', 'success')
-        else:
-            print(f"ERROR: MP no devolvió id. pref={pref}")
-            flash(f'MP no devolvió preference id. Respuesta: {pref}', 'error')
-    except ImportError:
-        print("ERROR CRÍTICO: librería 'mercadopago' no instalada")
-        print("Ejecutar en terminal: pip install mercadopago")
-        flash("Error: librería mercadopago no instalada. Ejecutar: pip install mercadopago", 'error')
-    except Exception as e:
-        import traceback
-        print(f"ERROR en pago_cobrar: {e}")
-        traceback.print_exc()
-        flash(f'Error al crear preferencia MP: {str(e)[:200]}', 'error')
+    s = db.execute('SELECT * FROM servicios WHERE id=?', (pago['servicio_id'],)).fetchone()
+    if not s:
+        flash('Servicio no encontrado.', 'error')
+        return redirect(url_for('admin.pago_detalle', pid=pid))
+
+    _cobrar_tarjeta_automatico(db, pid, s, pago['solicitante_id'])
+
+    pago_upd = db.execute('SELECT estado FROM pagos WHERE id=?', (pid,)).fetchone()
+    if pago_upd and pago_upd['estado'] == 'LIQUIDADO':
+        flash('✅ Cobro exitoso. Pago liquidado y transferencia al prestador iniciada.', 'success')
+    else:
+        flash('El cobro fue rechazado por Mercado Pago. Revisá las notificaciones para más detalles.', 'error')
 
     return redirect(url_for('admin.pago_detalle', pid=pid))
 

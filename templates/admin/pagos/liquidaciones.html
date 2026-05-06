@@ -61,10 +61,63 @@
   </div>
   {% else %}
   <div class="notif-empty">
-    <span style="font-size:36px; display:block; margin-bottom:10px;">✅</span>
-    No hay liquidaciones pendientes. Todos los pagos están al día.
+    No hay liquidaciones manuales pendientes.
   </div>
   {% endif %}
 </div>
+
+{# ── Disbursements fallidos (transferencias automáticas que fallaron) ── #}
+{% if disbursements_fallidos %}
+<div class="page-header" style="margin-top:32px;">
+  <h2 class="page-title" style="font-size:18px; color:#C0392B;">
+    Transferencias fallidas — requieren reintento
+  </h2>
+</div>
+<div class="card" style="padding:0; overflow:hidden; border-left:4px solid #C0392B;">
+  <div class="table-responsive">
+  <table class="users-table">
+    <thead>
+      <tr>
+        <th>Pago #</th>
+        <th>Prestador</th>
+        <th style="text-align:right;">Monto neto</th>
+        <th>Error</th>
+        <th>Fecha intento</th>
+        <th>Acción</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for d in disbursements_fallidos %}
+      <tr>
+        <td><a href="{{ url_for('admin.pago_detalle', pid=d['id']) }}">#{{ d['id'] }}</a></td>
+        <td>
+          <strong>{{ d['prestador_nombre'] }}</strong><br>
+          <small style="color:#777;">
+            {{ d['email_mp'] or d['cbu'] or 'Sin datos de cobro' }}
+          </small>
+        </td>
+        <td style="text-align:right; font-weight:700; color:#C0392B;">
+          ${{ '%.2f'|format(d['monto_neto']) }}
+        </td>
+        <td style="color:#C0392B; font-size:12px; max-width:300px; word-break:break-word;">
+          {{ d['disbursement_error'] or '—' }}
+        </td>
+        <td style="font-size:12px; color:#777;">
+          {{ d['disbursement_fecha'][:16] if d['disbursement_fecha'] else '—' }}
+        </td>
+        <td>
+          <form method="POST"
+                action="{{ url_for('admin.pago_reintentar_disbursement', pid=d['id']) }}"
+                onsubmit="return confirm('¿Reintentar transferencia de ${{ '%.2f'|format(d['monto_neto']) }} a {{ d['prestador_nombre'] }}?')">
+            <button type="submit" class="btn-sm btn-sm-unlock">Reintentar</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  </div>
+</div>
+{% endif %}
 
 {% endblock %}

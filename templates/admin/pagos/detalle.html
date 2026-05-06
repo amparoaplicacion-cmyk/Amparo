@@ -206,6 +206,41 @@
 </div>
 
 {% elif pago['estado'] == 'LIQUIDADO' %}
+
+{# ── Estado del disbursement al prestador ── #}
+{% set ds = pago['disbursement_estado'] %}
+{% if ds == 'COMPLETADO' %}
+<div class="card" style="margin-bottom:20px; background:#EAF9EA; border-left:4px solid #27AE60;">
+  <div style="font-weight:600; color:#1E8449; margin-bottom:6px;">Transferencia al prestador: COMPLETADA</div>
+  <div style="font-size:13px; color:#555;">
+    Transfer ID MP: <strong>{{ pago['disbursement_id'] }}</strong>
+    {% if pago['disbursement_fecha'] %} · {{ pago['disbursement_fecha'][:16] }}{% endif %}
+  </div>
+</div>
+{% elif ds in ('FALLIDO', 'SIN_CREDENCIALES') %}
+<div class="card" style="margin-bottom:20px; background:#FDEDEC; border-left:4px solid #C0392B;">
+  <div style="font-weight:600; color:#C0392B; margin-bottom:6px;">Transferencia al prestador: FALLIDA</div>
+  <div style="font-size:13px; color:#555; margin-bottom:12px;">{{ pago['disbursement_error'] or 'Sin detalle' }}</div>
+  <form method="POST"
+        action="{{ url_for('admin.pago_reintentar_disbursement', pid=pago['id']) }}"
+        onsubmit="return confirm('¿Reintentar la transferencia al prestador?')">
+    <button type="submit" class="btn btn-primary">Reintentar transferencia</button>
+  </form>
+</div>
+{% elif ds == 'PENDIENTE' %}
+<div class="card" style="margin-bottom:20px; background:#FEF9E7; border-left:4px solid #F39C12;">
+  <div style="font-weight:600; color:#B7770D; margin-bottom:6px;">Transferencia al prestador: PENDIENTE</div>
+  <div style="font-size:13px; color:#555; margin-bottom:12px;">
+    La transferencia automática aún no fue ejecutada.
+  </div>
+  <form method="POST"
+        action="{{ url_for('admin.pago_reintentar_disbursement', pid=pago['id']) }}"
+        onsubmit="return confirm('¿Ejecutar transferencia al prestador ahora?')">
+    <button type="submit" class="btn btn-primary">Ejecutar transferencia</button>
+  </form>
+</div>
+{% endif %}
+
 <div class="card" style="margin-bottom:20px;">
   <div style="font-weight:600; color:#1A5276; margin-bottom:12px;">Acciones disponibles</div>
   <button type="button" class="btn btn-danger"

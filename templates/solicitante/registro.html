@@ -286,6 +286,11 @@
                      placeholder="123" inputmode="numeric">
             </div>
           </div>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label class="form-label">DNI del titular *</label>
+            <input type="text" id="card-dni" class="form-input" maxlength="10"
+                   placeholder="Sin puntos ni espacios" inputmode="numeric">
+          </div>
           <span class="form-hint" style="color:#7D3C98;font-size:.78rem;">
             🔒 Datos encriptados. AMPARO nunca almacena el número completo de tu tarjeta.
           </span>
@@ -513,11 +518,13 @@ async function irPaso2() {
     const mm   = document.getElementById('exp-month').value.trim();
     const aa   = document.getElementById('exp-year').value.trim();
     const cvv  = document.getElementById('card-cvv').value.trim();
+    const dni  = document.getElementById('card-dni').value.replace(/\D/g, '');
 
     if (num.length < 13) { mostrarPagoError('Ingresá un número de tarjeta válido.'); return; }
     if (!name)           { mostrarPagoError('Ingresá el nombre como figura en la tarjeta.'); return; }
     if (!mm || !aa)      { mostrarPagoError('Ingresá la fecha de vencimiento.'); return; }
     if (!cvv)            { mostrarPagoError('Ingresá el código de seguridad.'); return; }
+    if (!dni || dni.length < 7) { mostrarPagoError('Ingresá el DNI del titular sin puntos.'); return; }
 
     const mpModo = document.getElementById('mp-modo').value;
 
@@ -550,11 +557,13 @@ async function irPaso2() {
       try {
         const mp = new MercadoPago(mpPublicKey);
         const token = await mp.createCardToken({
-          cardNumber:          num,
-          cardholderName:      name,
-          cardExpirationMonth: mm.padStart(2, '0'),
-          cardExpirationYear:  aa,
-          securityCode:        cvv
+          cardNumber:           num,
+          cardholderName:       name,
+          cardExpirationMonth:  mm.padStart(2, '0'),
+          cardExpirationYear:   aa,
+          securityCode:         cvv,
+          identificationType:   'DNI',
+          identificationNumber: dni
         });
         document.getElementById('card-token').value     = token.id;
         document.getElementById('card-last-four').value = token.last_four_digits;

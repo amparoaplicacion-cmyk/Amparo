@@ -942,7 +942,7 @@ def registro_solicitante():
         else:
             metodo_pago_desc = None
 
-        db.execute(
+        sol_cur = db.execute(
             '''INSERT INTO solicitantes
                (usuario_id, zona_id, direccion,
                 familiar_nombre, familiar_edad,
@@ -959,6 +959,51 @@ def registro_solicitante():
              card_token if metodo_pago == 'tarjeta' else None,
              card_type if metodo_pago == 'tarjeta' else None)
         )
+        solicitante_id = sol_cur.lastrowid
+
+        # ── Crear Customer y Card en MP si se registró con tarjeta ──────────
+        if (metodo_pago == 'tarjeta' and card_token
+                and not card_token.startswith('SANDBOX_')):
+            try:
+                import mercadopago as _mp_sdk, requests as _req
+                _at = _cfg_db('mp_access_token', '').strip()
+                if _at:
+                    email_interno = f'sol{solicitante_id}@clientes.amparo.app'
+                    sr = _req.get(
+                        'https://api.mercadopago.com/v1/customers/search',
+                        params={'email': email_interno},
+                        headers={'Authorization': f'Bearer {_at}'},
+                        timeout=15
+                    )
+                    sr_results = sr.json().get('results', [])
+                    if sr_results:
+                        mp_cid = sr_results[0]['id']
+                    else:
+                        cr2 = _req.post(
+                            'https://api.mercadopago.com/v1/customers',
+                            json={'email': email_interno,
+                                  'first_name': nombre, 'last_name': apellido},
+                            headers={'Authorization': f'Bearer {_at}',
+                                     'Content-Type': 'application/json'},
+                            timeout=15
+                        )
+                        mp_cid = cr2.json().get('id')
+                    if mp_cid:
+                        cr = _req.post(
+                            f'https://api.mercadopago.com/v1/customers/{mp_cid}/cards',
+                            json={'token': card_token},
+                            headers={'Authorization': f'Bearer {_at}',
+                                     'Content-Type': 'application/json'},
+                            timeout=15
+                        )
+                        mp_card_id = cr.json().get('id')
+                        if mp_card_id:
+                            db.execute(
+                                'UPDATE solicitantes SET mp_customer_id=?, mp_card_id=? WHERE id=?',
+                                (mp_cid, mp_card_id, solicitante_id)
+                            )
+            except Exception as _e:
+                pass  # No bloquear el registro; el admin puede solicitarle que actualice la tarjeta
 
         # ── Notificar al admin ───────────────────────────────────────────────
         admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
