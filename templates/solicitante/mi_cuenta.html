@@ -142,12 +142,6 @@
                  oninput="mcFormatCard(this)"
                  style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;box-sizing:border-box;">
         </div>
-        <div style="margin-bottom:.75rem;">
-          <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Nombre en la tarjeta *</label>
-          <input type="text" id="mc-card-name" maxlength="60" placeholder="Como figura en la tarjeta"
-                 style="width:100%;padding:.6rem .85rem;border:1.5px solid #e5e9ed;border-radius:8px;font-size:.9rem;text-transform:uppercase;box-sizing:border-box;"
-                 oninput="this.value=this.value.toUpperCase()">
-        </div>
         <div style="display:flex;gap:.6rem;margin-bottom:.75rem;">
           <div style="flex:1;">
             <label style="display:block;font-size:.85rem;font-weight:600;margin-bottom:.35rem;">Mes *</label>
@@ -176,7 +170,7 @@
       <input type="hidden" id="mc-card-token"      name="card_token">
       <input type="hidden" id="mc-card-last-four"  name="card_last_four">
       <input type="hidden" id="mc-card-type"       name="card_type">
-      <input type="hidden" id="mc-card-name-hidden" name="card_holder_name">
+      <input type="hidden" id="mc-card-name-hidden" name="card_holder_name" value="{{ (datos.nombre ~ ' ' ~ datos.apellido)|upper }}">
       <input type="hidden" id="mc-card-dni-hidden"  name="card_dni">
 
       <div id="mc-pago-error" style="display:none;background:#fde8e8;color:#c0392b;border-radius:8px;padding:.65rem .85rem;font-size:.85rem;margin-bottom:.75rem;"></div>
@@ -221,14 +215,13 @@ async function mcGuardarMetodo() {
 
   } else if (metodoEl.value === 'tarjeta') {
     var num  = document.getElementById('mc-card-number').value.replace(/\s/g, '');
-    var name = document.getElementById('mc-card-name').value.trim();
+    var name = document.getElementById('mc-card-name-hidden').value.trim();
     var mm   = document.getElementById('mc-exp-month').value.trim();
     var aa   = document.getElementById('mc-exp-year').value.trim();
     var cvv  = document.getElementById('mc-cvv').value.trim();
     var dni  = document.getElementById('mc-card-dni').value.replace(/\D/g, '');
 
     if (num.length < 13) { mcError('Ingresá un número de tarjeta válido.'); return; }
-    if (!name)           { mcError('Ingresá el nombre como figura en la tarjeta.'); return; }
     if (!mm || !aa)      { mcError('Ingresá la fecha de vencimiento.'); return; }
     if (!cvv)            { mcError('Ingresá el código de seguridad.'); return; }
     if (!dni || dni.length < 7) { mcError('Ingresá el DNI del titular sin puntos.'); return; }
@@ -241,19 +234,12 @@ async function mcGuardarMetodo() {
 
     try {
       var mp = new MercadoPago(mpPublicKey);
-      // El SDK de MP exige al menos dos palabras en el nombre del titular.
-      // En sandbox (clave TEST-), valores de prueba como "APRO" son de una sola
-      // palabra y el SDK los rechaza; los duplicamos para satisfacer esa validación.
-      var tokenName = name;
-      if (mpPublicKey.startsWith('TEST-') && !tokenName.includes(' ')) {
-        tokenName = tokenName + ' ' + tokenName;
-      }
       var pmResult = await mp.getPaymentMethods({ bin: num.slice(0, 6) });
       var pmId = (pmResult.results && pmResult.results[0]) ? pmResult.results[0].id : '';
 
       var token = await mp.createCardToken({
         cardNumber:           num,
-        cardholderName:       tokenName,
+        cardholderName:       name,
         cardExpirationMonth:  mm.padStart(2, '0'),
         cardExpirationYear:   aa,
         securityCode:         cvv,
@@ -263,7 +249,6 @@ async function mcGuardarMetodo() {
       document.getElementById('mc-card-token').value       = token.id;
       document.getElementById('mc-card-last-four').value   = token.last_four_digits;
       document.getElementById('mc-card-type').value        = pmId || token.payment_method_id || '';
-      document.getElementById('mc-card-name-hidden').value = name;
       document.getElementById('mc-card-dni-hidden').value  = dni;
       document.getElementById('form-metodo-pago').submit();
     } catch (err) {

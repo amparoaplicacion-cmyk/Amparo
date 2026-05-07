@@ -149,12 +149,12 @@
       <div class="form-row">
         <div class="form-group">
           <label class="form-label">Nombre *</label>
-          <input type="text" name="nombre" class="form-input" required maxlength="80"
+          <input type="text" id="reg-nombre" name="nombre" class="form-input" required maxlength="80"
                  value="{{ request.form.get('nombre', '') }}">
         </div>
         <div class="form-group">
           <label class="form-label">Apellido *</label>
-          <input type="text" name="apellido" class="form-input" required maxlength="80"
+          <input type="text" id="reg-apellido" name="apellido" class="form-input" required maxlength="80"
                  value="{{ request.form.get('apellido', '') }}">
         </div>
       </div>
@@ -262,12 +262,6 @@
             <input type="text" id="card-number" class="form-input" maxlength="19"
                    placeholder="0000 0000 0000 0000" inputmode="numeric"
                    oninput="formatCardNumber(this)">
-          </div>
-          <div class="form-group" style="margin-bottom:.75rem;">
-            <label class="form-label">Nombre en la tarjeta *</label>
-            <input type="text" id="card-name" class="form-input" maxlength="60"
-                   placeholder="Como figura en la tarjeta" autocomplete="cc-name"
-                   style="text-transform:uppercase;" oninput="this.value=this.value.toUpperCase()">
           </div>
           <div style="display:flex;gap:.6rem;">
             <div class="form-group" style="flex:1;margin-bottom:.75rem;">
@@ -514,14 +508,13 @@ async function irPaso2() {
     }
   } else if (metodoEl.value === 'tarjeta') {
     const num  = document.getElementById('card-number').value.replace(/\s/g, '');
-    const name = document.getElementById('card-name').value.trim();
+    const nombre   = (document.getElementById('reg-nombre').value.trim() + ' ' + document.getElementById('reg-apellido').value.trim()).trim().toUpperCase();
     const mm   = document.getElementById('exp-month').value.trim();
     const aa   = document.getElementById('exp-year').value.trim();
     const cvv  = document.getElementById('card-cvv').value.trim();
     const dni  = document.getElementById('card-dni').value.replace(/\D/g, '');
 
     if (num.length < 13) { mostrarPagoError('Ingresá un número de tarjeta válido.'); return; }
-    if (!name)           { mostrarPagoError('Ingresá el nombre como figura en la tarjeta.'); return; }
     if (!mm || !aa)      { mostrarPagoError('Ingresá la fecha de vencimiento.'); return; }
     if (!cvv)            { mostrarPagoError('Ingresá el código de seguridad.'); return; }
     if (!dni || dni.length < 7) { mostrarPagoError('Ingresá el DNI del titular sin puntos.'); return; }
@@ -537,7 +530,6 @@ async function irPaso2() {
       if (mesNum < 1 || mesNum > 12)                  { mostrarPagoError('El mes de vencimiento no es válido (01-12).'); return; }
       if (anioNum < anioActual)                       { mostrarPagoError('El año de vencimiento debe ser futuro.'); return; }
       if (cvv.length < 3 || cvv.length > 4)           { mostrarPagoError('El CVV debe tener 3 o 4 dígitos.'); return; }
-      if (name.trim().split(/\s+/).length < 2)        { mostrarPagoError('Ingresá nombre y apellido como figura en la tarjeta.'); return; }
       const last4 = num.slice(-4);
       document.getElementById('card-token').value     = 'SANDBOX_' + last4;
       document.getElementById('card-last-four').value = last4;
@@ -558,7 +550,7 @@ async function irPaso2() {
         const mp = new MercadoPago(mpPublicKey);
         const token = await mp.createCardToken({
           cardNumber:           num,
-          cardholderName:       name,
+          cardholderName:       nombre,
           cardExpirationMonth:  mm.padStart(2, '0'),
           cardExpirationYear:   aa,
           securityCode:         cvv,
