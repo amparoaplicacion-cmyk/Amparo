@@ -1903,6 +1903,14 @@ def mi_cuenta_metodo_pago():
                     _log_mp(f'GET customer fn={gc.get("first_name")} ln={gc.get("last_name")} identification={gc.get("identification")}')
                 _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln} dni={card_dni}')
                 if mp_customer_id:
+                    # Inspeccionar el token para ver si tiene identificación embebida
+                    tk_info = _req.get(
+                        f'https://api.mercadopago.com/v1/card_tokens/{card_token}',
+                        headers={'Authorization': f'Bearer {access_token}'},
+                        timeout=10
+                    )
+                    tk_data = tk_info.json()
+                    _log_mp(f'TOKEN cardholder={tk_data.get("cardholder")} status={tk_info.status_code}')
                     # Llamada directa HTTP (más confiable que SDK para Customers cards)
                     cr = _req.post(
                         f'https://api.mercadopago.com/v1/customers/{mp_customer_id}/cards',
