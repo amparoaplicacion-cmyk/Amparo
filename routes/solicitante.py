@@ -2,7 +2,7 @@ import math
 import os
 from datetime import date, datetime
 
-from flask import (Blueprint, abort, flash, redirect, render_template,
+from flask import (Blueprint, abort, flash, make_response, redirect, render_template,
                    request, session, url_for)
 
 from database import get_db, ahora_argentina
@@ -1795,8 +1795,11 @@ def mi_cuenta():
 
     mp_public_key = _cfg_db('mp_public_key', '')
 
-    return render_template('solicitante/mi_cuenta.html',
-                           datos=datos, mp_public_key=mp_public_key, **_ctx())
+    resp = make_response(render_template('solicitante/mi_cuenta.html',
+                                         datos=datos, mp_public_key=mp_public_key, **_ctx()))
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate'
+    resp.headers['Pragma'] = 'no-cache'
+    return resp
 
 
 @solicitante_bp.route('/mi_cuenta/metodo_pago', methods=['POST'])
