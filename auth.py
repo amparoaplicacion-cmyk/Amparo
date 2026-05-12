@@ -863,12 +863,13 @@ def registro_solicitante():
         acepto_cobro = 1 if request.form.get('acepto_cobro_automatico') else 0
 
         # ── Método de pago ────────────────────────────────────────────────────
-        metodo_pago    = request.form.get('metodo_pago', '').strip()
-        email_mp       = request.form.get('email_mp', '').strip() or None
-        card_token     = request.form.get('card_token', '').strip() or None
-        card_last_four = request.form.get('card_last_four', '').strip() or None
-        card_type      = request.form.get('card_type', '').strip() or None
-        card_dni       = ''.join(filter(str.isdigit, request.form.get('card_dni', '')))
+        metodo_pago       = request.form.get('metodo_pago', '').strip()
+        email_mp          = request.form.get('email_mp', '').strip() or None
+        card_token        = request.form.get('card_token', '').strip() or None
+        card_last_four    = request.form.get('card_last_four', '').strip() or None
+        card_type         = request.form.get('card_type', '').strip() or None
+        card_dni          = ''.join(filter(str.isdigit, request.form.get('card_dni', '')))
+        card_holder_name  = request.form.get('card_holder_name', '').strip().upper()
 
         # ── Paso 2 ───────────────────────────────────────────────────────────
         zona_id         = request.form.get('zona_id', '').strip() or None
@@ -977,8 +978,13 @@ def registro_solicitante():
                         timeout=15
                     )
                     sr_results = sr.json().get('results', [])
+                    import unicodedata as _ud
+                    def _ascii(s): return _ud.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
+                    partes_ch = card_holder_name.split(None, 1) if card_holder_name else []
+                    ch_fn = _ascii(partes_ch[0]) if partes_ch else _ascii(nombre)
+                    ch_ln = _ascii(partes_ch[1]) if len(partes_ch) > 1 else _ascii(apellido)
                     _cust_body = {'email': email_interno,
-                                  'first_name': nombre, 'last_name': apellido}
+                                  'first_name': ch_fn, 'last_name': ch_ln}
                     if card_dni:
                         _cust_body['identification'] = {'type': 'DNI', 'number': card_dni}
                     if sr_results:

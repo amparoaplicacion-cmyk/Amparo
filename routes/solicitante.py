@@ -1853,9 +1853,12 @@ def mi_cuenta_metodo_pago():
                 ).fetchone()
                 email_sol = sol_user['email'] if sol_user else None
                 # Usar email interno para el customer de MP (evita conflicto con cuenta MP personal del usuario)
+                import unicodedata as _ud
+                def _ascii(s):
+                    return _ud.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
                 partes = card_holder_name.split(None, 1) if card_holder_name else []
-                fn = partes[0] if partes else (sol_user['nombre'] if sol_user else '')
-                ln = partes[1] if len(partes) > 1 else (sol_user['apellido'] if sol_user else '')
+                fn = _ascii(partes[0] if partes else (sol_user['nombre'] if sol_user else ''))
+                ln = _ascii(partes[1] if len(partes) > 1 else (sol_user['apellido'] if sol_user else ''))
                 # Email interno: nunca coincide con una cuenta MP existente
                 email_interno = f'sol{fid}@clientes.amparo.app'
                 # Buscar customer por email usando HTTP directo (el SDK no filtra bien)

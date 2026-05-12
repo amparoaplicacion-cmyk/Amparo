@@ -263,6 +263,12 @@
                    placeholder="0000 0000 0000 0000" inputmode="numeric"
                    oninput="formatCardNumber(this)">
           </div>
+          <div class="form-group" style="margin-bottom:.75rem;">
+            <label class="form-label">Nombre del titular *</label>
+            <input type="text" id="card-holder-name" name="card_holder_name" class="form-input" maxlength="60"
+                   placeholder="Tal como figura en la tarjeta"
+                   style="text-transform:uppercase;">
+          </div>
           <div style="display:flex;gap:.6rem;">
             <div class="form-group" style="flex:1;margin-bottom:.75rem;">
               <label class="form-label">Venc. mes *</label>
@@ -507,14 +513,16 @@ async function irPaso2() {
       return;
     }
   } else if (metodoEl.value === 'tarjeta') {
-    const num  = document.getElementById('card-number').value.replace(/\s/g, '');
-    const nombre   = (document.getElementById('reg-nombre').value.trim() + ' ' + document.getElementById('reg-apellido').value.trim()).trim().toUpperCase();
+    const num    = document.getElementById('card-number').value.replace(/\s/g, '');
+    const nombre = document.getElementById('card-holder-name').value.trim()
+                     .toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
     const mm   = document.getElementById('exp-month').value.trim();
     const aa   = document.getElementById('exp-year').value.trim();
     const cvv  = document.getElementById('card-cvv').value.trim();
     const dni  = document.getElementById('card-dni').value.replace(/\D/g, '');
 
     if (num.length < 13) { mostrarPagoError('Ingresá un número de tarjeta válido.'); return; }
+    if (!nombre)         { mostrarPagoError('Ingresá el nombre del titular tal como figura en la tarjeta.'); return; }
     if (!mm || !aa)      { mostrarPagoError('Ingresá la fecha de vencimiento.'); return; }
     if (!cvv)            { mostrarPagoError('Ingresá el código de seguridad.'); return; }
     if (!dni || dni.length < 7) { mostrarPagoError('Ingresá el DNI del titular sin puntos.'); return; }
