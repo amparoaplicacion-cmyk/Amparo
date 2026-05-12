@@ -221,7 +221,8 @@ async function mcGuardarMetodo() {
   } else if (metodoEl.value === 'tarjeta') {
     var num  = document.getElementById('mc-card-number').value.replace(/\s/g, '');
     var name = document.getElementById('mc-card-name').value.trim()
-                 .toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+                 .toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+                 .replace(/[^A-Z ]/g, ' ').replace(/ +/g, ' ').trim();
     var mm   = document.getElementById('mc-exp-month').value.trim();
     var aa   = document.getElementById('mc-exp-year').value.trim();
     var cvv  = document.getElementById('mc-cvv').value.trim();

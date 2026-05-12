@@ -1853,12 +1853,22 @@ def mi_cuenta_metodo_pago():
                 ).fetchone()
                 email_sol = sol_user['email'] if sol_user else None
                 # Usar email interno para el customer de MP (evita conflicto con cuenta MP personal del usuario)
-                import unicodedata as _ud
-                def _ascii(s):
-                    return _ud.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
-                partes = card_holder_name.split(None, 1) if card_holder_name else []
-                fn = _ascii(partes[0] if partes else (sol_user['nombre'] if sol_user else ''))
-                ln = _ascii(partes[1] if len(partes) > 1 else (sol_user['apellido'] if sol_user else ''))
+                import unicodedata as _ud, re as _re
+                def _clean_mp_name(s):
+                    s = _ud.normalize('NFKD', s.upper()).encode('ascii', 'ignore').decode('ascii')
+                    return _re.sub(r' +', ' ', _re.sub(r'[^A-Z ]', ' ', s)).strip()
+                clean_name = _clean_mp_name(card_holder_name) if card_holder_name else ''
+                if not clean_name:
+                    clean_name = _clean_mp_name(
+                        (sol_user['nombre'] if sol_user else '') + ' ' +
+                        (sol_user['apellido'] if sol_user else ''))
+                palabras = clean_name.split()
+                if len(palabras) >= 2:
+                    fn = ' '.join(palabras[:-1])
+                    ln = palabras[-1]
+                else:
+                    fn = clean_name
+                    ln = clean_name
                 # Email interno: nunca coincide con una cuenta MP existente
                 email_interno = f'sol{fid}@clientes.amparo.app'
                 # Buscar customer por email usando HTTP directo (el SDK no filtra bien)

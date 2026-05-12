@@ -978,11 +978,16 @@ def registro_solicitante():
                         timeout=15
                     )
                     sr_results = sr.json().get('results', [])
-                    import unicodedata as _ud
-                    def _ascii(s): return _ud.normalize('NFKD', s).encode('ascii', 'ignore').decode('ascii')
-                    partes_ch = card_holder_name.split(None, 1) if card_holder_name else []
-                    ch_fn = _ascii(partes_ch[0]) if partes_ch else _ascii(nombre)
-                    ch_ln = _ascii(partes_ch[1]) if len(partes_ch) > 1 else _ascii(apellido)
+                    import unicodedata as _ud, re as _re
+                    def _clean_mp_name(s):
+                        s = _ud.normalize('NFKD', s.upper()).encode('ascii', 'ignore').decode('ascii')
+                        return _re.sub(r' +', ' ', _re.sub(r'[^A-Z ]', ' ', s)).strip()
+                    clean_ch = _clean_mp_name(card_holder_name) if card_holder_name else ''
+                    if not clean_ch:
+                        clean_ch = _clean_mp_name(nombre + ' ' + apellido)
+                    pal = clean_ch.split()
+                    ch_fn = ' '.join(pal[:-1]) if len(pal) >= 2 else clean_ch
+                    ch_ln = pal[-1] if len(pal) >= 2 else clean_ch
                     _cust_body = {'email': email_interno,
                                   'first_name': ch_fn, 'last_name': ch_ln}
                     if card_dni:

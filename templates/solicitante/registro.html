@@ -515,7 +515,8 @@ async function irPaso2() {
   } else if (metodoEl.value === 'tarjeta') {
     const num    = document.getElementById('card-number').value.replace(/\s/g, '');
     const nombre = document.getElementById('card-holder-name').value.trim()
-                     .toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+                     .toUpperCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+                     .replace(/[^A-Z ]/g, ' ').replace(/ +/g, ' ').trim();
     const mm   = document.getElementById('exp-month').value.trim();
     const aa   = document.getElementById('exp-year').value.trim();
     const cvv  = document.getElementById('card-cvv').value.trim();
