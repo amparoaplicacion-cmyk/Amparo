@@ -1864,8 +1864,8 @@ def mi_cuenta_metodo_pago():
                         (sol_user['apellido'] if sol_user else ''))
                 palabras = clean_name.split()
                 if len(palabras) >= 2:
-                    fn = ' '.join(palabras[:-1])
-                    ln = palabras[-1]
+                    fn = palabras[0]
+                    ln = ' '.join(palabras[1:])
                 else:
                     fn = clean_name
                     ln = clean_name
@@ -1913,7 +1913,8 @@ def mi_cuenta_metodo_pago():
                         timeout=15
                     )
                     gc = get_r.json()
-                    _log_mp(f'GET customer fn={gc.get("first_name")} ln={gc.get("last_name")} identification={gc.get("identification")}')
+                    import json as _json
+                    _log_mp(f'GET_CUSTOMER_RAW customer_id={mp_customer_id}\n{_json.dumps(gc, ensure_ascii=False, indent=2)}')
                 _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln} dni={card_dni}')
                 if mp_customer_id:
                     # Inspeccionar el token para ver si tiene identificación embebida
@@ -1923,18 +1924,20 @@ def mi_cuenta_metodo_pago():
                         timeout=10
                     )
                     tk_data = tk_info.json()
-                    _log_mp(f'TOKEN cardholder={tk_data.get("cardholder")} status={tk_info.status_code}')
+                    _log_mp(f'GET_TOKEN_RAW status={tk_info.status_code}\n{_json.dumps(tk_data, ensure_ascii=False, indent=2)}')
                     # Llamada directa HTTP (más confiable que SDK para Customers cards)
+                    post_body = {'token': card_token}
+                    _log_mp(f'POST_CARDS_REQUEST customer={mp_customer_id} body={_json.dumps(post_body)}')
                     cr = _req.post(
                         f'https://api.mercadopago.com/v1/customers/{mp_customer_id}/cards',
-                        json={'token': card_token},
+                        json=post_body,
                         headers={'Authorization': f'Bearer {access_token}',
                                  'Content-Type': 'application/json'},
                         timeout=15
                     )
                     cr_data = cr.json()
                     mp_card_id = cr_data.get('id')
-                    _log_mp(f'HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id} resp={cr_data}')
+                    _log_mp(f'POST_CARDS_RESPONSE HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id}\n{_json.dumps(cr_data, ensure_ascii=False, indent=2)}')
             except Exception as e:
                 _log_mp(f'EXCEPCION: {e}')
 

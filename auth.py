@@ -986,8 +986,8 @@ def registro_solicitante():
                     if not clean_ch:
                         clean_ch = _clean_mp_name(nombre + ' ' + apellido)
                     pal = clean_ch.split()
-                    ch_fn = ' '.join(pal[:-1]) if len(pal) >= 2 else clean_ch
-                    ch_ln = pal[-1] if len(pal) >= 2 else clean_ch
+                    ch_fn = pal[0] if len(pal) >= 2 else clean_ch
+                    ch_ln = ' '.join(pal[1:]) if len(pal) >= 2 else clean_ch
                     _cust_body = {'email': email_interno,
                                   'first_name': ch_fn, 'last_name': ch_ln}
                     if card_dni:
