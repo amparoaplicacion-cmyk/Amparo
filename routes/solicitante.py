@@ -1824,8 +1824,13 @@ def mi_cuenta():
         (fid,)
     ).fetchone()
 
+    import database as _db_mod
+    print(f'[MI_CUENTA_GET] DB path: {_db_mod.DATABASE}')
+    print(f'[MI_CUENTA_GET] env MP_PUBLIC_KEY: {os.environ.get("MP_PUBLIC_KEY", "NOT SET")}')
+    _raw = get_db().execute("SELECT valor FROM configuracion WHERE clave='mp_public_key'").fetchone()
+    print(f'[MI_CUENTA_GET] DB raw value: {_raw[0] if _raw else None}')
     mp_public_key = _cfg_db('mp_public_key', '')
-    print(f'[MI_CUENTA_GET] Sirviendo public_key: {mp_public_key}')
+    print(f'[MI_CUENTA_GET] _cfg_db result: {mp_public_key}')
 
     resp = make_response(render_template('solicitante/mi_cuenta.html',
                                          datos=datos, mp_public_key=mp_public_key, **_ctx()))
