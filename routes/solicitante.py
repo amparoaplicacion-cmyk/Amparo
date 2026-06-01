@@ -1605,42 +1605,11 @@ def contratacion_confirmar_fin(sid):
     monto, pago_id = _crear_pago_por_servicio(db, s, fid)
     db.commit()
 
-    # Redirigir a Checkout Pro para cobro inmediato
-    pago = db.execute("SELECT * FROM pagos WHERE id=?", (pago_id,)).fetchone()
-    access_token = _cfg_db('mp_access_token', '').strip()
-    if access_token and pago:
-        try:
-            import mercadopago
-            sdk = mercadopago.SDK(access_token)
-            monto_total = float(round((pago['monto_bruto'] or 0) + (pago['comision_solicitante'] or 0), 2))
-            pr_row2 = db.execute(
-                "SELECT u.nombre || ' ' || u.apellido as nombre FROM prestadores pr JOIN usuarios u ON u.id=pr.usuario_id WHERE pr.id=?",
-                (s['prestador_id'],)
-            ).fetchone()
-            pr_nombre = pr_row2['nombre'] if pr_row2 else 'prestador'
-            base_url = request.host_url.rstrip('/')
-            preference_data = {
-                "items": [{"title": f"Servicio AMPARO - {pr_nombre}", "quantity": 1, "unit_price": monto_total, "currency_id": "ARS"}],
-                "back_urls": {
-                    "success": f"{base_url}/solicitante/pago/mp/ok?pago_id={pago_id}&sid={sid}",
-                    "failure": f"{base_url}/solicitante/pago/mp/fallo?pago_id={pago_id}&sid={sid}",
-                    "pending": f"{base_url}/solicitante/pago/mp/pendiente?pago_id={pago_id}&sid={sid}",
-                },
-                "auto_return": "approved",
-                "notification_url": f"{base_url}/solicitante/pago/mp/webhook",
-                "external_reference": str(pago_id),
-            }
-            resp = sdk.preference().create(preference_data)
-            pref = resp.get("response", {})
-            modo = _cfg_db('mp_modo', 'sandbox')
-            init_point = pref.get("init_point") if modo == 'produccion' else pref.get("sandbox_init_point")
-            if init_point:
-                return redirect(init_point)
-        except Exception as e:
-            print(f'[CONFIRMAR_FIN] Error Checkout Pro: {e}')
+    # Cobro automático con tarjeta registrada
+    _cobrar_tarjeta_automatico(db, pago_id, s, fid)
 
-    flash('✅ Servicio confirmado. Completá el pago para finalizar.', 'info')
-    return redirect(url_for('solicitante.contratacion_pagar', sid=sid))
+    flash('✅ Servicio confirmado. El cobro se procesó automáticamente.', 'success')
+    return redirect(url_for('solicitante.contrataciones'))
 
 
 @solicitante_bp.route('/contrataciones/<int:sid>/reportar-conflicto', methods=['POST'])
