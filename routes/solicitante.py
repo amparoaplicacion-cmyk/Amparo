@@ -1824,13 +1824,7 @@ def mi_cuenta():
         (fid,)
     ).fetchone()
 
-    import database as _db_mod
-    print(f'[MI_CUENTA_GET] DB path: {_db_mod.DATABASE}')
-    print(f'[MI_CUENTA_GET] env MP_PUBLIC_KEY: {os.environ.get("MP_PUBLIC_KEY", "NOT SET")}')
-    _raw = get_db().execute("SELECT valor FROM configuracion WHERE clave='mp_public_key'").fetchone()
-    print(f'[MI_CUENTA_GET] DB raw value: {_raw[0] if _raw else None}')
     mp_public_key = _cfg_db('mp_public_key', '')
-    print(f'[MI_CUENTA_GET] _cfg_db result: {mp_public_key}')
 
     resp = make_response(render_template('solicitante/mi_cuenta.html',
                                          datos=datos, mp_public_key=mp_public_key, **_ctx()))
@@ -1930,13 +1924,6 @@ def mi_cuenta_metodo_pago():
                         mp_cid = cr2.json().get('id')
 
                 if mp_cid:
-                    print(f'[MI_CUENTA] Usando token: {card_token}')
-                    tk_info = _req.get(
-                        f'https://api.mercadopago.com/v1/card_tokens/{card_token}',
-                        headers={'Authorization': f'Bearer {_at}'},
-                        timeout=15
-                    )
-                    print(f'[MI_CUENTA] Token info: {tk_info.text[:300]}')
                     cr = _req.post(
                         f'https://api.mercadopago.com/v1/customers/{mp_cid}/cards',
                         json={'token': card_token},

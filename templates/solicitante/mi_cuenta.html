@@ -261,8 +261,7 @@ async function mcGuardarMetodo() {
       document.getElementById('form-metodo-pago').submit();
     } catch (err) {
       btn.disabled = false; btn.textContent = 'Guardar método de pago';
-      var errMsg = err && err.message ? err.message : JSON.stringify(err);
-      mcError('Error SDK MP: ' + errMsg);
+      mcError('Datos de tarjeta incorrectos. Verificalos e intentá de nuevo.');
     }
   }
 }
