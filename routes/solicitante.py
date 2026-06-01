@@ -1605,11 +1605,42 @@ def contratacion_confirmar_fin(sid):
     monto, pago_id = _crear_pago_por_servicio(db, s, fid)
     db.commit()
 
-    # Cobro automático a la tarjeta registrada del solicitante
-    _cobrar_tarjeta_automatico(db, pago_id, s, fid)
+    # Redirigir a Checkout Pro para cobro inmediato
+    pago = db.execute("SELECT * FROM pagos WHERE id=?", (pago_id,)).fetchone()
+    access_token = _cfg_db('mp_access_token', '').strip()
+    if access_token and pago:
+        try:
+            import mercadopago
+            sdk = mercadopago.SDK(access_token)
+            monto_total = float(round((pago['monto_bruto'] or 0) + (pago['comision_solicitante'] or 0), 2))
+            pr_row2 = db.execute(
+                "SELECT u.nombre || ' ' || u.apellido as nombre FROM prestadores pr JOIN usuarios u ON u.id=pr.usuario_id WHERE pr.id=?",
+                (s['prestador_id'],)
+            ).fetchone()
+            pr_nombre = pr_row2['nombre'] if pr_row2 else 'prestador'
+            base_url = request.host_url.rstrip('/')
+            preference_data = {
+                "items": [{"title": f"Servicio AMPARO - {pr_nombre}", "quantity": 1, "unit_price": monto_total, "currency_id": "ARS"}],
+                "back_urls": {
+                    "success": f"{base_url}/solicitante/pago/mp/ok?pago_id={pago_id}&sid={sid}",
+                    "failure": f"{base_url}/solicitante/pago/mp/fallo?pago_id={pago_id}&sid={sid}",
+                    "pending": f"{base_url}/solicitante/pago/mp/pendiente?pago_id={pago_id}&sid={sid}",
+                },
+                "auto_return": "approved",
+                "notification_url": f"{base_url}/solicitante/pago/mp/webhook",
+                "external_reference": str(pago_id),
+            }
+            resp = sdk.preference().create(preference_data)
+            pref = resp.get("response", {})
+            modo = _cfg_db('mp_modo', 'sandbox')
+            init_point = pref.get("init_point") if modo == 'produccion' else pref.get("sandbox_init_point")
+            if init_point:
+                return redirect(init_point)
+        except Exception as e:
+            print(f'[CONFIRMAR_FIN] Error Checkout Pro: {e}')
 
-    flash('✅ Servicio confirmado. El cobro fue procesado automáticamente.', 'success')
-    return redirect(url_for('solicitante.contrataciones', tab='historial'))
+    flash('✅ Servicio confirmado. Completá el pago para finalizar.', 'info')
+    return redirect(url_for('solicitante.contratacion_pagar', sid=sid))
 
 
 @solicitante_bp.route('/contrataciones/<int:sid>/reportar-conflicto', methods=['POST'])
@@ -1839,115 +1870,80 @@ def mi_cuenta_metodo_pago():
         else:
             desc = 'Tarjeta registrada'
 
-        # Crear cliente y card permanente en MP (Customers API)
-        mp_customer_id = None
-        mp_card_id = None
-        access_token = _cfg_db('mp_access_token', '').strip()
-        if access_token:
-            try:
-                import mercadopago, requests as _req
-                sdk = mercadopago.SDK(access_token)
-                sol_user = db.execute(
-                    'SELECT u.email, u.nombre, u.apellido FROM usuarios u JOIN solicitantes s ON s.usuario_id=u.id WHERE s.id=?',
-                    (fid,)
-                ).fetchone()
-                email_sol = sol_user['email'] if sol_user else None
-                # Usar email interno para el customer de MP (evita conflicto con cuenta MP personal del usuario)
-                import unicodedata as _ud, re as _re
-                def _clean_mp_name(s):
-                    s = _ud.normalize('NFKD', s.upper()).encode('ascii', 'ignore').decode('ascii')
-                    return _re.sub(r' +', ' ', _re.sub(r'[^A-Z ]', ' ', s)).strip()
-                clean_name = _clean_mp_name(card_holder_name) if card_holder_name else ''
-                if not clean_name:
-                    clean_name = _clean_mp_name(
-                        (sol_user['nombre'] if sol_user else '') + ' ' +
-                        (sol_user['apellido'] if sol_user else ''))
-                palabras = clean_name.split()
-                if len(palabras) >= 2:
-                    fn = palabras[0]
-                    ln = ' '.join(palabras[1:])
-                else:
-                    fn = clean_name
-                    ln = clean_name
-                # Email interno: nunca coincide con una cuenta MP existente
-                email_interno = f'sol{fid}@clientes.amparo.app'
-                # Buscar customer por email usando HTTP directo (el SDK no filtra bien)
-                sr = _req.get(
-                    'https://api.mercadopago.com/v1/customers/search',
-                    params={'email': email_interno},
-                    headers={'Authorization': f'Bearer {access_token}'},
-                    timeout=15
-                )
-                sr_data = sr.json()
-                sr_results = sr_data.get('results', [])
-                customer_body = {'email': email_interno, 'first_name': fn, 'last_name': ln}
-                if card_dni:
-                    customer_body['identification'] = {'type': 'DNI', 'number': card_dni}
-                if sr_results:
-                    mp_customer_id = sr_results[0]['id']
-                    # MP no permite actualizar el email — se excluye del PUT
-                    put_body = {k: v for k, v in customer_body.items() if k != 'email'}
-                    put_r = _req.put(
-                        f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
-                        json=put_body,
-                        headers={'Authorization': f'Bearer {access_token}',
-                                 'Content-Type': 'application/json'},
-                        timeout=15
-                    )
-                    _log_mp(f'PUT customer={mp_customer_id} status={put_r.status_code} resp={put_r.json()}')
-                else:
-                    cr2 = _req.post(
-                        'https://api.mercadopago.com/v1/customers',
-                        json=customer_body,
-                        headers={'Authorization': f'Bearer {access_token}',
-                                 'Content-Type': 'application/json'},
-                        timeout=15
-                    )
-                    mp_customer_id = cr2.json().get('id')
-                    _log_mp(f'POST customer={mp_customer_id} status={cr2.status_code}')
-                # Verificar estado del customer antes de agregar tarjeta
-                if mp_customer_id:
-                    get_r = _req.get(
-                        f'https://api.mercadopago.com/v1/customers/{mp_customer_id}',
-                        headers={'Authorization': f'Bearer {access_token}'},
-                        timeout=15
-                    )
-                    gc = get_r.json()
-                    import json as _json
-                    _log_mp(f'GET_CUSTOMER_RAW customer_id={mp_customer_id}\n{_json.dumps(gc, ensure_ascii=False, indent=2)}')
-                _log_mp(f'customer_id={mp_customer_id} email_interno={email_interno} fn={fn} ln={ln} dni={card_dni}')
-                if mp_customer_id:
-                    # Inspeccionar el token para ver si tiene identificación embebida
-                    tk_info = _req.get(
-                        f'https://api.mercadopago.com/v1/card_tokens/{card_token}',
-                        headers={'Authorization': f'Bearer {access_token}'},
-                        timeout=10
-                    )
-                    tk_data = tk_info.json()
-                    _log_mp(f'GET_TOKEN_RAW status={tk_info.status_code}\n{_json.dumps(tk_data, ensure_ascii=False, indent=2)}')
-                    # Llamada directa HTTP (más confiable que SDK para Customers cards)
-                    post_body = {'token': card_token}
-                    _log_mp(f'POST_CARDS_REQUEST customer={mp_customer_id} body={_json.dumps(post_body)}')
-                    cr = _req.post(
-                        f'https://api.mercadopago.com/v1/customers/{mp_customer_id}/cards',
-                        json=post_body,
-                        headers={'Authorization': f'Bearer {access_token}',
-                                 'Content-Type': 'application/json'},
-                        timeout=15
-                    )
-                    cr_data = cr.json()
-                    mp_card_id = cr_data.get('id')
-                    _log_mp(f'POST_CARDS_RESPONSE HTTP={cr.status_code} customer={mp_customer_id} card={mp_card_id}\n{_json.dumps(cr_data, ensure_ascii=False, indent=2)}')
-            except Exception as e:
-                _log_mp(f'EXCEPCION: {e}')
-
+        # Guardar token directo primero
         db.execute(
             '''UPDATE solicitantes
                SET metodo_pago=?, metodo_pago_descripcion=?, mp_card_token=?,
-                   mp_card_payment_method=?, mp_customer_id=?, mp_card_id=?
+                   mp_card_payment_method=?, mp_customer_id=NULL, mp_card_id=NULL
                WHERE id=?''',
-            (metodo_pago, desc, card_token, card_type, mp_customer_id, mp_card_id, fid)
+            (metodo_pago, desc, card_token, card_type, fid)
         )
+        db.commit()
+
+        # Intentar asociar la tarjeta al customer de MP (Customers & Cards API)
+        try:
+            import requests as _req, unicodedata as _ud, re as _re
+            _at = _cfg_db('mp_access_token', '').strip()
+            if _at and card_token:
+                sol_row = db.execute(
+                    '''SELECT s.mp_customer_id, u.nombre, u.apellido
+                       FROM solicitantes s JOIN usuarios u ON u.id=s.usuario_id
+                       WHERE s.id=?''', (fid,)
+                ).fetchone()
+                email_interno = f'sol{fid}@clientes.amparo.app'
+
+                # Buscar o crear customer
+                mp_cid = sol_row['mp_customer_id'] if sol_row else None
+                if not mp_cid:
+                    sr = _req.get(
+                        'https://api.mercadopago.com/v1/customers/search',
+                        params={'email': email_interno},
+                        headers={'Authorization': f'Bearer {_at}'},
+                        timeout=15
+                    )
+                    sr_results = sr.json().get('results', [])
+                    if sr_results:
+                        mp_cid = sr_results[0]['id']
+                    else:
+                        def _clean(s):
+                            s = _ud.normalize('NFKD', s.upper()).encode('ascii', 'ignore').decode('ascii')
+                            return _re.sub(r' +', ' ', _re.sub(r'[^A-Z ]', ' ', s)).strip()
+                        nombre_completo = _clean((sol_row['nombre'] or '') + ' ' + (sol_row['apellido'] or ''))
+                        pal = nombre_completo.split()
+                        fn = pal[0] if len(pal) >= 2 else nombre_completo
+                        ln = ' '.join(pal[1:]) if len(pal) >= 2 else nombre_completo
+                        cust_body = {'email': email_interno, 'first_name': fn, 'last_name': ln}
+                        if card_dni:
+                            cust_body['identification'] = {'type': 'DNI', 'number': card_dni}
+                        cr2 = _req.post(
+                            'https://api.mercadopago.com/v1/customers',
+                            json=cust_body,
+                            headers={'Authorization': f'Bearer {_at}', 'Content-Type': 'application/json'},
+                            timeout=15
+                        )
+                        mp_cid = cr2.json().get('id')
+
+                if mp_cid:
+                    cr = _req.post(
+                        f'https://api.mercadopago.com/v1/customers/{mp_cid}/cards',
+                        json={'token': card_token},
+                        headers={'Authorization': f'Bearer {_at}', 'Content-Type': 'application/json'},
+                        timeout=15
+                    )
+                    print(f'[MI_CUENTA] POST /customers/{mp_cid}/cards → {cr.status_code} {cr.text[:200]}')
+                    mp_card_id = cr.json().get('id')
+                    if mp_card_id:
+                        db.execute(
+                            'UPDATE solicitantes SET mp_customer_id=?, mp_card_id=? WHERE id=?',
+                            (mp_cid, mp_card_id, fid)
+                        )
+                        db.commit()
+                        print(f'[MI_CUENTA] Tarjeta guardada en Customers API: customer={mp_cid} card={mp_card_id}')
+        except Exception as _e:
+            print(f'[MI_CUENTA] Error al asociar tarjeta en Customers API: {_e}')
+
+        flash('Método de pago actualizado correctamente.', 'success')
+        return redirect(url_for('solicitante.mi_cuenta'))
 
     db.commit()
     flash('Método de pago actualizado correctamente.', 'success')
