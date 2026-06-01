@@ -1924,6 +1924,13 @@ def mi_cuenta_metodo_pago():
                         mp_cid = cr2.json().get('id')
 
                 if mp_cid:
+                    print(f'[MI_CUENTA] Usando token: {card_token}')
+                    tk_info = _req.get(
+                        f'https://api.mercadopago.com/v1/card_tokens/{card_token}',
+                        headers={'Authorization': f'Bearer {_at}'},
+                        timeout=15
+                    )
+                    print(f'[MI_CUENTA] Token info: {tk_info.text[:300]}')
                     cr = _req.post(
                         f'https://api.mercadopago.com/v1/customers/{mp_cid}/cards',
                         json={'token': card_token},
