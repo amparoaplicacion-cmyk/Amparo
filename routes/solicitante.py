@@ -1825,6 +1825,7 @@ def mi_cuenta():
     ).fetchone()
 
     mp_public_key = _cfg_db('mp_public_key', '')
+    print(f'[MI_CUENTA_GET] Sirviendo public_key: {mp_public_key}')
 
     resp = make_response(render_template('solicitante/mi_cuenta.html',
                                          datos=datos, mp_public_key=mp_public_key, **_ctx()))
