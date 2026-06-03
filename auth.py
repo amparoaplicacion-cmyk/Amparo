@@ -479,7 +479,7 @@ def cambiar_password():
             '''UPDATE usuarios
                SET password_hash = ?, fecha_password = ?, fecha_vencimiento = ?, estado = 'ACTIVA'
                WHERE id = ?''',
-            (generate_password_hash(nueva), fecha_hoy, fecha_venc, session['usuario_id'])
+            (generate_password_hash(nueva, method='pbkdf2:sha256'), fecha_hoy, fecha_venc, session['usuario_id'])
         )
         db.commit()
 
@@ -714,7 +714,7 @@ def registro_prestador():
         # ── Crear usuario ────────────────────────────────────────────────────
         hoy       = date.today().isoformat()
         venc      = (date.today() + timedelta(days=VIGENCIA_PASSWORD_DIAS)).isoformat()
-        pwd_hash  = generate_password_hash(password)
+        pwd_hash  = generate_password_hash(password, method='pbkdf2:sha256')
 
         cur = db.execute(
             '''INSERT INTO usuarios
@@ -918,7 +918,7 @@ def registro_solicitante():
         # ── Crear usuario ────────────────────────────────────────────────────
         hoy      = date.today().isoformat()
         venc     = (date.today() + timedelta(days=VIGENCIA_PASSWORD_DIAS)).isoformat()
-        pwd_hash = generate_password_hash(password)
+        pwd_hash = generate_password_hash(password, method='pbkdf2:sha256')
         ahora    = datetime.now().isoformat()
 
         cur = db.execute(

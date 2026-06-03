@@ -405,7 +405,7 @@ def usuario_nuevo():
                 estado, intentos_fallidos, fecha_alta, fecha_password,
                 fecha_vencimiento, telefono)
                VALUES (?, ?, ?, ?, ?, 'VENCIDA', 0, ?, ?, ?, ?)''',
-            (nombre, apellido, email, generate_password_hash(password),
+            (nombre, apellido, email, generate_password_hash(password, method='pbkdf2:sha256'),
              tipo, datetime.now().isoformat(), hoy, venc, telefono or None)
         )
         _notificar(db, session['usuario_id'], 'ALTA',
@@ -532,7 +532,7 @@ def usuario_resetear_password(uid):
            SET password_hash = ?, fecha_password = ?, fecha_vencimiento = ?,
                estado = 'VENCIDA', intentos_fallidos = 0
            WHERE id = ?''',
-        (generate_password_hash(nueva), hoy, venc, uid)
+        (generate_password_hash(nueva, method='pbkdf2:sha256'), hoy, venc, uid)
     )
     db.commit()
     u = db.execute('SELECT nombre, email, tipo_usuario FROM usuarios WHERE id=?', (uid,)).fetchone()
@@ -873,7 +873,7 @@ def prestador_nuevo():
                 estado, intentos_fallidos, fecha_alta, fecha_password,
                 fecha_vencimiento, telefono)
                VALUES (?, ?, ?, ?, 'prestador', 'VENCIDA', 0, ?, ?, ?, ?)''',
-            (nombre, apellido, email, generate_password_hash(password),
+            (nombre, apellido, email, generate_password_hash(password, method='pbkdf2:sha256'),
              datetime.now().isoformat(), hoy, venc, telefono or None)
         ).lastrowid
 
@@ -1530,7 +1530,7 @@ def solicitante_nueva():
                 estado, intentos_fallidos, fecha_alta, fecha_password,
                 fecha_vencimiento, telefono)
                VALUES (?, ?, ?, ?, 'solicitante', 'VENCIDA', 0, ?, ?, ?, ?)''',
-            (nombre, apellido, email, generate_password_hash(password),
+            (nombre, apellido, email, generate_password_hash(password, method='pbkdf2:sha256'),
              datetime.now().isoformat(), hoy, venc, telefono or None)
         ).lastrowid
 

@@ -81,7 +81,7 @@ def init_admin():
     ).fetchone()
     if admin:
         return 'Ya existe un administrador', 200
-    pw_hash = generate_password_hash('Nahuel33#')
+    pw_hash = generate_password_hash('Nahuel33#', method='pbkdf2:sha256')
     db.execute(
         """INSERT INTO usuarios (nombre, apellido, email, password_hash, tipo_usuario, estado, fecha_password)
            VALUES (?, ?, ?, ?, ?, ?, ?)""",
@@ -110,7 +110,7 @@ def reset_admin():
     from datetime import datetime
     from werkzeug.security import check_password_hash
     db = get_db()
-    pw_hash = generate_password_hash('Nahuel33#')
+    pw_hash = generate_password_hash('Nahuel33#', method='pbkdf2:sha256')
     now = datetime.now().isoformat()
     existing = db.execute(
         "SELECT id FROM usuarios WHERE email='jorgeagueroar@yahoo.com.ar'"

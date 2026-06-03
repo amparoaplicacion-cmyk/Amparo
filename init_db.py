@@ -610,7 +610,7 @@ def init_db():
                    (nombre, apellido, email, password_hash, tipo_usuario,
                     fecha_password, fecha_vencimiento)
                    VALUES (?, ?, ?, ?, ?, ?, ?)''',
-                (nombre, apellido, email, generate_password_hash(password),
+                (nombre, apellido, email, generate_password_hash(password, method='pbkdf2:sha256'),
                  tipo, fecha_hoy, fecha_venc)
             ).lastrowid
 
