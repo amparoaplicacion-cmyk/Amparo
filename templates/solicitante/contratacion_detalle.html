@@ -101,20 +101,13 @@
 </div>
 {% endif %}
 
-<!-- Botón pagar si hay pago PENDIENTE -->
-{% if pago and pago.estado == 'PENDIENTE' %}
+<!-- Botón pagar penalidad si fue cancelado con pago PENDIENTE -->
+{% if pago and pago.estado == 'PENDIENTE' and s.estado == 'CANCELADO' %}
 <div style="margin-bottom:1rem;">
-  {% if s.estado == 'FINALIZADO' %}
-  <a href="{{ url_for('solicitante.contratacion_pagar', sid=s.id) }}"
-     style="display:block;background:#27ae60;color:#fff;padding:.9rem;text-align:center;border-radius:25px;font-size:1rem;font-weight:700;text-decoration:none;">
-    💳 Pagar ahora → $ {{ '%.2f'|format(pago.monto_bruto) }}
-  </a>
-  {% elif s.estado == 'CANCELADO' %}
   <a href="{{ url_for('solicitante.contratacion_pagar', sid=s.id) }}"
      style="display:block;background:#e67e22;color:#fff;padding:.9rem;text-align:center;border-radius:25px;font-size:1rem;font-weight:700;text-decoration:none;">
     ⚠️ Pagar penalidad → $ {{ '%.2f'|format(pago.monto_bruto) }}
   </a>
-  {% endif %}
 </div>
 {% endif %}
 

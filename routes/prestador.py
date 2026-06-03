@@ -750,67 +750,35 @@ def servicio_confirmar_fin(sid):
     comision_pct         = 0
     monto_neto           = round(monto_bruto - comision_prestador, 2)
 
-    # ── Procesar cobro automático ─────────────────────────────────────────────
-    # En sandbox o sin credenciales: simular cobro exitoso directamente
-    from auth import _cfg_db as _cfgdb
-    mp_modo         = _cfgdb('mp_modo', 'sandbox')
-    mp_access_token = _cfgdb('mp_access_token', '').strip()
-    metodo_pago     = 'automatico_sandbox' if (mp_modo == 'sandbox' or not mp_access_token) else 'automatico_mp'
-
-    # ── Actualizar servicio y crear pago ──────────────────────────────────────
+    # ── Marcar fin por parte del prestador (el cobro lo procesa el solicitante) ─
     db.execute(
         """UPDATE servicios SET
-               prestador_confirmo_fin=1, fecha_confirmacion_prestador=?,
-               solicitante_confirmo_fin=1,   fecha_confirmacion_solicitante=?,
-               fecha_finalizacion=?,     estado='FINALIZADO'
+               prestador_confirmo_fin=1, fecha_confirmacion_prestador=?
            WHERE id=?""",
-        (ahora, ahora, ahora, sid)
+        (ahora, sid)
     )
-    cur = db.execute(
-        """INSERT INTO pagos
-           (servicio_id, solicitante_id, prestador_id, tipo_pago,
-            monto_bruto, comision_pct, comision_monto,
-            comision_solicitante, comision_prestador,
-            monto_neto, estado, metodo_pago, fecha_pago, fecha_liquidacion)
-           VALUES (?,?,?,'servicio',?,?,?,?,?,?,'LIQUIDADO',?,?,?)""",
-        (sid, s['solicitante_id'], pid,
-         monto_bruto, comision_pct, comision_monto,
-         comision_solicitante, comision_prestador,
-         monto_neto, metodo_pago, ahora, ahora)
-    )
-    pago_id = cur.lastrowid
 
     pr_nombre = session.get('nombre', '') + ' ' + session.get('apellido', '')
 
-    # ── Notificar solicitante ─────────────────────────────────────────────────────
+    # ── Notificar solicitante para que confirme ───────────────────────────────
     fam = db.execute("SELECT usuario_id FROM solicitantes WHERE id=?", (s['solicitante_id'],)).fetchone()
     if fam:
-        _notificar(db, fam['usuario_id'], 'pago_liquidado',
-                   '✅ Cobro liquidado',
-                   f'Se liquidó el pago de $ {monto_bruto:.2f} por el servicio de '
-                   f'{pr_nombre.strip()} del {s["fecha_servicio"]}.')
-
-    # ── Notificar prestador ───────────────────────────────────────────────────
-    pr_user = db.execute("SELECT usuario_id FROM prestadores WHERE id=?", (pid,)).fetchone()
-    if pr_user:
-        _notificar(db, pr_user['usuario_id'], 'pago_liquidado',
-                   f'💰 Tu pago de $ {monto_neto:.0f} fue acreditado',
-                   f'El pago por el servicio del {s["fecha_servicio"]} fue liquidado.')
+        _notificar(db, fam['usuario_id'], 'info',
+                   '✅ El prestador confirmó el fin del servicio',
+                   f'{pr_nombre.strip()} indicó que el servicio del {s["fecha_servicio"]} fue completado. '
+                   f'Confirmá desde tu app para procesar el cobro.')
 
     # ── Notificar admin ───────────────────────────────────────────────────────
     admin = db.execute("SELECT id FROM usuarios WHERE tipo_usuario='admin' LIMIT 1").fetchone()
     if admin:
-        _notificar(db, admin['id'], 'pago_liquidado',
-                   f'✅ Cobro liquidado — servicio #{sid}',
-                   f'$ {monto_bruto:.0f} (neto prestador: $ {monto_neto:.0f})')
+        _notificar(db, admin['id'], 'info',
+                   f'Prestador confirmó fin — servicio #{sid}',
+                   f'Esperando confirmación del solicitante para cobrar $ {monto_bruto:.0f}.')
 
     db.commit()
-    print(f"[confirmar_fin] Servicio #{sid} finalizado. Cobro LIQUIDADO: $ {monto_bruto:.2f} ({metodo_pago})")
+    print(f"[confirmar_fin] Prestador marcó fin del servicio #{sid}. Esperando confirmación del solicitante.")
 
-    # ── Enviar correos con desglose ───────────────────────────────────────────
-    _enviar_correos_liquidacion(db, pago_id)
-
-    flash(f'✅ Servicio finalizado. El cobro de $ {monto_bruto:.0f} fue liquidado automáticamente.', 'success')
+    flash('✅ Fin del servicio registrado. El solicitante deberá confirmarlo para procesar el cobro.', 'success')
     return redirect(url_for('prestador.servicio_detalle', sid=sid))
 
 

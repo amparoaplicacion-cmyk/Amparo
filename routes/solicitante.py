@@ -1608,8 +1608,8 @@ def contratacion_confirmar_fin(sid):
     # Cobro automático con tarjeta registrada
     _cobrar_tarjeta_automatico(db, pago_id, s, fid)
 
-    flash('✅ Servicio confirmado. El cobro se procesó automáticamente.', 'success')
-    return redirect(url_for('solicitante.contrataciones'))
+    flash('✅ Servicio confirmado.', 'success')
+    return redirect(url_for('solicitante.contratacion_detalle', sid=sid, calificar=1))
 
 
 @solicitante_bp.route('/contrataciones/<int:sid>/reportar-conflicto', methods=['POST'])

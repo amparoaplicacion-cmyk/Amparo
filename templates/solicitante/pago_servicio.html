@@ -75,28 +75,11 @@
     </label>
   </div>
 
-  {% if not es_penalidad %}
-  <!-- Checkbox de confirmación obligatorio -->
-  <label id="check-label"
-         style="display:flex;align-items:flex-start;gap:.75rem;background:#f9f5ff;
-                border:1.5px solid #c3a0e8;border-radius:12px;padding:1rem;margin-bottom:1.25rem;cursor:pointer;">
-    <input type="checkbox" id="check-confirm" name="confirmo"
-           style="margin-top:.15rem;accent-color:#7D3C98;width:18px;height:18px;flex-shrink:0;"
-           onchange="togglePagar()">
-    <span style="font-size:.88rem;color:#444;line-height:1.45;">
-      Confirmo que el servicio se realizó correctamente y autorizo el pago de
-      <strong>$ {{ '%.2f'|format((pago.monto_bruto or 0) + (pago.comision_solicitante or 0)) }}</strong>
-    </span>
-  </label>
-  {% endif %}
-
   <!-- Botón pagar -->
   <button type="submit" id="btn-pagar"
-          {% if not es_penalidad %}disabled{% endif %}
-          style="width:100%;background:{% if es_penalidad %}#27ae60{% else %}#27ae60{% endif %};
+          style="width:100%;background:#27ae60;
                  color:#fff;font-size:1.1rem;padding:1rem;border-radius:25px;
                  font-weight:700;border:none;cursor:pointer;
-                 opacity:{% if es_penalidad %}1{% else %}.45{% endif %};
                  transition:opacity .2s;">
     Pagar ahora → $ {{ '%.2f'|format((pago.monto_bruto or 0) + (pago.comision_solicitante or 0)) }}
   </button>
@@ -110,11 +93,9 @@
   <input type="hidden" name="metodo" value="simulado">
   {% if not es_penalidad %}
   <button type="button" id="btn-simular"
-          disabled
           onclick="document.getElementById('form-simular').submit()"
           style="width:100%;margin-top:.75rem;background:#f39c12;color:#fff;font-size:.95rem;
-                 padding:.85rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;
-                 opacity:.45;transition:opacity .2s;">
+                 padding:.85rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;">
     🧪 Simular pago (modo prueba)
   </button>
   {% else %}
@@ -135,14 +116,4 @@
 {% endif %}
 {% endblock %}
 
-{% block scripts %}
-<script>
-function togglePagar() {
-  var ok  = document.getElementById('check-confirm').checked;
-  var bp  = document.getElementById('btn-pagar');
-  var bs  = document.getElementById('btn-simular');
-  if (bp) { bp.disabled = !ok; bp.style.opacity = ok ? '1' : '.45'; bp.style.cursor = ok ? 'pointer' : 'not-allowed'; }
-  if (bs) { bs.disabled = !ok; bs.style.opacity = ok ? '1' : '.45'; bs.style.cursor = ok ? 'pointer' : 'not-allowed'; }
-}
-</script>
 {% endblock %}
