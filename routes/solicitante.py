@@ -880,12 +880,8 @@ def contratacion_pagar(sid):
         flash('No hay pago pendiente para este servicio.', 'error')
         return redirect(url_for('solicitante.contratacion_detalle', sid=sid))
 
-    tiene_mp    = bool(_cfg_db('mp_access_token', '').strip())
-    modo_prueba = not tiene_mp or _cfg_db('mp_modo', 'sandbox') == 'sandbox'
-
     return render_template('solicitante/pago_servicio.html',
                            s=s, pago=pago,
-                           tiene_mp=tiene_mp, modo_prueba=modo_prueba,
                            **_ctx())
 
 
@@ -984,8 +980,7 @@ def contratacion_pagar_procesar(sid):
             }
             resp = sdk.preference().create(preference_data)
             pref = resp.get("response", {})
-            modo = _cfg_db('mp_modo', 'sandbox')
-            init_point = pref.get("init_point") if modo == 'produccion' else pref.get("sandbox_init_point")
+            init_point = pref.get("init_point")
             if init_point:
                 return redirect(init_point)
             flash('No se pudo obtener el link de pago de Mercado Pago.', 'error')
@@ -1087,20 +1082,6 @@ def _procesar_pago(db, pago, s, metodo, referencia):
         else:
             print(f"[PENALIDAD] ADVERTENCIA: no se encontró el solicitante id={pago['solicitante_id']}")
 
-        mp_token = _cfg_db('mp_access_token', '').strip()
-        if not mp_token:
-            print(f"[PENALIDAD] Sin access token — cobro simulado")
-            db.execute(
-                """UPDATE pagos SET
-                       estado = 'PROCESADO',
-                       metodo_pago = 'automatico_sandbox',
-                       referencia_pago = 'SANDBOX_PENALIDAD',
-                       fecha_pago = datetime('now', '-3 hours')
-                   WHERE id = ?""",
-                (pago['id'],)
-            )
-            db.commit()
-            return
         print(f"[PENALIDAD] Monto bruto={pago['monto_bruto']} neto={pago['monto_neto']}")
 
     # Obtener método de cobro del prestador

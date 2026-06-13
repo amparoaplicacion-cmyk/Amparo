@@ -90,7 +90,7 @@ def disbursement_prestador(db, pago_id, access_token):
     if monto <= 0:
         return False, f'Monto neto inválido: {monto}'
 
-    # Prioridad: email_mp (sandbox/producción) > CBU (transferencia bancaria)
+    # Prioridad: email_mp > CBU (transferencia bancaria)
     metodo = pr['metodo_cobro'] or 'mercadopago'
     if metodo == 'transferencia' and pr['cbu']:
         receiver_type, receiver_value = 'cbu', pr['cbu']
@@ -188,10 +188,10 @@ def registrar_movimiento(db, tipo, descripcion, monto_entrada=0, monto_salida=0,
 
 
 def _enviar_excel_email(destinatario, asunto, cuerpo_texto, ruta_archivo, nombre_archivo):
-    smtp_host = os.environ.get('SMTP_HOST') or _cfg_db('SMTP_HOST', 'smtp.gmail.com')
-    smtp_port = int(os.environ.get('SMTP_PORT') or _cfg_db('SMTP_PORT', '587'))
-    smtp_user = os.environ.get('SMTP_USER') or _cfg_db('SMTP_USER', '')
-    smtp_pass = os.environ.get('SMTP_PASS') or _cfg_db('SMTP_PASS', '')
+    smtp_host = _cfg_db('mail_servidor', '') or os.environ.get('SMTP_HOST', 'smtp.gmail.com')
+    smtp_port = int(_cfg_db('mail_puerto', '') or os.environ.get('SMTP_PORT', '587'))
+    smtp_user = _cfg_db('mail_usuario', '') or os.environ.get('SMTP_USER', '')
+    smtp_pass = _cfg_db('mail_password', '') or os.environ.get('SMTP_PASS', '')
 
     if not smtp_user or not smtp_pass:
         print(f'[AMPARO] Cierre para {destinatario} — SMTP no configurado.')

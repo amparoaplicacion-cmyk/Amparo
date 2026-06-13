@@ -229,7 +229,6 @@ CONFIGURACION_INICIAL = [
     ('factura_monto_limite',     '200000',    'Monto mensual a partir del cual se exige factura al prestador (en pesos)'),
     ('mp_public_key',            '',          'Clave pública de Mercado Pago'),
     ('mp_access_token',          '',          'Token de acceso de Mercado Pago'),
-    ('mp_modo',                  'sandbox',   'Modo de Mercado Pago: sandbox o produccion'),
     ('cancelacion_penalidad_pct','10',        'Porcentaje de penalidad por cancelación después de aceptación'),
     ('cancelacion_prestador_pct','70',        'Del 10% de penalidad, porcentaje que va al prestador'),
     ('cancelacion_amparo_pct',   '30',        'Del 10% de penalidad, porcentaje que va a AMPARO'),

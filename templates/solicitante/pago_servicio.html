@@ -86,34 +86,9 @@
 
 </form>
 
-{% if modo_prueba %}
-<!-- Botón de simulación (sandbox / sin credenciales) -->
-<form method="POST" action="{{ url_for('solicitante.contratacion_pagar_procesar', sid=s.id) }}"
-      id="form-simular">
-  <input type="hidden" name="metodo" value="simulado">
-  {% if not es_penalidad %}
-  <button type="button" id="btn-simular"
-          onclick="document.getElementById('form-simular').submit()"
-          style="width:100%;margin-top:.75rem;background:#f39c12;color:#fff;font-size:.95rem;
-                 padding:.85rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;">
-    🧪 Simular pago (modo prueba)
-  </button>
-  {% else %}
-  <button type="submit"
-          style="width:100%;margin-top:.75rem;background:#f39c12;color:#fff;font-size:.95rem;
-                 padding:.85rem;border-radius:25px;font-weight:700;border:none;cursor:pointer;">
-    🧪 Simular pago (modo prueba)
-  </button>
-  {% endif %}
-</form>
-<p style="font-size:.75rem;color:#aaa;text-align:center;margin-top:.4rem;">
-  Modo {% if tiene_mp %}sandbox{% else %}sin credenciales MP{% endif %} — no se realizan cobros reales
-</p>
-{% else %}
 <p style="font-size:.78rem;color:#aaa;text-align:center;margin-top:.75rem;">
   Pago seguro procesado por Mercado Pago
 </p>
-{% endif %}
 {% endblock %}
 
 {% endblock %}

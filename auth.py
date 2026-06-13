@@ -845,13 +845,12 @@ def registro_solicitante():
     db    = get_db()
     zonas = db.execute('SELECT id, nombre FROM zonas WHERE activa=1 ORDER BY nombre').fetchall()
     mp_public_key = _cfg_db('mp_public_key', '')
-    mp_modo       = _cfg_db('mp_modo', 'produccion')
 
     if request.method == 'POST':
         # Bloquear envíos que no llegaron al paso 2
         if request.form.get('paso_actual') != '2':
             flash('Completá todos los pasos del formulario antes de enviar.', 'error')
-            return render_template('solicitante/registro.html', zonas=zonas, mp_public_key=mp_public_key, mp_modo=mp_modo)
+            return render_template('solicitante/registro.html', zonas=zonas, mp_public_key=mp_public_key)
 
         # ── Paso 1 ───────────────────────────────────────────────────────────
         nombre    = request.form.get('nombre', '').strip()
@@ -913,7 +912,7 @@ def registro_solicitante():
         if errores:
             for e in errores:
                 flash(e, 'error')
-            return render_template('solicitante/registro.html', zonas=zonas, mp_public_key=mp_public_key, mp_modo=mp_modo)
+            return render_template('solicitante/registro.html', zonas=zonas, mp_public_key=mp_public_key)
 
         # ── Crear usuario ────────────────────────────────────────────────────
         hoy      = date.today().isoformat()
@@ -964,8 +963,7 @@ def registro_solicitante():
         solicitante_id = sol_cur.lastrowid
 
         # ── Crear Customer y Card en MP si se registró con tarjeta ──────────
-        if (metodo_pago == 'tarjeta' and card_token
-                and not card_token.startswith('SANDBOX_')):
+        if metodo_pago == 'tarjeta' and card_token:
             try:
                 import mercadopago as _mp_sdk, requests as _req
                 _at = _cfg_db('mp_access_token', '').strip()
@@ -1047,7 +1045,7 @@ def registro_solicitante():
 
         return redirect(url_for('auth.registro_solicitante_exitoso'))
 
-    return render_template('solicitante/registro.html', zonas=zonas, mp_public_key=mp_public_key, mp_modo=mp_modo)
+    return render_template('solicitante/registro.html', zonas=zonas, mp_public_key=mp_public_key)
 
 
 @auth_bp.route('/registro/solicitante/exitoso')

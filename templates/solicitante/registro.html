@@ -252,11 +252,6 @@
 
         <!-- Panel Tarjeta -->
         <div id="panel-card" style="display:none;background:#f9f5fd;border:1.5px solid #c3a0e8;border-radius:10px;padding:.85rem;margin-bottom:.5rem;">
-          {% if mp_modo == 'sandbox' %}
-          <div style="background:#e8f4fd;border:1px solid #90cdf4;border-radius:8px;padding:.6rem .85rem;margin-bottom:.75rem;font-size:.82rem;color:#1a5276;">
-            ℹ️ Modo prueba activo. Podés ingresar cualquier tarjeta con formato válido.
-          </div>
-          {% endif %}
           <div class="form-group" style="margin-bottom:.75rem;">
             <label class="form-label">Número de tarjeta *</label>
             <input type="text" id="card-number" class="form-input" maxlength="19"
@@ -528,57 +523,40 @@ async function irPaso2() {
     if (!cvv)            { mostrarPagoError('Ingresá el código de seguridad.'); return; }
     if (!dni || dni.length < 7) { mostrarPagoError('Ingresá el DNI del titular sin puntos.'); return; }
 
-    const mpModo = document.getElementById('mp-modo').value;
+    // Tokenizar con Mercado Pago
+    const mpPublicKey = document.getElementById('mp-public-key').value;
+    if (!mpPublicKey) {
+      mostrarPagoError('El sistema de pagos no está configurado. Contactá al administrador.');
+      return;
+    }
 
-    if (mpModo === 'sandbox') {
-      // Modo prueba: solo validar formato, no llamar a MP
-      const mesNum = parseInt(mm, 10);
-      const anioNum = parseInt(aa, 10);
-      const anioActual = new Date().getFullYear() % 100;
-      if (num.length !== 16)                          { mostrarPagoError('El número debe tener 16 dígitos.'); return; }
-      if (mesNum < 1 || mesNum > 12)                  { mostrarPagoError('El mes de vencimiento no es válido (01-12).'); return; }
-      if (anioNum < anioActual)                       { mostrarPagoError('El año de vencimiento debe ser futuro.'); return; }
-      if (cvv.length < 3 || cvv.length > 4)           { mostrarPagoError('El CVV debe tener 3 o 4 dígitos.'); return; }
-      const last4 = num.slice(-4);
-      document.getElementById('card-token').value     = 'SANDBOX_' + last4;
-      document.getElementById('card-last-four').value = last4;
-      document.getElementById('card-type').value      = 'visa';
-    } else {
-      // Tokenizar con Mercado Pago
-      const mpPublicKey = document.getElementById('mp-public-key').value;
-      if (!mpPublicKey) {
-        mostrarPagoError('El sistema de pagos no está configurado. Contactá al administrador.');
-        return;
-      }
+    const btn = document.getElementById('btn-siguiente');
+    btn.disabled = true;
+    btn.textContent = '⏳ Verificando tarjeta...';
 
-      const btn = document.getElementById('btn-siguiente');
-      btn.disabled = true;
-      btn.textContent = '⏳ Verificando tarjeta...';
-
-      try {
-        const mp = new MercadoPago(mpPublicKey);
-        const token = await mp.createCardToken({
-          cardNumber:           num,
-          cardholderName:       nombre,
-          cardExpirationMonth:  mm.padStart(2, '0'),
-          cardExpirationYear:   aa,
-          securityCode:         cvv,
-          identificationType:   'DNI',
-          identificationNumber: dni
-        });
-        document.getElementById('card-token').value     = token.id;
-        document.getElementById('card-last-four').value = token.last_four_digits;
-        document.getElementById('card-type').value      = token.payment_method_id;
-      } catch (err) {
-        btn.disabled = false;
-        btn.textContent = 'Siguiente →';
-        mostrarPagoError('Datos de tarjeta incorrectos. Verificalos e intentá de nuevo.');
-        return;
-      }
-
+    try {
+      const mp = new MercadoPago(mpPublicKey);
+      const token = await mp.createCardToken({
+        cardNumber:           num,
+        cardholderName:       nombre,
+        cardExpirationMonth:  mm.padStart(2, '0'),
+        cardExpirationYear:   aa,
+        securityCode:         cvv,
+        identificationType:   'DNI',
+        identificationNumber: dni
+      });
+      document.getElementById('card-token').value     = token.id;
+      document.getElementById('card-last-four').value = token.last_four_digits;
+      document.getElementById('card-type').value      = token.payment_method_id;
+    } catch (err) {
       btn.disabled = false;
       btn.textContent = 'Siguiente →';
+      mostrarPagoError('Datos de tarjeta incorrectos. Verificalos e intentá de nuevo.');
+      return;
     }
+
+    btn.disabled = false;
+    btn.textContent = 'Siguiente →';
   }
 
   document.getElementById('pago-error').style.display = 'none';
@@ -696,7 +674,6 @@ document.getElementById('reg-form').addEventListener('submit', function(e) {
 </script>
 
 <input type="hidden" id="mp-public-key" value="{{ mp_public_key|default('') }}">
-<input type="hidden" id="mp-modo" value="{{ mp_modo|default('produccion') }}">
 <script src="https://sdk.mercadopago.com/js/v2"></script>
 
 <!-- Barra fija: acceso al login -->

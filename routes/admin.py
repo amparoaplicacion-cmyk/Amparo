@@ -3421,14 +3421,10 @@ def configuracion_pagos_mp():
         public_key   = request.form.get('mp_public_key', '').strip()
         access_token = request.form.get('mp_access_token', '').strip()
         webhook_url  = request.form.get('mp_webhook_url', '').strip()
-        modo         = request.form.get('mp_modo', 'sandbox')
-        if modo not in ('sandbox', 'produccion'):
-            modo = 'sandbox'
         _set_cfg(db, 'mp_public_key', public_key)
         if access_token and not set(access_token) <= {'*'}:
             _set_cfg(db, 'mp_access_token', access_token)
         _set_cfg(db, 'mp_webhook_url', webhook_url)
-        _set_cfg(db, 'mp_modo', modo)
         db.commit()
         flash('Configuración de pagos guardada correctamente.', 'success')
         return redirect(url_for('admin.configuracion_pagos_mp'))
@@ -3439,7 +3435,6 @@ def configuracion_pagos_mp():
         'mp_public_key':   _cfg(db, 'mp_public_key', ''),
         'mp_access_token': token_mask,
         'mp_webhook_url':  _cfg(db, 'mp_webhook_url', ''),
-        'mp_modo':         _cfg(db, 'mp_modo', 'sandbox'),
     }
     return render_template('admin/configuracion/pagos.html',
                            config=config, seccion_activa='configuracion', **_ctx())
