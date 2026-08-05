@@ -1465,7 +1465,7 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
                 headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
                 timeout=15
             )
-            if tk_resp.status_code == 200:
+            if tk_resp.status_code in (200, 201):
                 charge_token = tk_resp.json().get('id')
                 print(f'[COBRO_AUTO] Token desde Customers API OK: {charge_token[:10]}...')
             else:
