@@ -436,12 +436,19 @@ def solicitud_nueva(prestador_id):
 
     categorias = db.execute('SELECT id, nombre FROM categorias WHERE activa=1 ORDER BY nombre').fetchall()
 
+    sol_pago = db.execute(
+        'SELECT mp_customer_id, mp_card_id, metodo_pago_descripcion '
+        'FROM solicitantes WHERE id=?', (fid,)
+    ).fetchone()
+    requiere_cvv = bool(sol_pago and sol_pago['mp_customer_id'] and sol_pago['mp_card_id'])
+
     if request.method == 'POST':
         fecha_servicio = request.form.get('fecha_servicio', '').strip()
         hora_inicio    = request.form.get('hora_inicio', '').strip()
         hora_fin       = request.form.get('hora_fin', '').strip()
         categoria_id   = request.form.get('categoria_id', prestador['categoria_id'])
         mensaje        = request.form.get('mensaje', '').strip() or None
+        cvv            = request.form.get('cvv', '').strip()
 
         errores = []
         if not fecha_servicio:
@@ -454,62 +461,102 @@ def solicitud_nueva(prestador_id):
             errores.append('La hora de fin es obligatoria.')
         if hora_inicio and hora_fin and hora_fin <= hora_inicio:
             errores.append('La hora de fin debe ser posterior a la de inicio.')
+        if requiere_cvv and not (cvv.isdigit() and len(cvv) in (3, 4)):
+            errores.append('Ingresá el código de seguridad (CVV) de tu tarjeta para autorizar el cobro.')
 
         if errores:
             for e in errores:
                 flash(e, 'error')
         else:
-            # Calcular presupuesto para guardar
-            pr_row = db.execute('SELECT tarifa_hora FROM prestadores WHERE id=?', (prestador_id,)).fetchone()
-            tarifa_hora = (pr_row['tarifa_hora'] or 0) if pr_row else 0
-            try:
-                horas_est = _calcular_horas(hora_inicio, hora_fin)
-            except Exception:
-                horas_est = 0
-            if tarifa_hora and horas_est:
-                monto_est = tarifa_hora * horas_est
-                cfg = {r['clave']: r['valor'] for r in db.execute(
-                    "SELECT clave,valor FROM configuracion WHERE clave IN ('comision_tipo','comision_pct_default','comision_fijo')"
-                ).fetchall()}
-                if cfg.get('comision_tipo', 'porcentaje') == 'porcentaje':
-                    comision_est = monto_est * float(cfg.get('comision_pct_default', 15)) / 100
+            # Validar el CVV contra MP y generar el token de cobro pre-autorizado
+            cvv_token = None
+            cvv_token_fecha = None
+            cvv_error = None
+            if requiere_cvv:
+                access_token_mp = _cfg_db('mp_access_token', '').strip()
+                if not access_token_mp:
+                    cvv_error = 'No se pudo validar la tarjeta (configuración de pagos incompleta).'
                 else:
-                    comision_est = float(cfg.get('comision_fijo', 0))
-                total_est = round(monto_est + comision_est, 2)
-                monto_est  = round(monto_est, 2)
-                comision_est = round(comision_est, 2)
+                    import requests as _req_cvv
+                    try:
+                        tk_resp = _req_cvv.post(
+                            'https://api.mercadopago.com/v1/card_tokens',
+                            json={
+                                'customer_id': sol_pago['mp_customer_id'],
+                                'card_id': sol_pago['mp_card_id'],
+                                'security_code': cvv,
+                            },
+                            headers={'Authorization': f'Bearer {access_token_mp}', 'Content-Type': 'application/json'},
+                            timeout=15
+                        )
+                        if tk_resp.status_code in (200, 201):
+                            cvv_token = tk_resp.json().get('id')
+                            cvv_token_fecha = ahora_argentina()
+                        else:
+                            print(f'[SOLICITUD_CVV] Token inválido: {tk_resp.status_code} {tk_resp.text[:200]}')
+                            cvv_error = 'El código de seguridad ingresado no es válido. Verificalo e intentá de nuevo.'
+                    except Exception as _e:
+                        print(f'[SOLICITUD_CVV] Error validando CVV: {_e}')
+                        cvv_error = 'No pudimos validar tu tarjeta en este momento. Intentá de nuevo.'
+
+            if requiere_cvv and (cvv_error or not cvv_token):
+                flash(cvv_error or 'No pudimos validar el código de seguridad de tu tarjeta.', 'error')
             else:
-                tarifa_hora = None; horas_est = None; monto_est = None
-                comision_est = None; total_est = None
+                # Calcular presupuesto para guardar
+                pr_row = db.execute('SELECT tarifa_hora FROM prestadores WHERE id=?', (prestador_id,)).fetchone()
+                tarifa_hora = (pr_row['tarifa_hora'] or 0) if pr_row else 0
+                try:
+                    horas_est = _calcular_horas(hora_inicio, hora_fin)
+                except Exception:
+                    horas_est = 0
+                if tarifa_hora and horas_est:
+                    monto_est = tarifa_hora * horas_est
+                    cfg = {r['clave']: r['valor'] for r in db.execute(
+                        "SELECT clave,valor FROM configuracion WHERE clave IN ('comision_tipo','comision_pct_default','comision_fijo')"
+                    ).fetchall()}
+                    if cfg.get('comision_tipo', 'porcentaje') == 'porcentaje':
+                        comision_est = monto_est * float(cfg.get('comision_pct_default', 15)) / 100
+                    else:
+                        comision_est = float(cfg.get('comision_fijo', 0))
+                    total_est = round(monto_est + comision_est, 2)
+                    monto_est  = round(monto_est, 2)
+                    comision_est = round(comision_est, 2)
+                else:
+                    tarifa_hora = None; horas_est = None; monto_est = None
+                    comision_est = None; total_est = None
 
-            cur = db.execute(
-                '''INSERT INTO servicios
-                   (solicitante_id, prestador_id, categoria_id, fecha_servicio,
-                    hora_inicio, hora_fin, mensaje_solicitante, estado, fecha_solicitud,
-                    tarifa_hora, horas_estimadas, monto_estimado, comision_estimada, total_estimado)
-                   VALUES (?,?,?,?,?,?,?,'PENDIENTE',?,?,?,?,?,?)''',
-                (fid, prestador_id, categoria_id,
-                 fecha_servicio, hora_inicio, hora_fin, mensaje,
-                 ahora_argentina(),
-                 tarifa_hora, horas_est, monto_est, comision_est, total_est)
-            )
-            servicio_id = cur.lastrowid
+                cur = db.execute(
+                    '''INSERT INTO servicios
+                       (solicitante_id, prestador_id, categoria_id, fecha_servicio,
+                        hora_inicio, hora_fin, mensaje_solicitante, estado, fecha_solicitud,
+                        tarifa_hora, horas_estimadas, monto_estimado, comision_estimada, total_estimado,
+                        cvv_token, cvv_token_fecha)
+                       VALUES (?,?,?,?,?,?,?,'PENDIENTE',?,?,?,?,?,?,?,?)''',
+                    (fid, prestador_id, categoria_id,
+                     fecha_servicio, hora_inicio, hora_fin, mensaje,
+                     ahora_argentina(),
+                     tarifa_hora, horas_est, monto_est, comision_est, total_est,
+                     cvv_token, cvv_token_fecha)
+                )
+                servicio_id = cur.lastrowid
 
-            # Notificar al prestador
-            pr_usuario = db.execute(
-                'SELECT usuario_id FROM prestadores WHERE id=?', (prestador_id,)
-            ).fetchone()
-            if pr_usuario:
-                _notificar(db, pr_usuario['usuario_id'], 'nueva_solicitud',
-                           'Nueva solicitud de servicio',
-                           f'Recibiste una solicitud para el {fecha_servicio} de {hora_inicio} a {hora_fin}.')
-            db.commit()
-            flash('¡Solicitud enviada! El prestador tiene 24 horas para responder.', 'success')
-            return redirect(url_for('solicitante.contrataciones', tab='pendientes'))
+                # Notificar al prestador
+                pr_usuario = db.execute(
+                    'SELECT usuario_id FROM prestadores WHERE id=?', (prestador_id,)
+                ).fetchone()
+                if pr_usuario:
+                    _notificar(db, pr_usuario['usuario_id'], 'nueva_solicitud',
+                               'Nueva solicitud de servicio',
+                               f'Recibiste una solicitud para el {fecha_servicio} de {hora_inicio} a {hora_fin}.')
+                db.commit()
+                flash('¡Solicitud enviada! El prestador tiene 24 horas para responder.', 'success')
+                return redirect(url_for('solicitante.contrataciones', tab='pendientes'))
 
     return render_template('solicitante/solicitud_nueva.html',
                            prestador=prestador,
                            categorias=categorias,
+                           requiere_cvv=requiere_cvv,
+                           metodo_pago_descripcion=(sol_pago['metodo_pago_descripcion'] if sol_pago else None),
                            hoy=date.today().isoformat(),
                            **_ctx())
 
@@ -1454,25 +1501,31 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
         import mercadopago, requests as _req
         sdk = mercadopago.SDK(access_token)
 
-        # Obtener token de cobro: desde card guardada (Customers API) o token directo
-        charge_token = None
+        # Obtener token de cobro: CVV pre-validado al armar el requerimiento (prioridad),
+        # o desde card guardada (Customers API), o token directo (fallback)
         customer_id  = sol['mp_customer_id']
         card_id      = sol['mp_card_id']
-        if customer_id and card_id:
-            tk_resp = _req.post(
-                'https://api.mercadopago.com/v1/card_tokens',
-                json={'customer_id': customer_id, 'card_id': card_id},
-                headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
-                timeout=15
-            )
-            if tk_resp.status_code in (200, 201):
-                charge_token = tk_resp.json().get('id')
-                print(f'[COBRO_AUTO] Token desde Customers API OK: {charge_token[:10]}...')
-            else:
-                print(f'[COBRO_AUTO] Error generando token desde Customers API: {tk_resp.status_code} {tk_resp.text[:200]}')
-        if not charge_token:
-            charge_token = sol['mp_card_token']
-            print(f'[COBRO_AUTO] Usando token directo (fallback)')
+        charge_token = None
+
+        if s['cvv_token']:
+            charge_token = s['cvv_token']
+            print(f'[COBRO_AUTO] Usando token CVV pre-validado del requerimiento: {charge_token[:10]}...')
+        else:
+            if customer_id and card_id:
+                tk_resp = _req.post(
+                    'https://api.mercadopago.com/v1/card_tokens',
+                    json={'customer_id': customer_id, 'card_id': card_id},
+                    headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'},
+                    timeout=15
+                )
+                if tk_resp.status_code in (200, 201):
+                    charge_token = tk_resp.json().get('id')
+                    print(f'[COBRO_AUTO] Token desde Customers API OK: {charge_token[:10]}...')
+                else:
+                    print(f'[COBRO_AUTO] Error generando token desde Customers API: {tk_resp.status_code} {tk_resp.text[:200]}')
+            if not charge_token:
+                charge_token = sol['mp_card_token']
+                print(f'[COBRO_AUTO] Usando token directo (fallback)')
 
         payer = {'email': sol['email']}
         if customer_id:

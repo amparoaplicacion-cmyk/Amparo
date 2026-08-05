@@ -428,6 +428,14 @@ def migrar_servicios_confirmacion(db):
             db.execute(f'ALTER TABLE servicios ADD COLUMN {col} {tipo}')
 
 
+def migrar_servicios_cvv_token(db):
+    cols = {row[1] for row in db.execute('PRAGMA table_info(servicios)')}
+    if 'cvv_token' not in cols:
+        db.execute('ALTER TABLE servicios ADD COLUMN cvv_token TEXT')
+    if 'cvv_token_fecha' not in cols:
+        db.execute('ALTER TABLE servicios ADD COLUMN cvv_token_fecha DATETIME')
+
+
 def migrar_pagos(db):
     cols = {row[1] for row in db.execute('PRAGMA table_info(pagos)')}
     if 'tipo_pago' not in cols:
@@ -558,6 +566,7 @@ def init_db():
     migrar_categorias(db)
     migrar_servicios(db)
     migrar_servicios_confirmacion(db)
+    migrar_servicios_cvv_token(db)
     migrar_pagos(db)
     migrar_usuarios_cobro_automatico(db)
     migrar_usuarios_check_constraint(db)

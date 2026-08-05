@@ -114,7 +114,19 @@
       </div>
     </div>
 
-    <!-- Checkbox de confirmación -->
+    {% if requiere_cvv %}
+    <!-- Autorización mediante CVV -->
+    <div id="checkbox-wrap" style="display:none;background:#f7f9fb;border:1px solid #e5e9ed;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;">
+      <label class="form-label" for="inp-cvv" style="font-size:.88rem;color:#333;">
+        Ingresá el código de seguridad (CVV) de tu {{ metodo_pago_descripcion or 'tarjeta registrada' }} para autorizar el cobro al confirmar la solicitud.
+      </label>
+      <input type="password" inputmode="numeric" pattern="[0-9]*" autocomplete="off"
+             maxlength="4" id="inp-cvv" name="cvv" class="input-text"
+             placeholder="CVV" style="max-width:120px;margin-top:.4rem;"
+             oninput="toggleBoton()">
+    </div>
+    {% else %}
+    <!-- Checkbox de confirmación (sin tarjeta registrada vía Mi Cuenta) -->
     <div id="checkbox-wrap" style="display:none;background:#f7f9fb;border:1px solid #e5e9ed;border-radius:10px;padding:.75rem 1rem;margin-bottom:.75rem;">
       <label style="display:flex;gap:.75rem;align-items:flex-start;cursor:pointer;font-size:.88rem;color:#333;line-height:1.4;">
         <input type="checkbox" id="chk-confirmar" onchange="toggleBoton()"
@@ -122,6 +134,7 @@
         Entiendo que al confirmar autorizo el cobro del monto total al prestador aceptar la solicitud.
       </label>
     </div>
+    {% endif %}
 
     <button type="submit" id="btn-confirmar"
             class="btn btn-primary btn-full"
@@ -207,7 +220,6 @@ function actualizarPresupuesto() {
         }
         document.getElementById('pres-total').textContent    = fmt(data.monto_total);
       }
-      document.getElementById('chk-confirmar').checked = false;
       bloquearBoton();
     })
     .catch(() => {
@@ -218,11 +230,18 @@ function actualizarPresupuesto() {
 }
 
 function toggleBoton() {
-  const chk = document.getElementById('chk-confirmar').checked;
+  const chkEl = document.getElementById('chk-confirmar');
+  const cvvEl = document.getElementById('inp-cvv');
+  let ok = false;
+  if (chkEl) {
+    ok = chkEl.checked;
+  } else if (cvvEl) {
+    ok = /^[0-9]{3,4}$/.test(cvvEl.value);
+  }
   const btn = document.getElementById('btn-confirmar');
-  btn.disabled = !chk;
-  btn.style.opacity = chk ? '1' : '.45';
-  btn.style.pointerEvents = chk ? 'auto' : 'none';
+  btn.disabled = !ok;
+  btn.style.opacity = ok ? '1' : '.45';
+  btn.style.pointerEvents = ok ? 'auto' : 'none';
 }
 
 function bloquearBoton() {
@@ -230,7 +249,10 @@ function bloquearBoton() {
   btn.disabled = true;
   btn.style.opacity = '.45';
   btn.style.pointerEvents = 'none';
-  document.getElementById('chk-confirmar').checked = false;
+  const chkEl = document.getElementById('chk-confirmar');
+  if (chkEl) chkEl.checked = false;
+  const cvvEl = document.getElementById('inp-cvv');
+  if (cvvEl) cvvEl.value = '';
 }
 </script>
 {% endblock %}
