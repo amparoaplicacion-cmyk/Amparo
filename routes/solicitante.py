@@ -1163,7 +1163,7 @@ def _procesar_pago(db, pago, s, metodo, referencia):
         _notificar(db, sol_usuario['id'], 'pago_liquidado',
                    'Pago procesado y liquidado',
                    f'Tu pago de $ {pago["monto_bruto"]:.2f} fue procesado correctamente.')
-        if pago.get('tipo_pago') != 'penalidad':
+        if pago['tipo_pago'] != 'penalidad':
             _notificar(db, sol_usuario['id'], 'calificacion_pendiente',
                        'Calificá el servicio',
                        f'¿Cómo fue tu experiencia? Calificá al prestador por el servicio del {s["fecha_servicio"]}.')

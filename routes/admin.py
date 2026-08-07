@@ -2419,7 +2419,7 @@ def pago_confirmar_manual(pid):
         sol_nombre = (f"{sol_row2['nombre']} {sol_row2['apellido']}" if sol_row2
                       else f'solicitante #{pago["solicitante_id"]}')
         total_cobrado = (pago['monto_bruto'] or 0) + (pago['comision_monto'] or 0)
-        tipo_mov = 'PENALIDAD' if pago.get('tipo_pago') == 'penalidad' else 'COBRO'
+        tipo_mov = 'PENALIDAD' if pago['tipo_pago'] == 'penalidad' else 'COBRO'
         desc_cobro = (f"Penalidad cancelación — servicio #{pago['servicio_id']}"
                       if tipo_mov == 'PENALIDAD'
                       else f"Cobro servicio #{pago['servicio_id']} — {sol_nombre}")
