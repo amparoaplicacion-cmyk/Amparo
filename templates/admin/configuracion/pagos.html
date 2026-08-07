@@ -40,6 +40,32 @@
              placeholder="https://tudominio.com/webhooks/mp">
     </div>
 
+    <div class="form-group" style="border-top:1px solid #eee;padding-top:1.25rem;">
+      <label style="font-size:1rem;">🔗 OAuth Marketplace (vinculación de prestadores)</label>
+      <small class="form-hint" style="margin-bottom:.75rem;">
+        Necesario para que los prestadores vinculen su cuenta de MercadoPago y cobren directo con
+        <code>application_fee</code>. Se obtiene en el panel de la app de MercadoPago (App ID / Client Secret).
+      </small>
+    </div>
+
+    <div class="form-group">
+      <label for="mp_client_id">Client ID (App ID)</label>
+      <input type="text" id="mp_client_id" name="mp_client_id"
+             value="{{ config.mp_client_id }}" class="form-control"
+             placeholder="281380903524855">
+    </div>
+
+    <div class="form-group">
+      <label for="mp_client_secret">Client Secret</label>
+      <div class="input-password-wrap">
+        <input type="password" id="mp_client_secret" name="mp_client_secret"
+               value="{{ config.mp_client_secret }}" class="form-control"
+               placeholder="">
+        <button type="button" class="btn-show-pass" onclick="togglePassSecret()">👁</button>
+      </div>
+      <small class="form-hint">Se guarda enmascarado. Dejá en blanco para no modificarlo.</small>
+    </div>
+
 
     <div class="form-actions">
       <a href="{{ url_for('admin.configuracion') }}" class="btn btn-secondary">Cancelar</a>
@@ -51,6 +77,10 @@
 <script>
 function togglePass() {
   const inp = document.getElementById('mp_access_token');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+function togglePassSecret() {
+  const inp = document.getElementById('mp_client_secret');
   inp.type = inp.type === 'password' ? 'text' : 'password';
 }
 

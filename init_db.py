@@ -229,6 +229,8 @@ CONFIGURACION_INICIAL = [
     ('factura_monto_limite',     '200000',    'Monto mensual a partir del cual se exige factura al prestador (en pesos)'),
     ('mp_public_key',            '',          'Clave pública de Mercado Pago'),
     ('mp_access_token',          '',          'Token de acceso de Mercado Pago'),
+    ('mp_client_id',             '',          'Client ID de la app de Mercado Pago (App ID), usado para OAuth de prestadores'),
+    ('mp_client_secret',         '',          'Client Secret de la app de Mercado Pago, usado para OAuth de prestadores'),
     ('cancelacion_penalidad_pct','10',        'Porcentaje de penalidad por cancelación después de aceptación'),
     ('cancelacion_prestador_pct','70',        'Del 10% de penalidad, porcentaje que va al prestador'),
     ('cancelacion_amparo_pct',   '30',        'Del 10% de penalidad, porcentaje que va a AMPARO'),
@@ -386,6 +388,18 @@ def migrar_prestadores(db):
         db.execute('ALTER TABLE prestadores ADD COLUMN ubicacion_actualizada DATETIME')
     if 'tarifa_hora' not in cols:
         db.execute('ALTER TABLE prestadores ADD COLUMN tarifa_hora REAL DEFAULT 0')
+    if 'mp_user_id' not in cols:
+        db.execute('ALTER TABLE prestadores ADD COLUMN mp_user_id TEXT')
+    if 'mp_oauth_access_token' not in cols:
+        db.execute('ALTER TABLE prestadores ADD COLUMN mp_oauth_access_token TEXT')
+    if 'mp_oauth_refresh_token' not in cols:
+        db.execute('ALTER TABLE prestadores ADD COLUMN mp_oauth_refresh_token TEXT')
+    if 'mp_oauth_token_expira' not in cols:
+        db.execute('ALTER TABLE prestadores ADD COLUMN mp_oauth_token_expira DATETIME')
+    if 'mp_oauth_public_key' not in cols:
+        db.execute('ALTER TABLE prestadores ADD COLUMN mp_oauth_public_key TEXT')
+    if 'mp_vinculado_fecha' not in cols:
+        db.execute('ALTER TABLE prestadores ADD COLUMN mp_vinculado_fecha DATETIME')
 
 
 def migrar_categorias(db):

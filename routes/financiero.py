@@ -63,6 +63,44 @@ def _fctx():
 # Helpers compartidos (importables desde otros módulos)
 # ---------------------------------------------------------------------------
 
+def cobrar_con_split(db, pago, payment_fields, access_token_prestador):
+    """
+    Cobra usando el modelo Marketplace de MP: crea el pago con el access_token
+    OAuth del prestador (obtenido al vincular su cuenta) + application_fee, de
+    modo que el reparto ocurre en el mismo cobro — Amparo ya no necesita
+    ejecutar ningún paso de transferencia posterior (ver disbursement_prestador,
+    confirmado no viable por MP, ticket WCS-44983).
+
+    application_fee = comision_monto (comisión al solicitante + comisión al
+    prestador), NO comision_prestador sola: el prestador es quien cobra
+    (es su access_token el que crea el pago), así que todo lo que no se
+    retiene como application_fee queda en su cuenta. Con application_fee =
+    comision_monto, al prestador le queda monto_bruto - comision_prestador
+    (= monto_neto), que es lo que corresponde.
+
+    payment_fields: dict con transaction_amount, token, payment_method_id,
+    description, payer — igual a lo que arma _cobrar_tarjeta_automatico.
+
+    Retorna (aprobado: bool, mp_payment_id: str, detalle: str)
+    """
+    import mercadopago
+
+    application_fee = round(float(pago['comision_monto'] or 0), 2)
+    payment_data = dict(payment_fields)
+    payment_data['application_fee'] = application_fee
+
+    sdk    = mercadopago.SDK(access_token_prestador)
+    resp   = sdk.payment().create(payment_data)
+    result = resp.get('response', {})
+    status = result.get('status')
+    mp_pid = str(result.get('id', ''))
+    print(f'[COBRO_SPLIT] pago={pago["id"]} application_fee={application_fee} '
+          f'status={status} id={mp_pid} detail={result.get("status_detail")} resp={resp}')
+
+    detalle = result.get('status_detail', status or 'error desconocido')
+    return status == 'approved', mp_pid, detalle
+
+
 def disbursement_prestador(db, pago_id, access_token):
     """
     Transfiere el monto_neto al prestador vía MP Transfers API.

@@ -3418,23 +3418,32 @@ def configuracion_notificaciones():
 def configuracion_pagos_mp():
     db = get_db()
     if request.method == 'POST':
-        public_key   = request.form.get('mp_public_key', '').strip()
-        access_token = request.form.get('mp_access_token', '').strip()
-        webhook_url  = request.form.get('mp_webhook_url', '').strip()
+        public_key    = request.form.get('mp_public_key', '').strip()
+        access_token  = request.form.get('mp_access_token', '').strip()
+        webhook_url   = request.form.get('mp_webhook_url', '').strip()
+        client_id     = request.form.get('mp_client_id', '').strip()
+        client_secret = request.form.get('mp_client_secret', '').strip()
         _set_cfg(db, 'mp_public_key', public_key)
         if access_token and not set(access_token) <= {'*'}:
             _set_cfg(db, 'mp_access_token', access_token)
         _set_cfg(db, 'mp_webhook_url', webhook_url)
+        _set_cfg(db, 'mp_client_id', client_id)
+        if client_secret and not set(client_secret) <= {'*'}:
+            _set_cfg(db, 'mp_client_secret', client_secret)
         db.commit()
         flash('Configuración de pagos guardada correctamente.', 'success')
         return redirect(url_for('admin.configuracion_pagos_mp'))
 
-    token_real = _cfg(db, 'mp_access_token', '')
-    token_mask = ('****' + token_real[-4:]) if len(token_real) > 4 else ('****' if token_real else '')
+    token_real  = _cfg(db, 'mp_access_token', '')
+    token_mask  = ('****' + token_real[-4:]) if len(token_real) > 4 else ('****' if token_real else '')
+    secret_real = _cfg(db, 'mp_client_secret', '')
+    secret_mask = ('****' + secret_real[-4:]) if len(secret_real) > 4 else ('****' if secret_real else '')
     config = {
-        'mp_public_key':   _cfg(db, 'mp_public_key', ''),
-        'mp_access_token': token_mask,
-        'mp_webhook_url':  _cfg(db, 'mp_webhook_url', ''),
+        'mp_public_key':     _cfg(db, 'mp_public_key', ''),
+        'mp_access_token':   token_mask,
+        'mp_webhook_url':    _cfg(db, 'mp_webhook_url', ''),
+        'mp_client_id':      _cfg(db, 'mp_client_id', ''),
+        'mp_client_secret':  secret_mask,
     }
     return render_template('admin/configuracion/pagos.html',
                            config=config, seccion_activa='configuracion', **_ctx())

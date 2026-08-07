@@ -1114,7 +1114,7 @@ def _enviar_recibo_solicitante(db, pago, s):
     return enviar_email(sol_row['email'], asunto, cuerpo)
 
 
-def _procesar_pago(db, pago, s, metodo, referencia):
+def _procesar_pago(db, pago, s, metodo, referencia, split_aplicado=False):
     tipo = pago['tipo_pago'] or 'servicio'
     print(f"[PAGO] Iniciando _procesar_pago — pago_id={pago['id']} tipo={tipo} monto={pago['monto_bruto']} metodo={metodo}")
 
@@ -1173,7 +1173,10 @@ def _procesar_pago(db, pago, s, metodo, referencia):
                    'Pago liquidado automáticamente',
                    f'Pago $ {pago["monto_bruto"]:.2f} — servicio #{pago["servicio_id"]} liquidado.')
 
-    # Registrar movimiento financiero
+    # Registrar movimiento financiero.
+    # Con split, el total cobrado a la tarjeta NO pasa por la cuenta de Amparo:
+    # solo llega la application_fee (comision_monto). Sin split, sigue
+    # entrando el total_cobrado completo (y sale después por disbursement).
     try:
         from routes.financiero import registrar_movimiento
         total_cobrado = (pago['monto_bruto'] or 0) + (pago['comision_monto'] or 0)
@@ -1193,10 +1196,12 @@ def _procesar_pago(db, pago, s, metodo, referencia):
             ).fetchone()
             sol_nombre = (f"{sol_row['nombre']} {sol_row['apellido']}"
                           if sol_row else f'solicitante #{pago["solicitante_id"]}')
+            monto_recibido_amparo = pago['comision_monto'] if split_aplicado else total_cobrado
+            desc_cobro = (f"Cobro servicio #{pago['servicio_id']} — {sol_nombre}"
+                          + (' (split MP — comisión directa)' if split_aplicado else ''))
             registrar_movimiento(
-                db, 'COBRO',
-                f"Cobro servicio #{pago['servicio_id']} — {sol_nombre}",
-                monto_entrada=total_cobrado,
+                db, 'COBRO', desc_cobro,
+                monto_entrada=monto_recibido_amparo,
                 referencia=referencia,
                 pago_id=pago['id']
             )
@@ -1210,7 +1215,20 @@ def _procesar_pago(db, pago, s, metodo, referencia):
     except Exception as e:
         print(f"[CORREO] Error al enviar correos de liquidación: {e}")
 
-    # Disbursement automático: transferir monto_neto al prestador vía MP
+    if split_aplicado:
+        # El reparto ya ocurrió en el mismo cobro (application_fee) — no hace
+        # falta ningún paso de transferencia posterior.
+        db.execute(
+            "UPDATE pagos SET disbursement_id=?, disbursement_estado='COMPLETADO_SPLIT', "
+            "disbursement_fecha=?, disbursement_error=NULL WHERE id=?",
+            (referencia, ahora_argentina(), pago['id'])
+        )
+        return
+
+    # Disbursement automático (prestador todavía no vinculó su cuenta MP):
+    # MP confirmó (ticket WCS-44983) que /v1/transfers no existe como API
+    # pública — este intento queda solo como registro legado; el error se
+    # marca directamente como "falta vincular" en vez de un FALLIDO genérico.
     try:
         from routes.financiero import disbursement_prestador
         mp_token = _cfg_db('mp_access_token', '').strip()
@@ -1225,11 +1243,21 @@ def _procesar_pago(db, pago, s, metodo, referencia):
                                f'Referencia de transferencia: {detalle}.')
             else:
                 print(f'[DISBURSEMENT] FALLIDO pago={pago["id"]} error={detalle}')
+                db.execute(
+                    "UPDATE pagos SET disbursement_estado='REQUIERE_VINCULACION_MP', "
+                    "disbursement_error=? WHERE id=?",
+                    ('Falta vincular cuenta de MercadoPago del prestador (modelo Marketplace)', pago['id'])
+                )
+                if pr_row:
+                    _notificar(db, pr_row['usuario_id'], 'disbursement_fallido',
+                               '⚠️ Vinculá tu cuenta de MercadoPago para cobrar automáticamente',
+                               'Tu pago quedó pendiente de acreditación porque todavía no vinculaste tu '
+                               'cuenta de MercadoPago. Hacelo desde Mi Perfil › Datos de cobro.')
                 if admin:
                     _notificar(db, admin['id'], 'disbursement_fallido',
-                               f'⚠️ Fallo al pagar prestador — pago #{pago["id"]}',
-                               f'No se pudo transferir $ {pago["monto_neto"]:.2f} al prestador. '
-                               f'Error: {detalle}. Revisar en Admin › Pagos › #{pago["id"]}.')
+                               f'⚠️ Prestador sin vincular MP — pago #{pago["id"]}',
+                               f'No se pudo acreditar $ {pago["monto_neto"]:.2f} al prestador porque no tiene '
+                               f'su cuenta de MercadoPago vinculada. Revisar en Admin › Pagos › #{pago["id"]}.')
         else:
             db.execute(
                 "UPDATE pagos SET disbursement_estado='SIN_CREDENCIALES' WHERE id=?",
@@ -1539,19 +1567,33 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
             'payment_method_id': payment_method,
             'payer': payer,
         }
-        print(f'[COBRO_AUTO] Intentando cobrar ${monto_total} con {payment_method} al solicitante {sol["email"]} customer_id={customer_id}')
-        resp   = sdk.payment().create(payment_data)
-        result = resp.get('response', {})
-        status = result.get('status')
-        mp_pid = str(result.get('id', ''))
-        print(f'[COBRO_AUTO] Respuesta MP completa: {resp}')
-        print(f'[COBRO_AUTO] Respuesta MP: status={status} id={mp_pid} detail={result.get("status_detail")}')
+        # Split (Marketplace): si el prestador vinculó su cuenta MP, el cobro
+        # se crea con SU access_token + application_fee y el reparto ocurre
+        # en el mismo pago — ya no hace falta transferencia posterior
+        # (ver routes/financiero.py:cobrar_con_split y ticket MP WCS-44983).
+        from routes.prestador import _mp_oauth_refresh
+        access_token_prestador = _mp_oauth_refresh(db, pago['prestador_id']) if pago['prestador_id'] else None
 
-        if status == 'approved':
-            _procesar_pago(db, pago, s, metodo='tarjeta_mp', referencia=mp_pid)
+        if access_token_prestador:
+            from routes.financiero import cobrar_con_split
+            print(f'[COBRO_AUTO] Prestador {pago["prestador_id"]} vinculado a MP — cobrando con split')
+            aprobado, mp_pid, detalle = cobrar_con_split(db, pago, payment_data, access_token_prestador)
+        else:
+            print(f'[COBRO_AUTO] Intentando cobrar ${monto_total} con {payment_method} al solicitante {sol["email"]} customer_id={customer_id}')
+            resp    = sdk.payment().create(payment_data)
+            result  = resp.get('response', {})
+            status  = result.get('status')
+            mp_pid  = str(result.get('id', ''))
+            aprobado = status == 'approved'
+            detalle  = result.get('status_detail', status or 'error desconocido')
+            print(f'[COBRO_AUTO] Respuesta MP completa: {resp}')
+            print(f'[COBRO_AUTO] Respuesta MP: status={status} id={mp_pid} detail={detalle}')
+
+        if aprobado:
+            _procesar_pago(db, pago, s, metodo='tarjeta_mp', referencia=mp_pid,
+                            split_aplicado=bool(access_token_prestador))
             db.commit()
         else:
-            detalle = result.get('status_detail', status or 'error desconocido')
             db.execute(
                 "UPDATE pagos SET referencia_pago=? WHERE id=?",
                 (mp_pid or 'RECHAZADO', pago_id)

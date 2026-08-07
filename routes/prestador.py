@@ -6,6 +6,7 @@ from flask import (Blueprint, abort, flash, redirect, render_template,
 from werkzeug.utils import secure_filename
 
 from database import get_db, ahora_argentina
+from auth import _cfg_db
 
 
 def _comprimir_imagen(ruta, max_px=1200, calidad=78):
@@ -1041,6 +1042,179 @@ def perfil_editar():
                            dias=DIAS_SEMANA, franjas=FRANJAS,
                            disp_marcada=disp_marcada,
                            **_ctx())
+
+
+# ─── VINCULACIÓN MERCADOPAGO (OAuth) ─────────────────────────────────────────
+# Requerido para cobro con split (application_fee) — ver plan de migración:
+# MP confirmó que no hay API de payout posterior, solo vía Marketplace/OAuth.
+
+def _mp_oauth_refresh(db, prestador_id):
+    """
+    Si el access_token OAuth del prestador está vencido o por vencer, lo renueva.
+    Retorna el access_token vigente, o None si el prestador no está vinculado
+    o la renovación falla.
+    """
+    import requests
+
+    pr = db.execute(
+        'SELECT mp_oauth_access_token, mp_oauth_refresh_token, mp_oauth_token_expira '
+        'FROM prestadores WHERE id=?', (prestador_id,)
+    ).fetchone()
+    if not pr or not pr['mp_oauth_access_token']:
+        return None
+
+    vigente = True
+    if pr['mp_oauth_token_expira']:
+        try:
+            expira = datetime.fromisoformat(str(pr['mp_oauth_token_expira']))
+            vigente = expira - datetime.now() > timedelta(minutes=10)
+        except ValueError:
+            vigente = False
+
+    if vigente:
+        return pr['mp_oauth_access_token']
+
+    if not pr['mp_oauth_refresh_token']:
+        return pr['mp_oauth_access_token']  # no hay forma de renovar, se intenta con el que hay
+
+    client_id     = _cfg_db('mp_client_id', '').strip()
+    client_secret = _cfg_db('mp_client_secret', '').strip()
+    try:
+        resp = requests.post(
+            'https://api.mercadopago.com/oauth/token',
+            json={
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'grant_type': 'refresh_token',
+                'refresh_token': pr['mp_oauth_refresh_token'],
+            },
+            timeout=15
+        )
+        data = resp.json()
+        if resp.status_code == 200 and data.get('access_token'):
+            nueva_expira = (datetime.now() + timedelta(seconds=int(data.get('expires_in', 21600)))).isoformat()
+            db.execute(
+                """UPDATE prestadores SET mp_oauth_access_token=?, mp_oauth_refresh_token=?,
+                   mp_oauth_token_expira=? WHERE id=?""",
+                (data['access_token'], data.get('refresh_token', pr['mp_oauth_refresh_token']),
+                 nueva_expira, prestador_id)
+            )
+            db.commit()
+            return data['access_token']
+        print(f'[MP_OAUTH] Error renovando token prestador={prestador_id}: {resp.status_code} {data}')
+        return pr['mp_oauth_access_token']
+    except Exception as e:
+        print(f'[MP_OAUTH] Excepción renovando token prestador={prestador_id}: {e}')
+        return pr['mp_oauth_access_token']
+
+
+@prestador_bp.route('/mercadopago/conectar')
+def mp_conectar():
+    import secrets
+
+    db  = get_db()
+    pid = _get_prestador_id(db)
+    if not pid:
+        return redirect(url_for('auth.logout'))
+
+    client_id = _cfg_db('mp_client_id', '').strip()
+    if not client_id:
+        flash('MercadoPago no está configurado todavía en el sistema (falta Client ID). Avisá al administrador.', 'error')
+        return redirect(url_for('prestador.perfil_editar'))
+
+    state = secrets.token_urlsafe(24)
+    session['mp_oauth_state'] = state
+
+    app_url      = _cfg_db('app_url', '').rstrip('/')
+    redirect_uri = f'{app_url}{url_for("prestador.mp_callback")}'
+
+    auth_url = (
+        'https://auth.mercadopago.com/authorization'
+        f'?client_id={client_id}&response_type=code&platform_id=mp'
+        f'&redirect_uri={redirect_uri}&state={state}'
+    )
+    return redirect(auth_url)
+
+
+@prestador_bp.route('/mercadopago/callback')
+def mp_callback():
+    import requests
+
+    db  = get_db()
+    pid = _get_prestador_id(db)
+    if not pid:
+        return redirect(url_for('auth.logout'))
+
+    state_recibido = request.args.get('state', '')
+    state_guardado = session.pop('mp_oauth_state', None)
+    if not state_guardado or state_recibido != state_guardado:
+        flash('No se pudo vincular con MercadoPago: la sesión de autorización no es válida. Probá de nuevo.', 'error')
+        return redirect(url_for('prestador.perfil_editar'))
+
+    code = request.args.get('code', '')
+    if not code:
+        flash('MercadoPago no autorizó la vinculación (no se recibió el código).', 'error')
+        return redirect(url_for('prestador.perfil_editar'))
+
+    client_id     = _cfg_db('mp_client_id', '').strip()
+    client_secret = _cfg_db('mp_client_secret', '').strip()
+    app_url       = _cfg_db('app_url', '').rstrip('/')
+    redirect_uri  = f'{app_url}{url_for("prestador.mp_callback")}'
+
+    try:
+        resp = requests.post(
+            'https://api.mercadopago.com/oauth/token',
+            json={
+                'client_id': client_id,
+                'client_secret': client_secret,
+                'grant_type': 'authorization_code',
+                'code': code,
+                'redirect_uri': redirect_uri,
+            },
+            timeout=15
+        )
+        data = resp.json()
+        print(f'[MP_OAUTH] Callback prestador={pid} HTTP={resp.status_code} resp={data}')
+
+        if resp.status_code not in (200, 201) or not data.get('access_token'):
+            msg = data.get('message') or data.get('error_description') or str(data)
+            flash(f'No se pudo vincular con MercadoPago: {msg}', 'error')
+            return redirect(url_for('prestador.perfil_editar'))
+
+        expira = (datetime.now() + timedelta(seconds=int(data.get('expires_in', 21600)))).isoformat()
+        db.execute(
+            """UPDATE prestadores SET mp_user_id=?, mp_oauth_access_token=?,
+               mp_oauth_refresh_token=?, mp_oauth_token_expira=?, mp_oauth_public_key=?,
+               mp_vinculado_fecha=? WHERE id=?""",
+            (str(data.get('user_id', '')), data['access_token'],
+             data.get('refresh_token'), expira, data.get('public_key'),
+             ahora_argentina(), pid)
+        )
+        db.commit()
+        flash('✅ Cuenta de MercadoPago vinculada correctamente.', 'success')
+    except Exception as e:
+        print(f'[MP_OAUTH] Excepción en callback prestador={pid}: {e}')
+        flash('Error técnico al vincular con MercadoPago. Intentá de nuevo.', 'error')
+
+    return redirect(url_for('prestador.perfil_editar'))
+
+
+@prestador_bp.route('/mercadopago/desvincular', methods=['POST'])
+def mp_desvincular():
+    db  = get_db()
+    pid = _get_prestador_id(db)
+    if not pid:
+        return redirect(url_for('auth.logout'))
+
+    db.execute(
+        """UPDATE prestadores SET mp_user_id=NULL, mp_oauth_access_token=NULL,
+           mp_oauth_refresh_token=NULL, mp_oauth_token_expira=NULL,
+           mp_oauth_public_key=NULL, mp_vinculado_fecha=NULL WHERE id=?""",
+        (pid,)
+    )
+    db.commit()
+    flash('Se desvinculó tu cuenta de MercadoPago. El cobro automático quedará pausado hasta que vuelvas a vincularla.', 'success')
+    return redirect(url_for('prestador.perfil_editar'))
 
 
 # ─── CERTIFICADO UPLOAD ───────────────────────────────────────────────────────
