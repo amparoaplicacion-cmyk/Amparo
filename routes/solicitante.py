@@ -1175,8 +1175,13 @@ def _procesar_pago(db, pago, s, metodo, referencia, split_aplicado=False):
 
     # Registrar movimiento financiero.
     # Con split, el total cobrado a la tarjeta NO pasa por la cuenta de Amparo:
-    # solo llega la application_fee (comision_monto). Sin split, sigue
-    # entrando el total_cobrado completo (y sale después por disbursement).
+    # solo llega la application_fee, que ahora es comision_solicitante (15%)
+    # — Amparo ya no le cobra comisión aparte al prestador, ver
+    # routes/financiero.py:cobrar_con_split. OJO: pago['comision_monto'] para
+    # un pago con split incluye la comisión de procesamiento de MP (mostrada
+    # al prestador como "comisión Amparo" por decisión de negocio, pero esa
+    # plata la retiene MP, no entra a la cuenta de Amparo) — por eso acá NO
+    # se usa comision_monto para el movimiento con split, sino comision_solicitante.
     try:
         from routes.financiero import registrar_movimiento
         total_cobrado = (pago['monto_bruto'] or 0) + (pago['comision_monto'] or 0)
@@ -1196,7 +1201,7 @@ def _procesar_pago(db, pago, s, metodo, referencia, split_aplicado=False):
             ).fetchone()
             sol_nombre = (f"{sol_row['nombre']} {sol_row['apellido']}"
                           if sol_row else f'solicitante #{pago["solicitante_id"]}')
-            monto_recibido_amparo = pago['comision_monto'] if split_aplicado else total_cobrado
+            monto_recibido_amparo = (pago['comision_solicitante'] or 0) if split_aplicado else total_cobrado
             desc_cobro = (f"Cobro servicio #{pago['servicio_id']} — {sol_nombre}"
                           + (' (split MP — comisión directa)' if split_aplicado else ''))
             registrar_movimiento(
@@ -1577,7 +1582,25 @@ def _cobrar_tarjeta_automatico(db, pago_id, s, fid):
         if access_token_prestador:
             from routes.financiero import cobrar_con_split
             print(f'[COBRO_AUTO] Prestador {pago["prestador_id"]} vinculado a MP — cobrando con split')
-            aprobado, mp_pid, detalle = cobrar_con_split(db, pago, payment_data, access_token_prestador)
+            aprobado, mp_pid, detalle, net_recibido = cobrar_con_split(db, pago, payment_data, access_token_prestador)
+            if aprobado and net_recibido is not None:
+                # Ya no le cobramos al prestador un 7% fijo: lo que realmente
+                # le queda es lo que MP acredite después de su propia comisión
+                # de procesamiento. Se recalcula acá con el número real para
+                # que el mail de liquidación (_enviar_correos_liquidacion) y
+                # los movimientos financieros muestren exactamente lo que el
+                # prestador va a ver en su cuenta MP, no una estimación.
+                monto_neto_real     = round(float(net_recibido), 2)
+                comision_pres_real  = round((pago['monto_bruto'] or 0) - monto_neto_real, 2)
+                comision_monto_real = round((pago['comision_solicitante'] or 0) + comision_pres_real, 2)
+                db.execute(
+                    "UPDATE pagos SET comision_prestador=?, monto_neto=?, comision_monto=? WHERE id=?",
+                    (comision_pres_real, monto_neto_real, comision_monto_real, pago_id)
+                )
+                pago = db.execute('SELECT * FROM pagos WHERE id=?', (pago_id,)).fetchone()
+            elif aprobado:
+                print(f'[COBRO_AUTO] Split aprobado pero MP no informó net_received_amount — '
+                      f'se mantiene la estimación previa (comision_prestador={pago["comision_prestador"]}) para pago={pago_id}')
         else:
             print(f'[COBRO_AUTO] Intentando cobrar ${monto_total} con {payment_method} al solicitante {sol["email"]} customer_id={customer_id}')
             resp    = sdk.payment().create(payment_data)

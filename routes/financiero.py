@@ -71,21 +71,28 @@ def cobrar_con_split(db, pago, payment_fields, access_token_prestador):
     ejecutar ningún paso de transferencia posterior (ver disbursement_prestador,
     confirmado no viable por MP, ticket WCS-44983).
 
-    application_fee = comision_monto (comisión al solicitante + comisión al
-    prestador), NO comision_prestador sola: el prestador es quien cobra
-    (es su access_token el que crea el pago), así que todo lo que no se
-    retiene como application_fee queda en su cuenta. Con application_fee =
-    comision_monto, al prestador le queda monto_bruto - comision_prestador
-    (= monto_neto), que es lo que corresponde.
+    application_fee = comision_solicitante (el 15% que se le cobra de más al
+    solicitante) — NO se suma la comisión del prestador. Decisión de negocio:
+    Amparo deja de cobrarle al prestador su comisión aparte; en su lugar, la
+    comisión de procesamiento que MP le descuenta al prestador (por ser quien
+    cobra, con su access_token) cumple ese rol. El monto real que le queda al
+    prestador surge de lo que MP efectivamente acredite (net_received_amount),
+    no de un porcentaje fijo — por eso el llamador debe leer ese valor y
+    recalcular pagos.comision_prestador/monto_neto con el número real, en vez
+    de asumir el 7% que se usaba antes del split.
 
     payment_fields: dict con transaction_amount, token, payment_method_id,
     description, payer — igual a lo que arma _cobrar_tarjeta_automatico.
 
-    Retorna (aprobado: bool, mp_payment_id: str, detalle: str)
+    Retorna (aprobado: bool, mp_payment_id: str, detalle: str, net_recibido: float|None)
+    net_recibido es transaction_details.net_received_amount de la respuesta de
+    MP — lo que realmente entra a la cuenta del prestador. Puede venir None si
+    MP no lo informa en la respuesta; en ese caso el llamador debe conservar
+    la estimación previa en vez de pisarla con un valor inválido.
     """
     import mercadopago
 
-    application_fee = round(float(pago['comision_monto'] or 0), 2)
+    application_fee = round(float(pago['comision_solicitante'] or 0), 2)
     payment_data = dict(payment_fields)
     payment_data['application_fee'] = application_fee
 
@@ -94,11 +101,13 @@ def cobrar_con_split(db, pago, payment_fields, access_token_prestador):
     result = resp.get('response', {})
     status = result.get('status')
     mp_pid = str(result.get('id', ''))
+    net_recibido = (result.get('transaction_details') or {}).get('net_received_amount')
     print(f'[COBRO_SPLIT] pago={pago["id"]} application_fee={application_fee} '
-          f'status={status} id={mp_pid} detail={result.get("status_detail")} resp={resp}')
+          f'net_received_amount={net_recibido} status={status} id={mp_pid} '
+          f'detail={result.get("status_detail")} fee_details={result.get("fee_details")} resp={resp}')
 
     detalle = result.get('status_detail', status or 'error desconocido')
-    return status == 'approved', mp_pid, detalle
+    return status == 'approved', mp_pid, detalle, net_recibido
 
 
 def disbursement_prestador(db, pago_id, access_token):
