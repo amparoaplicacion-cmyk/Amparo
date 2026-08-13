@@ -1111,6 +1111,7 @@ def _mp_oauth_refresh(db, prestador_id):
 @prestador_bp.route('/mercadopago/conectar')
 def mp_conectar():
     import secrets
+    from urllib.parse import urlencode
 
     db  = get_db()
     pid = _get_prestador_id(db)
@@ -1128,11 +1129,14 @@ def mp_conectar():
     app_url      = _cfg_db('app_url', '').rstrip('/')
     redirect_uri = f'{app_url}{url_for("prestador.mp_callback")}'
 
-    auth_url = (
-        'https://auth.mercadopago.com/authorization'
-        f'?client_id={client_id}&response_type=code&platform_id=mp'
-        f'&redirect_uri={redirect_uri}&state={state}'
-    )
+    params = urlencode({
+        'client_id':     client_id,
+        'response_type': 'code',
+        'platform_id':   'mp',
+        'redirect_uri':  redirect_uri,
+        'state':         state,
+    })
+    auth_url = f'https://auth.mercadopago.com/authorization?{params}'
     return redirect(auth_url)
 
 
