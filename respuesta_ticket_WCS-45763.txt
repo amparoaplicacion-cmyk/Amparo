@@ -1,0 +1,13 @@
+Hola, buenas.
+
+Gracias por la aclaración. Prefiero avanzar directamente por el canal comercial para pedir la habilitación de allow_flow (OAuth Authorization Code) para Marketplace/Split en producción, en vez de probar con usuarios de prueba — ya tuvimos problemas antes mezclando cuentas de prueba con la cuenta real, así que prefiero evitar ese camino.
+
+App ID: 281380903524855.
+
+Antes de dar el paso de convertir la cuenta a tipo negocio (lo que implica inscribirme como monotributista en ARCA), necesito consultarles algo puntual: ¿el equipo comercial puede confirmar de antemano que, una vez hecha esa conversión, la habilitación de allow_flow para esta app va a proceder sin otros impedimentos adicionales? Quiero evitar hacer el trámite impositivo y encontrarme después con que falta alguna otra gestión.
+
+Por otro lado, les cuento un dato que me pareció raro y que quizás sea relevante para revisar. La primera vez que se aprobó un cobro real con tarjeta de débito, mi cuenta me informó una retención de 11 días sobre ese monto. Gestioné y conseguí que me lo acreditaran de inmediato (liberación anticipada de esos fondos retenidos). Fue a partir de ese momento que empezaron a aparecer estos requerimientos (el corte de allow_flow, el pedido de conversión a cuenta de negocio). No sé si están relacionados, pero me pareció un dato válido para que puedan revisar si ese trámite dejó alguna marca o restricción particular sobre la cuenta.
+
+Quedo atento a la respuesta.
+
+Gracias.
