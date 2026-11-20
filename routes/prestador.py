@@ -494,7 +494,9 @@ def _enviar_correos_liquidacion(db, pago_id):
         fecha_srv = str(servicio['fecha_servicio'] if servicio else '')
 
         if sol:
-            total = float(pago['monto_bruto'] or 0) + float(pago['comision_monto'] or 0)
+            # El solicitante paga monto_bruto + comision_solicitante; comision_monto
+            # incluye la comisión del prestador (no la paga el solicitante).
+            total = float(pago['monto_bruto'] or 0) + float(pago['comision_solicitante'] or 0)
             prestador_nombre = pre['nombre'] if pre else ''
             asunto = (_cfg_db('mail_recibo_pago_asunto', 'Recibo de pago — AMPARO')
                       .replace('{fecha_servicio}', fecha_srv))
@@ -512,7 +514,7 @@ def _enviar_correos_liquidacion(db, pago_id):
                 .replace('{hora_inicio}',     str(servicio['hora_inicio']    if servicio else ''))
                 .replace('{hora_fin}',        str(servicio['hora_fin']       if servicio else ''))
                 .replace('{monto_servicio}',  f"{pago['monto_bruto']:,.0f}")
-                .replace('{comision}',        f"{pago['comision_monto']:,.0f}")
+                .replace('{comision}',        f"{float(pago['comision_solicitante'] or 0):,.0f}")
                 .replace('{total_pagado}',    f"{total:,.0f}")
             )
             r1 = enviar_email(sol['email'], asunto, texto)

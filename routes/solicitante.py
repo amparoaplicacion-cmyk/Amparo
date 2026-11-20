@@ -1091,7 +1091,9 @@ def _enviar_recibo_solicitante(db, pago, s):
         return
     print(f"[EMAIL] Enviando recibo a solicitante: {sol_row['email']}")
 
-    total_pag = (pago['monto_bruto'] or 0) + (pago['comision_monto'] or 0)
+    # El solicitante paga monto_bruto + comision_solicitante (comision_monto incluye
+    # la del prestador, que no se le cobra al solicitante).
+    total_pag = (pago['monto_bruto'] or 0) + (pago['comision_solicitante'] or 0)
     asunto = _cfg_db('mail_recibo_pago_asunto', 'Recibo de pago — AMPARO')
     cuerpo = _cfg_db('mail_recibo_pago_cuerpo',
         'Hola {nombre},\n\nTe confirmamos el pago del siguiente servicio:\n\n'
@@ -1108,7 +1110,7 @@ def _enviar_recibo_solicitante(db, pago, s):
         .replace('{hora_inicio}', str(s['hora_inicio']))
         .replace('{hora_fin}', str(s['hora_fin']))
         .replace('{monto_servicio}', f"{pago['monto_bruto']:,.0f}")
-        .replace('{comision}', f"{pago['comision_monto']:,.0f}")
+        .replace('{comision}', f"{(pago['comision_solicitante'] or 0):,.0f}")
         .replace('{total_pagado}', f"{total_pag:,.0f}")
     )
     return enviar_email(sol_row['email'], asunto, cuerpo)
@@ -1184,7 +1186,11 @@ def _procesar_pago(db, pago, s, metodo, referencia, split_aplicado=False):
     # se usa comision_monto para el movimiento con split, sino comision_solicitante.
     try:
         from routes.financiero import registrar_movimiento
-        total_cobrado = (pago['monto_bruto'] or 0) + (pago['comision_monto'] or 0)
+        # Lo que realmente se le cobra a la tarjeta = monto_bruto + comision_solicitante
+        # (igual que monto_total en _cobrar_tarjeta_automatico). comision_monto NO va:
+        # incluye la comisión del prestador, que sale de monto_bruto, no se suma.
+        # (Bug del 11/11: pago 25 cobró $14,38 y se registró $15,26.)
+        total_cobrado = (pago['monto_bruto'] or 0) + (pago['comision_solicitante'] or 0)
         if pago['tipo_pago'] == 'penalidad':
             registrar_movimiento(
                 db, 'PENALIDAD',
