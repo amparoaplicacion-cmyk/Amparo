@@ -12,10 +12,20 @@
   permisos para vincular vendedores NO aprobada. No lo pueden activar desde ese canal;
   quedó ESCALADO. Pidieron NO repetir intentos con cuentas reales hasta que confirmen.
   No contestaron las 2 preguntas (cuenta personal vs negocio; fondos inmediatos).
+- 19/11/2026 10:28 respondió MP de nuevo: la guía pública NO exige cuenta negocio para
+  el dueño de la app; la autorización se corta antes de emitir el código y están
+  confirmando la elegibilidad de la cuenta y el circuito de habilitación. Disponibilidad
+  del dinero del prestador = plazo que el prestador tenga configurado en su cuenta MP;
+  la comisión del marketplace se libera aparte. Requisito del vendedor: KYC 6.
+- 20/11/2026: se le respondió a MP con los datos del intento del 11/11 y la consulta
+  sobre "dinero disponible al instante" en split. Esperando respuesta.
 - Seguir el ticket desde el botón "Revisar solicitud" del mail (las respuestas no
   siempre llegan por mail). Si para el 24/11 no hay novedades, mandar un seguimiento.
 
 ## Resultado de la prueba del 11/11/2026 (casa de Julia Balestre, prestadora)
+- Todo se hizo desde el celular del dueño (único que tiene la app): app solicitante y
+  app prestador (logueado como Julia en Amparo), y se inició sesión en la cuenta MP
+  real de Julia, con ella presente. Repetir igual cuando MP habilite.
 - Solicitante de prueba: colosorodas5. Tarjeta: VISA de CRÉDITO terminada en 9667
   (no es débito).
 - Flujo completo hasta el cobro: pedido → aceptado → confirmar llegada (GPS) → cobro OK.
@@ -47,8 +57,13 @@
   split usa el access_token del prestador (routes/solicitante.py, ~línea 1543).
   Probablemente MP lo rechace: hay que generar el token con la public_key del prestador
   (prestadores.mp_oauth_public_key).
-- El 11/11 a las 14:22 (UTC) la app intentó el disbursement del pago 24 aunque el cobro
-  fue RECHAZADO. Revisar qué camino lo disparó (no debería transferir si no se cobró).
+- ARREGLADO EN CÓDIGO el 20/11 (falta subir a PythonAnywhere): el 11/11 la app intentó
+  el disbursement del pago 24 aunque el cobro fue RECHAZADO. Causa probable: el webhook
+  de MP (/solicitante/pago/mp/webhook) y /pago/mp/ok liquidaban sin consultar el estado
+  real del pago. Ahora ambos consultan a MP y solo liquidan si status == 'approved'
+  (helper _mp_consultar_pago en routes/solicitante.py).
+  Confirmar en producción: SELECT estado FROM pagos WHERE id=24 (si quedó LIQUIDADO,
+  está mal marcado).
 - El mail de contraseña temporal llega vacío (revisar la plantilla
   mail_contrasena_temp_cuerpo en producción).
 - Agregar la opción "olvidé mi contraseña" (envío de un link por mail).

@@ -1273,6 +1273,35 @@ def _procesar_pago(db, pago, s, metodo, referencia, split_aplicado=False):
         print(f'[DISBURSEMENT] Error inesperado en pago {pago["id"]}: {e}')
 
 
+def _mp_consultar_pago(mp_pid):
+    """
+    Consulta a MP el estado real de un pago (con las credenciales de Amparo).
+    Retorna (status, external_reference) o (None, None) si no se pudo consultar.
+    Nunca hay que marcar un pago como cobrado sin pasar por acá: los avisos de
+    MP (webhook) y los redirects de Checkout Pro llegan también para pagos
+    rechazados (bug del 11/11/2026: pago 24 rechazado → se intentó transferir).
+    """
+    if not mp_pid:
+        return None, None
+    try:
+        import requests as _req
+        at = _cfg_db('mp_access_token', '').strip()
+        if not at:
+            return None, None
+        r = _req.get(
+            f'https://api.mercadopago.com/v1/payments/{mp_pid}',
+            headers={'Authorization': f'Bearer {at}'}, timeout=10
+        )
+        if r.status_code != 200:
+            print(f'[MP_CONSULTA] pago MP {mp_pid}: HTTP {r.status_code}')
+            return None, None
+        data = r.json()
+        return data.get('status'), data.get('external_reference')
+    except Exception as e:
+        print(f'[MP_CONSULTA] Error consultando pago MP {mp_pid}: {e}')
+        return None, None
+
+
 @solicitante_bp.route('/pago/mp/ok')
 def pago_mp_ok():
     db      = get_db()
@@ -1291,9 +1320,15 @@ def pago_mp_ok():
                    JOIN usuarios u ON u.id = pr.usuario_id
                    WHERE s.id=?""", (pago['servicio_id'],)
             ).fetchone()
-            if s:
+            status, ext_ref = _mp_consultar_pago(mp_pid)
+            if s and status == 'approved' and str(ext_ref) == str(pago_id):
                 _procesar_pago(db, pago, s, 'mercadopago', mp_pid)
                 db.commit()
+            elif status != 'approved':
+                print(f'[PAGO_MP_OK] pago={pago_id} mp={mp_pid} status={status} — NO se liquida')
+                flash('Tu pago todavía no figura como aprobado. Te avisaremos cuando se confirme.', 'info')
+                dest = url_for('solicitante.contratacion_detalle', sid=sid) if sid else url_for('solicitante.pagos')
+                return redirect(dest)
     flash('✅ ¡Pago realizado correctamente! Gracias.', 'success')
     dest = url_for('solicitante.contratacion_detalle', sid=sid, calificar=1) if sid else url_for('solicitante.pagos')
     return redirect(dest)
@@ -1322,28 +1357,20 @@ def pago_mp_webhook():
         mp_pid = str(data.get('data', {}).get('id', ''))
         if mp_pid:
             db   = get_db()
+            # Primero confirmar con MP que el pago está APROBADO. El aviso
+            # llega también para pagos rechazados (bug del pago 24, 11/11/2026).
+            status, ext_ref = _mp_consultar_pago(mp_pid)
+            if status != 'approved':
+                print(f'[WEBHOOK_MP] pago MP {mp_pid} status={status} — se ignora')
+                return '', 200
             pago = db.execute(
                 "SELECT * FROM pagos WHERE referencia_pago=? OR token_externo=?",
                 (mp_pid, mp_pid)
             ).fetchone()
-            if not pago:
-                # Buscar por external_reference consultando la API de MP
-                try:
-                    import requests as _req
-                    at = _cfg_db('mp_access_token', '').strip()
-                    if at:
-                        mp_r = _req.get(
-                            f'https://api.mercadopago.com/v1/payments/{mp_pid}',
-                            headers={'Authorization': f'Bearer {at}'}, timeout=10
-                        )
-                        if mp_r.status_code == 200:
-                            ext_ref = mp_r.json().get('external_reference')
-                            if ext_ref:
-                                pago = db.execute(
-                                    "SELECT * FROM pagos WHERE id=?", (ext_ref,)
-                                ).fetchone()
-                except Exception:
-                    pass
+            if not pago and ext_ref:
+                pago = db.execute(
+                    "SELECT * FROM pagos WHERE id=?", (ext_ref,)
+                ).fetchone()
             if pago and pago['estado'] == 'PENDIENTE':
                 s = db.execute(
                     """SELECT s.*, u.nombre || ' ' || u.apellido AS prestador_nombre
