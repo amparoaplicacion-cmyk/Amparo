@@ -64,10 +64,22 @@
   (helper _mp_consultar_pago en routes/solicitante.py).
   Confirmar en producción: SELECT estado FROM pagos WHERE id=24 (si quedó LIQUIDADO,
   está mal marcado).
-- El mail de contraseña temporal llega vacío (revisar la plantilla
-  mail_contrasena_temp_cuerpo en producción).
+- El mail de contraseña temporal llegó vacío alguna vez. 20/11: la plantilla en
+  producción está bien y el código también; no se pudo reproducir. Revisar en la
+  prueba completa.
+- ARREGLADO 20/11 (commit 132b64d): el total cobrado al solicitante se calculaba con
+  comision_monto (incluye la del prestador). Afectaba movimiento COBRO, recibo por mail
+  y liquidación del admin. Ahora usa monto_bruto + comision_solicitante.
 - Agregar la opción "olvidé mi contraseña" (envío de un link por mail).
+
+## Antes de lanzar (decidido 20/11)
+- Cuando se cierre el circuito de pago: LIMPIAR todas las bases (todo lo actual son
+  pruebas, nada es real) y hacer una prueba completa de punta a punta, porque los
+  cambios de pagos pueden haber roto otras cosas.
+- Volver geofence_radio_metros a 50.
 
 ## Condiciones del dueño
 - El prestador tiene que recibir el dinero en el mismo momento, sin retención.
+- El cobro y el pago al prestador tienen que ser 100% automáticos desde el sistema.
+  NO es aceptable transferir a mano.
 - Ningún trámite fiscal (monotributo / cuenta de negocio) hasta que funcione.
